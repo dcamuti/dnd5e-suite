@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generatore NPC D&D 5E</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@700&display=swap');
+:root{
+  --bg:#16100b; --panel:#221a12; --panel2:#2c2217; --border:#4a3826;
+  --gold:#c9a227; --gold-l:#eccb62; --ink:#ece2d0; --muted:#a89878;
+  --red:#8b2e2e; --red-l:#b54444; --green:#5a8a5a;
+  --font-display:'Cinzel',Georgia,serif;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html{scrollbar-color:#4a3826 #16100b}
+body{color:var(--ink); font-family:Georgia,'Times New Roman',serif; min-height:100vh;
+  background:
+   radial-gradient(1200px 500px at 50% -10%, #2c2114 0%, transparent 60%),
+   radial-gradient(900px 600px at 110% 110%, #241a10 0%, transparent 55%),
+   repeating-linear-gradient(45deg, rgba(255,255,255,.012) 0 2px, transparent 2px 6px),
+   var(--bg);
+  background-attachment:fixed}
+::selection{background:var(--red); color:#fff}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:#1a1410}
+::-webkit-scrollbar-thumb{background:#4a3826; border-radius:6px}
+::-webkit-scrollbar-thumb:hover{background:#6a5236}
+.app-header{background:linear-gradient(180deg,#2c2013,#191209 90%); border-bottom:1px solid #6a521f; box-shadow:0 1px 0 #000, 0 6px 24px rgba(0,0,0,.55); padding:16px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; position:relative}
+.app-header::after{content:""; position:absolute; left:0; right:0; bottom:-5px; height:3px;
+  background:linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold-l) 50%, var(--gold) 80%, transparent); opacity:.55}
+.app-header h1{font-family:var(--font-display); font-size:1.45rem; font-weight:700; color:var(--gold-l); letter-spacing:2px; text-shadow:0 2px 8px rgba(0,0,0,.8)}
+.app-header h1 small{display:block; font-family:Georgia,serif; font-size:.72rem; color:var(--muted); font-weight:normal; letter-spacing:3px; margin-top:3px; text-transform:uppercase}
+.btn{background:linear-gradient(180deg,#332818,#261d11); color:var(--ink); border:1px solid var(--border); border-radius:8px; padding:9px 18px; font-family:var(--font-display); font-weight:600; letter-spacing:.5px; font-size:.88rem; cursor:pointer; transition:all .18s ease; box-shadow:0 2px 6px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05)}
+.btn:hover{border-color:var(--gold); color:var(--gold-l); transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.5), 0 0 12px rgba(201,162,39,.15)}
+.btn:active{transform:translateY(0)}
+.btn.primary{background:linear-gradient(180deg,#a13636,#7a2626); border-color:#c95454; color:#fff}
+.btn.primary:hover{background:linear-gradient(180deg,#b54444,#8b2e2e); color:#fff}
+.btn.gold{background:linear-gradient(180deg,#d4ab35,#8f6f1a); border-color:var(--gold-l); color:#1a1206; font-weight:700; text-shadow:0 1px 0 rgba(255,255,255,.25)}
+.btn.gold:hover{filter:brightness(1.12); color:#1a1206}
+.btn.small{padding:5px 12px; font-size:.75rem}
+main{max-width:1180px; margin:0 auto; padding:24px 20px}
+h2,h3{font-family:var(--font-display)}
+@keyframes fadeUp{from{opacity:0; transform:translateY(8px)}to{opacity:1; transform:none}}
+.panel{background:linear-gradient(170deg,#241b12,#1e160d); border:1px solid var(--border); border-radius:14px; padding:26px; box-shadow:0 10px 34px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04); animation:fadeUp .28s ease}
+.panel h2{color:var(--gold-l); margin-bottom:5px; font-size:1.3rem; letter-spacing:1px}
+.panel h2::after{content:""; display:block; width:64px; height:2px; margin-top:7px; background:linear-gradient(90deg,var(--gold),transparent)}
+.panel .hint{color:var(--muted); font-size:.88rem; margin:10px 0 16px}
+select,input[type=text],input[type=number]{background:#1a130b; color:var(--ink); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:.95rem}
+select:focus,input:focus{outline:none; border-color:var(--gold); box-shadow:0 0 0 2px rgba(201,162,39,.15)}
+label.fld{display:inline-block; margin:0 14px 12px 0; vertical-align:top}
+label.fld span{display:block; font-size:.72rem; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:1.5px; font-family:var(--font-display)}
+.chip{display:inline-block;background:linear-gradient(180deg,#2c2216,#241b10); border:1px solid var(--border); border-radius:20px; padding:5px 14px; font-size:.82rem; cursor:pointer; transition:all .15s; user-select:none; margin:0 6px 6px 0}
+.chip:hover{border-color:var(--gold); color:var(--gold-l)}
+.chip.sel{background:linear-gradient(180deg,#a13636,#7a2626); border-color:#c95454; color:#fff}
+/* dossier NPC */
+.npc-wrap{display:grid; grid-template-columns:1fr 400px; gap:18px; margin-top:18px; align-items:start}
+@media(max-width:960px){.npc-wrap{grid-template-columns:1fr}}
+.dossier{background:
+   radial-gradient(700px 300px at 50% -5%, #fffdf4 0%, transparent 65%),
+   linear-gradient(160deg,#f9f4e6,#f1e9d4);
+  color:#241e14; border:1px solid #c9b88f; border-radius:6px; padding:26px 28px; font-family:Georgia,serif;
+  box-shadow:0 12px 44px rgba(0,0,0,.6), inset 0 0 0 3px #f9f4e6, inset 0 0 0 4px #b09a6a, inset 0 0 60px rgba(140,110,60,.10); position:relative; animation:fadeUp .3s ease}
+.dossier::before{content:"❧"; position:absolute; top:8px; left:14px; color:#a08040; font-size:1.15rem; opacity:.7}
+.dossier .nname{font-family:'Cinzel Decorative','Cinzel',Georgia,serif; font-size:1.7rem; color:#8b2e2e; letter-spacing:1px; line-height:1.15}
+.dossier .nsub{font-style:italic; color:#5a4a32; margin:2px 0 12px; font-size:.95rem}
+.dossier .sec{border-top:1px solid #d8ccb2; padding:9px 0 3px}
+.dossier .sec h4{font-family:var(--font-display); font-size:.68rem; text-transform:uppercase; letter-spacing:2.5px; color:#8b2e2e; margin-bottom:4px; display:flex; align-items:center; gap:6px}
+.dossier .sec h4 .rr{margin-left:auto; cursor:pointer; font-size:.85rem; color:#a08040; border:1px solid #c9b88f; border-radius:6px; padding:0 7px; background:#f6efdd; font-style:normal; letter-spacing:0}
+.dossier .sec h4 .rr:hover{color:#8b2e2e; border-color:#8b2e2e}
+.dossier .sec p{font-size:.92rem; line-height:1.5}
+.dossier .secret p{background:rgba(139,46,46,.07); border-left:3px solid #8b2e2e; padding:6px 10px; border-radius:4px}
+/* statblock stile manuale */
+.mm{background:linear-gradient(160deg,#fdf6e3,#f3ead2); color:#2a251c; border:1px solid #c9b88f; border-top:5px solid #8b2e2e; border-bottom:5px solid #8b2e2e; border-radius:4px; padding:16px 18px; font-family:Georgia,serif; box-shadow:0 12px 44px rgba(0,0,0,.6), inset 0 0 40px rgba(140,110,60,.08); animation:fadeUp .3s ease}
+.mm .mname{font-family:'Cinzel Decorative','Cinzel',Georgia,serif; font-size:1.35rem; color:#8b2e2e; letter-spacing:.5px}
+.mm .mtype{font-style:italic; font-size:.82rem; color:#4a3f2e; margin-bottom:6px}
+.mm .rule{height:3px; background:linear-gradient(90deg,#8b2e2e,rgba(139,46,46,.05)); margin:7px 0; border-radius:2px}
+.mm .stat{font-size:.9rem; color:#7a2020; padding:1.5px 0}
+.mm .stat b{color:#7a2020}
+.mm .abgrid{display:grid; grid-template-columns:repeat(6,1fr); text-align:center; gap:4px; margin:8px 0}
+.mm .abgrid .aa b{display:block; font-size:.72rem; color:#7a2020; font-family:var(--font-display)}
+.mm .abgrid .aa span{font-size:.88rem}
+.mm .tr{font-size:.88rem; line-height:1.45; margin:7px 0}
+.mm .tr b i{color:#2a251c}
+.mm h5{font-family:var(--font-display); font-size:1rem; color:#8b2e2e; border-bottom:1.5px solid #8b2e2e; margin:12px 0 6px; padding-bottom:2px; letter-spacing:1px; font-variant:small-caps}
+.mm .rnote{font-size:.82rem; background:rgba(139,46,46,.06); border-left:3px solid #8b2e2e; padding:6px 9px; border-radius:4px; margin-top:10px; line-height:1.45}
+/* modale */
+.modal{display:none; position:fixed; inset:0; background:rgba(10,7,4,.75); backdrop-filter:blur(3px); z-index:50; align-items:center; justify-content:center; padding:20px}
+.modal-box{background:linear-gradient(170deg,#261d12,#1d150c); border:1px solid #6a521f; border-radius:16px; max-width:720px; width:100%; max-height:86vh; overflow-y:auto; padding:26px; box-shadow:0 20px 60px rgba(0,0,0,.7); animation:fadeUp .22s ease}
+.modal-box h2{color:var(--gold-l); font-size:1.25rem; margin-bottom:10px}
+#savedList td{padding:7px 5px; border-bottom:1px solid var(--border); font-size:.9rem}
+#savedList th{padding:4px 5px; text-align:left; color:var(--gold); font-size:.72rem; text-transform:uppercase; letter-spacing:1.5px; font-family:var(--font-display)}
+.toolbar{display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 0; align-items:center}
+.sep{display:inline-block; vertical-align:middle; width:1px; height:24px; background:var(--border); margin:0 4px; flex:none}
+.biglogo{font-size:3rem; text-align:center; margin-bottom:6px}
+.suite-nav{max-width:1180px; margin:14px auto -8px; padding:0 20px; display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.suite-nav .sn-lbl{font-family:var(--font-display); font-size:.68rem; letter-spacing:2px; color:var(--muted)}
+.suite-nav a{background:linear-gradient(180deg,#2c2216,#241b10); border:1px solid var(--border); border-radius:20px; padding:5px 14px; font-size:.8rem; color:var(--ink); text-decoration:none; font-family:var(--font-display); transition:all .15s}
+.suite-nav a:hover{border-color:var(--gold); color:var(--gold-l)}
+.suite-nav a.on{background:linear-gradient(180deg,#a13636,#7a2626); border-color:#c95454; color:#fff; pointer-events:none}
+@media print{
+  .suite-nav{display:none !important}
+  body{background:#fff}
+  .app-header,.toolbar,.panel,.rr{display:none !important}
+  .npc-wrap{display:block}
+  .dossier,.mm{box-shadow:none; margin-bottom:14px; break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <h1>🎭 Generatore NPC D&amp;D 5E <small>Improvvisazione istantanea per Dungeon Master</small></h1>
+  <div>
+    <button class="btn" onclick="openSaved()">📂 NPC salvati</button>
+    <button class="btn" id="impBtn" onclick="importNpc()">⬆ Importa JSON</button>
+    <span class="sep"></span>
+    <button class="btn" onclick="window.print()">🖨️ Stampa</button>
+    <span class="sep"></span>
+    <button class="btn gold" onclick="genNpc()">🎲 Genera NPC</button>
+  </div>
+</header>
+<nav class="suite-nav">
+  <span class="sn-lbl">SUITE D&amp;D 5E</span>
+  <a href="../characters/index.html">⚔️ Schede PG</a>
+  <a class="on" href="../npcs/index.html">🎭 NPC</a>
+  <a href="../encounters/index.html">🐉 Incontri</a>
+  <a href="../world/index.html">🌍 Mondo</a>
+  <a href="../journal/index.html">📖 Diario</a>
+  <a href="../puzzles/index.html">🔐 Enigmi</a>
+</nav>
+<main>
+  <div class="panel">
+    <div class="biglogo">🎭</div>
+    <h2>Evoca un personaggio dal nulla</h2>
+    <p class="hint">Imposta i filtri (o lascia tutto sul fato) e premi <b>Genera NPC</b>: nome, aspetto, personalità, segreti, ganci di trama e un blocco statistiche pronto all'uso. Ogni sezione del dossier ha un dado 🎲 per rigenerarla singolarmente senza perdere il resto.</p>
+    <div>
+      <label class="fld"><span>Razza</span><select id="fRace"><option value="">Casuale (pesata)</option></select></label>
+      <label class="fld"><span>Sesso</span><select id="fSex"><option value="">Casuale</option><option value="m">Maschio</option><option value="f">Femmina</option></select></label>
+      <label class="fld"><span>Categoria / Ruolo</span><select id="fCat"><option value="">Casuale</option></select></label>
+      <label class="fld"><span>Potenza (statblock)</span><select id="fPow"><option value="1">In base al ruolo</option><option value="0">Debole</option><option value="2">Forte</option></select></label>
+      <label class="fld"><span>Allineamento</span><select id="fAl"><option value="">Casuale</option></select></label>
+      <label class="fld"><span>Dove si trova</span><select id="fPlace"><option value="">Ovunque</option></select></label>
+      <label class="fld"><span>Nomi</span><select id="fNames"><option value="mix">Misti</option><option value="classic">Dalle liste classiche</option><option value="gen">Generati (infiniti)</option></select></label>
+      <label class="fld"><span>Seme</span><input type="text" id="fSeed" size="8" placeholder="casuale"></label>
+    </div>
+    <div id="pfBadgeN" style="margin:-4px 0 10px"></div>
+    <button class="btn gold" onclick="genNpc()">🎲 Genera NPC</button>
+    <button class="btn" onclick="genNpc(true)">🎲×5 Genera lista rapida</button>
+    <button class="btn" onclick="genGroup()" title="3–5 NPC legati tra loro da debiti, amori, rivalità e una fazione comune">👥 Gruppo collegato</button>
+  </div>
+
+  <div class="panel" style="margin-top:18px">
+    <h2>🎲 Tabelle rapide da DM</h2>
+    <div class="hint">Un click, un'improvvisazione: nomi e dettagli pronti quando i giocatori escono dai binari.</div>
+    <button class="btn small" onclick="dmRoll('inn')">🏨 Locanda</button>
+    <button class="btn small" onclick="dmRoll('shop')">🛒 Bottega</button>
+    <button class="btn small" onclick="dmRoll('village')">🏘 Villaggio</button>
+    <button class="btn small" onclick="dmRoll('ship')">⛵ Nave</button>
+    <button class="btn small" onclick="dmRoll('weather')">🌦 Meteo</button>
+    <button class="btn small" onclick="dmRoll('travel')">🧭 Evento di viaggio</button>
+    <div id="dmLog" style="margin-top:12px"></div>
+  </div>
+  <div id="quickList"></div>
+
+  <div class="npc-wrap" id="npcWrap" style="display:none">
+    <div>
+      <div class="dossier" id="dossier"></div>
+      <div class="toolbar">
+        <button class="btn gold" onclick="saveNpc()">💾 Salva NPC</button>
+        <button class="btn" onclick="npcToDiary()" title="Aggiunge l'NPC ai «PNG incontrati» del Diario di Campagna">📖 Al diario</button>
+        <button class="btn" onclick="genNpc()">🎲 Rigenera tutto</button>
+        <span class="sep"></span>
+        <button class="btn" onclick="exportNpc()">⬇ Esporta JSON</button>
+        <button class="btn" onclick="exportMonster()" title="Genera un file da importare nel Bestiario Homebrew del generatore incontri">🐉 Esporta per il bestiario</button>
+        <button class="btn" onclick="shareNpc()" title="Copia un link che contiene l'NPC: chi lo apre se lo ritrova caricato">🔗 Link</button>
+      </div>
+    </div>
+    <div id="sbPane"></div>
+  </div>
+</main>
+
+<div class="modal" id="savedModal" onclick="if(event.target===this)closeSaved()">
+  <div class="modal-box">
+    <h2>📂 NPC salvati</h2>
+    <div class="hint" style="color:var(--muted);font-size:.85rem;margin-bottom:10px">Salvati nel browser (localStorage). Usa Esporta/Importa JSON per backup.</div>
+    <table style="width:100%;border-collapse:collapse" id="savedList"></table>
+    <div class="toolbar"><button class="btn" onclick="backupSuite()">🗄 Backup suite</button>
+     <label class="btn" style="cursor:pointer">⬆ Ripristina backup<input type="file" accept=".json" style="display:none" onchange="if(this.files[0])restoreSuite(this.files[0]);this.value=''"></label>
+     <button class="btn" onclick="closeSaved()">Chiudi</button></div>
+  </div>
+</div>
+<input type="file" id="impFile" accept=".json" style="display:none">
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+/* R e D usano il generatore della suite: con un seme, l'NPC è riproducibile */
+const R=a=>a[Math.floor(rnd()*a.length)];
+const D=n=>Math.floor(rnd()*n)+1;
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+/* ================= DATI ESTERNI (file importati, link condivisi, backup) =================
+   Tutto ciò che arriva da fuori viene ripulito prima di entrare nella suite:
+   niente markup, virgolette o entità che possano "uscire" dagli attributi HTML;
+   gli id vengono ridotti a caratteri sicuri. Solo i campi player/dm degli enigmi
+   possono contenere HTML, che passa da un filtro a lista bianca. */
+const PZ_ALLOW=false;
+const PZ_HTML_KEYS=["player","dm"];
+function cleanHtml(html){
+  try{const doc=new DOMParser().parseFromString("<body>"+(html||"")+"</body>","text/html");
+    doc.body.querySelectorAll("script,iframe,object,embed,link,meta,base,form,frame,frameset,noscript,template,style").forEach(n=>n.remove());
+    doc.body.querySelectorAll("*").forEach(el=>[...el.attributes].forEach(a=>{
+      const n=a.name.toLowerCase(),v=(a.value||"").replace(/[\s\u0000-\u001f]/g,"").toLowerCase();
+      const urlAttr=["href","src","xlink:href","action","formaction","background","poster"].includes(n);
+      if(n.startsWith("on")||n==="srcdoc"||(urlAttr&&(v.startsWith("javascript:")||v.startsWith("vbscript:")||(v.startsWith("data:")&&!v.startsWith("data:image/")))))el.removeAttribute(a.name)}));
+    return doc.body.innerHTML}catch(e){return String(html||"").replace(/[<>]/g,"")}}
+function cleanStr(v){return v.replace(/[<>]/g,"").replace(/"/g,"”").replace(/&(?=[#A-Za-z0-9])/g,"＆")}
+function safeParse(txt,allowPzHtml){
+  return JSON.parse(txt,(k,v)=>{
+    if(typeof v!=="string")return v;
+    if(allowPzHtml&&PZ_HTML_KEYS.includes(k))return cleanHtml(v);
+    if(k==="id")return v.replace(/[^\w-]/g,"");
+    return cleanStr(v)})}
+/* valore di una chiave del backup: è JSON (tranne la lingua, che è testo semplice) */
+function safeStoreVal(k,v){try{return JSON.stringify(safeParse(v,k==="dnd5e_puzzles"))}catch(e){return String(v).replace(/[^\w-]/g,"")}}
+/* ==== MOTORE SUITE v1 ==== */
+/* Base comune dei generatori: casualità con seme, modelli con etichette, profilo campagna, invio al diario.
+   Questo blocco è identico in tutti i tool della suite: modificarlo ovunque insieme. */
+/* --- casualità con seme (mulberry32): stesso seme → stesso risultato --- */
+function mkRng(seed){let a=0;const s=String(seed);for(let i=0;i<s.length;i++)a=(Math.imul(a^s.charCodeAt(i),2654435761)+i)>>>0;
+  return()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296}}
+let RNG=Math.random;
+const rnd=()=>RNG();
+const rInt=(a,b)=>a+Math.floor(rnd()*(b-a+1));
+const rDie=n=>1+Math.floor(rnd()*n);
+const rPick=a=>a[Math.floor(rnd()*a.length)];
+const rShuffle=a=>{const b=a.slice();for(let i=b.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
+const rSample=(a,n)=>rShuffle(a).slice(0,n);
+function newSeed(){return Math.random().toString(36).slice(2,8)}
+/* esegue fn con il generatore fissato sul seme indicato */
+function withSeed(seed,fn){const prev=RNG;RNG=mkRng(seed);try{return fn()}finally{RNG=prev}}
+
+/* --- profilo campagna (impostato nel Diario, letto da tutti i generatori) --- */
+const PROF_OPTS={
+  tono:[["eroico","Eroico"],["cupo","Cupo"],["leggero","Leggero"]],
+  amb:[["misto","Misto"],["citta","Città"],["costa","Costa e mare"],["foresta","Foreste"],["montagna","Montagne"],["pianura","Pianure e colline"],["palude","Paludi"],["deserto","Deserto"],["artico","Terre gelide"],["sottosuolo","Sottosuolo"]],
+  magia:[["bassa","Magia rara"],["media","Magia presente"],["alta","Magia ovunque"]]};
+const PROF_DEF={tono:"eroico",amb:"misto",magia:"media"};
+let PROF_OVR=null;/* modifica temporanea, solo per questa pagina */
+function profGet(){let p={};try{p=JSON.parse(localStorage.getItem("dnd5e_profile")||"{}")||{}}catch(e){}
+  const o=Object.assign({},PROF_DEF,p,PROF_OVR||{});
+  for(const k in PROF_OPTS)if(!PROF_OPTS[k].some(x=>x[0]===o[k]))o[k]=PROF_DEF[k];return o}
+function profSave(p){try{localStorage.setItem("dnd5e_profile",JSON.stringify(p))}catch(e){}}
+function profLabel(k,v){const x=(PROF_OPTS[k]||[]).find(y=>y[0]===v);return x?x[1]:v}
+/* etichette attive: tono, ambiente, magia (es. ["cupo","costa","magia-bassa"]) */
+function profTags(extra){const p=profGet();return[p.tono,p.amb,"magia-"+p.magia].concat(extra||[]).filter(Boolean)}
+/* badge del profilo: clic per cambiarlo solo in questa pagina */
+function profBadge(elId,onChange){const el=document.getElementById(elId);if(!el)return;
+  const p=profGet();
+  el.innerHTML=`<span class="pf-badge" title="Profilo campagna: orienta i generatori. Si imposta nel Diario; qui puoi cambiarlo solo per questa pagina.">🧭 ${profLabel("tono",p.tono)} · ${profLabel("amb",p.amb)} · ${profLabel("magia",p.magia)}${PROF_OVR?' <i style="opacity:.7">(temporaneo)</i>':""} ▾</span>
+   <span class="pf-pop" style="display:none">${Object.keys(PROF_OPTS).map(k=>`<select data-k="${k}">${PROF_OPTS[k].map(([v,l])=>`<option value="${v}"${p[k]===v?" selected":""}>${l}</option>`).join("")}</select>`).join("")}
+   ${PROF_OVR?'<a class="pf-reset">↺ usa il profilo del Diario</a>':""}</span>`;
+  const pop=el.querySelector(".pf-pop");
+  el.querySelector(".pf-badge").onclick=()=>{pop.style.display=pop.style.display==="none"?"inline-flex":"none"};
+  pop.querySelectorAll("select").forEach(sel=>sel.onchange=()=>{PROF_OVR=PROF_OVR||{};PROF_OVR[sel.dataset.k]=sel.value;profBadge(elId,onChange);if(onChange)onChange()});
+  const rs=pop.querySelector(".pf-reset");if(rs)rs.onclick=()=>{PROF_OVR=null;profBadge(elId,onChange);if(onChange)onChange()};
+}
+(function(){try{const st=document.createElement("style");st.textContent=
+  ".pf-badge{display:inline-block;cursor:pointer;background:linear-gradient(180deg,#2c2216,#241b10);border:1px solid #4a3826;border-radius:20px;padding:4px 12px;font-size:.78rem;color:#ece2d0}"+
+  ".pf-badge:hover{border-color:#c9a227;color:#eccb62}.pf-pop{gap:6px;margin-left:8px;flex-wrap:wrap;align-items:center}.pf-pop select{font-size:.78rem;padding:3px 6px}"+
+  ".pf-reset{color:#eccb62;cursor:pointer;font-size:.75rem;text-decoration:underline}@media print{.pf-badge,.pf-pop{display:none!important}}";
+  document.head.appendChild(st)}catch(e){}})();
+
+/* --- modelli con etichette ---
+   G = { chiave: [ "testo", {t:"testo", tags:["costa","cupo"], w:2}, ... ] }
+   Nel testo: {chiave} espande · {chiave>v} espande e ricorda in v · {$v} riusa · {a|b|c} scelta in linea · {^chiave} con iniziale maiuscola.
+   Le voci con etichette in comune con il contesto pesano di più; un'etichetta "!x" rende la voce valida SOLO se il contesto ha x. */
+function gPick(list,tags){
+  const ok=[],w=[];let tot=0;
+  (list||[]).forEach(e=>{const o=typeof e==="string"?{t:e}:e;const tg=o.tags||[];
+    if(tg.some(t=>t[0]==="!"&&!tags.includes(t.slice(1))))return;
+    const m=tg.filter(t=>tags.includes(t[0]==="!"?t.slice(1):t)).length;
+    const ww=(o.w||1)*(1+2*m);ok.push(o);w.push(ww);tot+=ww});
+  if(!ok.length)return"";
+  let r=rnd()*tot;for(let i=0;i<ok.length;i++){r-=w[i];if(r<=0)return ok[i].t}return ok[ok.length-1].t}
+function gExpand(G,tpl,ctx,depth){ctx=ctx||{};ctx.tags=ctx.tags||[];ctx.vars=ctx.vars||{};depth=depth||0;
+  if(depth>12)return tpl;
+  return String(tpl).replace(/\{([^{}]+)\}/g,(m,body)=>{
+    if(body[0]==="$")return ctx.vars[body.slice(1)]??"";
+    if(body.includes("|"))return gExpand(G,rPick(body.split("|")),ctx,depth+1);
+    let cap=false;if(body[0]==="^"){cap=true;body=body.slice(1)}
+    const [key,save]=body.split(">");
+    if(!G[key])return m;
+    let out=gExpand(G,gPick(G[key],ctx.tags),ctx,depth+1);
+    if(cap)out=out.charAt(0).toUpperCase()+out.slice(1);
+    if(save)ctx.vars[save]=out;
+    return out})}
+
+/* --- invio al Diario di Campagna --- */
+function diaryLoad(){let D={};try{D=JSON.parse(localStorage.getItem("dnd5e_diary")||"{}")||{}}catch(e){}
+  ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(D[k]))D[k]=[]});return D}
+function diarySave(D){try{localStorage.setItem("dnd5e_diary",JSON.stringify(D))}catch(e){}}
+const diaryId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+/* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione */
+function toDiary(kind,item){const D=diaryLoad();
+  if(kind==="session"){if(D.sessions.length)D.sessions[0].text=(D.sessions[0].text?D.sessions[0].text+"\n\n":"")+item;
+    else D.sessions.unshift({id:diaryId(),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});diarySave(D);return"added"}
+  const key=kind==="hooks"?"text":"name";
+  const ex=D[kind].find(x=>(x[key]||"").trim().toLowerCase()===(item[key]||"").trim().toLowerCase());
+  if(ex){Object.assign(ex,item,{id:ex.id});diarySave(D);return"updated"}
+  D[kind].unshift(Object.assign({id:diaryId()},kind==="hooks"?{done:false}:{},item));diarySave(D);return"added"}
+/* ==== FINE MOTORE SUITE ==== */
+/* conserva la posizione di scorrimento durante i re-render */
+function ks(){const y=window.scrollY;requestAnimationFrame(()=>window.scrollTo(0,y))}
+
+/* ================= RAZZE (stesse fonti del generatore schede) ================= */
+/* [en, it, gruppoNomi, peso, note tratti razziali] */
+const NRACES=[
+["Human","Umano","hum",30,"Nessun tratto speciale."],
+["Variant Human","Umano (Variante)","hum",4,"Un talento a scelta del DM."],
+["Dwarf (Hill)","Nano delle Colline","dwf",8,"Scurovisione 18 m; vantaggio ai TS contro veleno; resistenza ai danni da veleno."],
+["Dwarf (Mountain)","Nano delle Montagne","dwf",6,"Scurovisione 18 m; vantaggio ai TS contro veleno; addestramento nelle armature."],
+["Duergar","Duergar (Nano Grigio)","dwf",1,"Scurovisione 36 m; Ingrandirsi e Invisibilità 1/giorno; sensibilità alla luce solare."],
+["High Elf","Elfo Alto","elf",7,"Scurovisione 18 m; vantaggio ai TS contro ammaliamento; immune al sonno magico; un trucchetto da mago."],
+["Wood Elf","Elfo dei Boschi","elf",7,"Scurovisione 18 m; velocità 10,5 m; può nascondersi in vegetazione leggera."],
+["Drow","Drow (Elfo Oscuro)","elf",2,"Scurovisione superiore 36 m; Luci Danzanti; sensibilità alla luce solare."],
+["Eladrin","Eladrin","elf",1,"Scurovisione 18 m; Passo Fatato: teletrasporto 9 m 1/riposo."],
+["Halfling (Lightfoot)","Halfling Piedelesto","hf",8,"Fortunato (ritira gli 1); coraggioso; può nascondersi dietro creature più grandi."],
+["Halfling (Stout)","Halfling Tozzo","hf",4,"Fortunato; coraggioso; vantaggio ai TS contro veleno."],
+["Gnome (Rock)","Gnomo delle Rocce","gnm",4,"Scurovisione 18 m; vantaggio ai TS mentali contro la magia; esperto di congegni."],
+["Gnome (Forest)","Gnomo delle Foreste","gnm",3,"Scurovisione 18 m; Illusione Minore; parla con le piccole bestie."],
+["Deep Gnome","Gnomo delle Profondità","gnm",1,"Scurovisione superiore 36 m; mimetismo di pietra."],
+["Half-Elf","Mezzelfo","elf",8,"Scurovisione 18 m; vantaggio ai TS contro ammaliamento; immune al sonno magico."],
+["Half-Orc","Mezzorco","orc",6,"Scurovisione 18 m; Tenacia Implacabile (resta a 1 pf 1/riposo); critici più feroci."],
+["Tiefling","Tiefling","tif",4,"Scurovisione 18 m; resistenza al fuoco; Taumaturgia."],
+["Dragonborn","Dragonide","drg",3,"Arma a soffio (in base al colore); resistenza al danno corrispondente."],
+["Aasimar","Aasimar","hum",1,"Scurovisione 18 m; resistenza a danni necrotici e radiosi; Luce; guarigione con tocco."],
+["Goliath","Goliath","orc",2,"Resistenza al freddo; Resistenza della Pietra (riduce danni 1/riposo)."],
+["Firbolg","Firbolg","elf",1,"Individuazione del Magico e Camuffare Se Stesso 1/riposo; parla con bestie e piante."],
+["Tabaxi","Tabaxi","exo",2,"Scurovisione 18 m; artigli; scatto felino (velocità doppia 1/tanto)."],
+["Kenku","Kenku","exo",2,"Mimetismo perfetto di suoni e voci; non può parlare se non imitando."],
+["Lizardfolk","Lucertoloide","exo",1,"Nuoto 9 m; morso; trattenere il respiro 15 min; armatura naturale CA 13+Des."],
+["Triton","Tritone","exo",1,"Anfibio; nuoto 9 m; resistenza al freddo; parla con le creature marine."],
+["Goblin","Goblin","gob",3,"Scurovisione 18 m; Fuga Agile (Disingaggio/Nascondersi come azione bonus)."],
+["Hobgoblin","Hobgoblin","gob",2,"Scurovisione 18 m; Eredità Marziale (bonus se alleati vicini)."],
+["Bugbear","Bugbear","gob",1,"Scurovisione 18 m; portata lunga; Attacco a Sorpresa (+2d6)."],
+["Kobold","Coboldo","gob",2,"Scurovisione 18 m; Tattiche di Branco; sensibilità alla luce solare."],
+["Orc","Orco","orc",2,"Scurovisione 18 m; Aggressivo (bonus movimento verso i nemici)."],
+["Yuan-ti Pureblood","Purosangue Yuan-ti","exo",1,"Scurovisione 18 m; resistenza alla magia; immune al veleno."],
+["Genasi (Fire)","Genasi del Fuoco","exo",1,"Scurovisione 18 m; resistenza al fuoco; Produrre Fiamma."],
+["Genasi (Water)","Genasi dell'Acqua","exo",1,"Anfibio; nuoto 9 m; resistenza all'acido."],
+["Warforged","Forgiato","exo",1,"Immune a malattie; non dorme; +1 CA; non mangia né respira."],
+["Changeling","Cangiante","exo",1,"Può cambiare aspetto a piacimento (azione)."],
+["Tortle","Tortle","exo",1,"CA naturale 17; ritirarsi nel guscio (+4 CA)."]];
+
+/* nomi per gruppo */
+const NM={
+hum:{m:["Aldric","Borin","Caelum","Darvin","Eldon","Gareth","Ivan","Joric","Lucan","Merrick","Osric","Perrin","Rowan","Soren","Theron","Ulric","Willem","Yorick","Cedric","Falk","Hamund","Nikolas","Bram","Tobias","Edgar"],f:["Aeliana","Brynn","Celeste","Dara","Elowen","Faye","Gwyn","Hazel","Iris","Kira","Lyra","Mera","Nadia","Petra","Rosalind","Selene","Tessa","Una","Willow","Ysolde","Zara","Mathilde","Greta","Sabine","Odette"],s:["Amberhill","Blackwood","Coppervein","Dawnbringer","Emberfall","Grimward","Hawklight","Ironfist","Keenblade","Moonshadow","Nightriver","Oakenshield","Proudmoore","Ravencrest","Stormwind","Thornfield","Valeblade","Windrider","Brightwater","Duskwalker","Farstrider","Goldleaf","Mistvale","Redfern","Silverhand"]},
+dwf:{m:["Adrik","Baern","Darrak","Eberk","Fargrim","Harbek","Kildrak","Morgran","Thorin","Vondal","Rurik","Bruenor","Dain","Gimgar","Orsik","Travok","Ulfgar","Veit","Barendd","Brottor"],f:["Amber","Bardryn","Diesa","Eldeth","Falkrunn","Gunnloda","Helja","Ilde","Kathra","Kristryd","Mardred","Riswynn","Torbera","Vistra","Audhild","Dagnal","Finellen","Gurdis","Liftrasa","Sannl"],s:["Battlehammer","Fireforge","Frostbeard","Ironfist","Loderr","Lutgehr","Rumnaheim","Strakeln","Torunn","Ungart","Dankil","Balderk","Holderhek","Brawnanvil","Stonehelm"]},
+elf:{m:["Adran","Aelar","Aramil","Arannis","Berrian","Carric","Enialis","Erdan","Galinndan","Hadarai","Immeral","Ivellios","Laucian","Mindartis","Paelias","Peren","Quarion","Riardon","Soveliss","Thamior","Theren","Varis"],f:["Adrie","Althaea","Anastrianna","Andraste","Antinua","Bethrynna","Caelynn","Drusilia","Enna","Felosial","Ielenia","Jelenneth","Keyleth","Leshanna","Lia","Meriele","Mialee","Naivara","Quelenna","Sariel","Shanairra","Theirastra","Valanthe","Xanaphia"],s:["Amakiir","Amastacia","Galanodel","Holimion","Ilphelkiir","Liadon","Meliamne","Naïlo","Siannodel","Xiloscient","Moonwhisper","Dawnstrider","Silverfrond","Nightbreeze","Starflower"]},
+hf:{m:["Alton","Ander","Cade","Corrin","Eldon","Errich","Finnan","Garret","Lindal","Lyle","Merric","Milo","Osborn","Perrin","Reed","Roscoe","Wellby","Podo","Falco","Tanner"],f:["Andry","Bree","Callie","Cora","Euphemia","Jillian","Kithri","Lavinia","Lidda","Merla","Nedda","Paela","Portia","Seraphina","Shaena","Trym","Vani","Verna","Pearl","Olive"],s:["Brushgather","Goodbarrel","Greenbottle","High-hill","Hilltopple","Leagallow","Tealeaf","Thorngage","Tosscobble","Underbough","Appleblossom","Cherrycheeks","Copperkettle","Honeypot","Quickstep"]},
+gnm:{m:["Alston","Alvyn","Boddynock","Brocc","Burgell","Dimble","Eldon","Erky","Fonkin","Frug","Gerbo","Gimble","Glim","Jebeddo","Kellen","Namfoodle","Orryn","Roondar","Seebo","Zook"],f:["Bimpnottin","Breena","Caramip","Carlin","Donella","Duvamil","Ella","Ellyjobell","Ellywick","Lilli","Loopmottin","Lorilla","Mardnab","Nissa","Nyx","Oda","Orla","Roywyn","Shamil","Zanna"],s:["Beren","Daergel","Folkor","Garrick","Nackle","Murnig","Ningel","Raulnor","Scheppen","Timbers","Turen","Sparkgem","Cogspinner","Fiddlefen","Wobblecog"]},
+orc:{m:["Dench","Feng","Gell","Henk","Holg","Imsh","Keth","Krusk","Mhurren","Ront","Shump","Thokk","Grask","Urzoth","Vrag","Karguk","Lortar","Mugrub","Ohr","Ruhk"],f:["Baggi","Emen","Engong","Kansif","Myev","Neega","Ovak","Ownka","Shautha","Sutha","Vola","Volen","Yevelda","Grai","Umara","Zesga","Karra","Morna","Ausk","Dretcha"],s:["(clan) Sanguelupo","(clan) Spaccascudi","(clan) Zannaguzza","(clan) Rocciafranta","(clan) Manolesta","(clan) Cuordibrace","(clan) Ossorotto","(clan) Piedefermo","(clan) Urlodiguerra","(clan) Lamagrigia"]},
+tif:{m:["Akmenos","Amnon","Barakas","Damakos","Ekemon","Iados","Kairon","Leucis","Melech","Mordai","Morthos","Pelaios","Skamos","Therai","Kaelath","Vexius","Zherem","Malachi","Orias","Nyxus"],f:["Akta","Anakis","Bryseis","Criella","Damaia","Ea","Kallista","Lerissa","Makaria","Nemeia","Orianna","Phelaia","Rieta","Vespera","Lilura","Sethra","Zaria","Morwenna","Nixa","Calanthe"],s:["Arte","Carrion","Chant","Creed","Despair","Excellence","Fear","Glory","Hope","Ideal","Music","Nowhere","Open","Poetry","Quest","Random","Reverence","Sorrow","Temerity","Torment","Weary"]},
+drg:{m:["Arjhan","Balasar","Bharash","Donaar","Ghesh","Heskan","Kriv","Medrash","Mehen","Nadarr","Pandjed","Patrin","Rhogar","Shamash","Shedinn","Tarhun","Torinn"],f:["Akra","Biri","Daar","Farideh","Harann","Havilar","Jheri","Kava","Korinn","Mishann","Nala","Perra","Raiann","Sora","Surina","Thava","Uadjit"],s:["(clan) Clethtinthiallor","(clan) Daardendrian","(clan) Delmirev","(clan) Drachedandion","(clan) Fenkenkabradon","(clan) Kepeshkmolik","(clan) Kerrhylon","(clan) Kimbatuul","(clan) Linxakasendalor","(clan) Myastan","(clan) Nemmonis","(clan) Norixius","(clan) Ophinshtalajiir","(clan) Prexijandilin","(clan) Shestendeliath","(clan) Turnuroth","(clan) Verthisathurgiesh","(clan) Yarjerit"]},
+gob:{m:["Grix","Snagg","Vark","Zibb","Krunk","Mox","Rattix","Skarn","Yeek","Drix","Bogrod","Muzzek","Nark","Rekk","Splug","Torg","Vrat","Wex","Zagg","Klarg"],f:["Vexa","Nib","Zeeka","Grezz","Mira","Skitts","Tazzi","Vrenna","Yikka","Zolla","Brakka","Drezna","Kessa","Nakka","Ruzzi","Snezz","Tikka","Vazza","Wrix","Zerna"],s:["Dentestorto","Occhiogiallo","Zampasvelta","Codamozza","Nasorotto","Artigliolungo","Pellegrigia","Linguaviscida","Orecchiadipipistrello","Grugnofosco"]},
+exo:{m:["Ashkar","Baxu","Cliffwatch","Dokan","Ezhi","Ferrox","Ghor","Hessh","Ixen","Jasska","Kliss","Meshka","Nashk","Otli","Qoth","Rassk","Sethis","Thuk","Vyth","Zasheir"],f:["Ashka","Bezhi","Chiala","Dessha","Ezzhi","Ferra","Ghinni","Hishka","Isska","Jheria","Kesshi","Meela","Nyssa","Otlia","Quilcha","Ressha","Sethra","Thava","Vyssa","Zashka"],s:["del Fiume Lento","delle Dune Rosse","del Canneto","della Giungla Fonda","dello Scoglio Nero","del Vento dell'Est","della Palude Grigia","del Sale Antico","delle Dieci Lune","del Sentiero Perduto"]}};
+
+/* ================= OCCUPAZIONI ================= */
+/* cat → [nome, [statblock debole, medio, forte]] */
+const CATS=[
+["Popolani e lavoratori",[
+ ["Contadino/a",["Commoner","Commoner","Tribal Warrior"]],
+ ["Stalliere/a",["Commoner","Commoner","Guard"]],
+ ["Pescatore/trice",["Commoner","Commoner","Tribal Warrior"]],
+ ["Minatore/trice",["Commoner","Tribal Warrior","Thug"]],
+ ["Becchino/a",["Commoner","Commoner","Cultist"]],
+ ["Cuoco/a",["Commoner","Commoner","Commoner"]],
+ ["Servitore/trice",["Commoner","Commoner","Spy"]]]],
+["Mercanti e artigiani",[
+ ["Fabbro/a",["Commoner","Tribal Warrior","Veteran"]],
+ ["Mercante di stoffe",["Commoner","Noble","Spy"]],
+ ["Gioielliere/a",["Commoner","Noble","Mage"]],
+ ["Alchimista",["Commoner","Acolyte","Mage"]],
+ ["Carpentiere/a",["Commoner","Tribal Warrior","Thug"]],
+ ["Mercante itinerante",["Commoner","Scout","Bandit Captain"]],
+ ["Usuraio/a",["Commoner","Noble","Bandit Captain"]]]],
+["Guardie e militari",[
+ ["Guardia cittadina",["Guard","Guard","Veteran"]],
+ ["Soldato/a semplice",["Guard","Guard","Veteran"]],
+ ["Sergente della guardia",["Guard","Veteran","Knight"]],
+ ["Mercenario/a",["Bandit","Thug","Gladiator"]],
+ ["Capitano/a della guardia",["Veteran","Knight","Gladiator"]],
+ ["Disertore/trice",["Guard","Bandit","Veteran"]]]],
+["Nobiltà e potere",[
+ ["Nobile di provincia",["Noble","Noble","Knight"]],
+ ["Cortigiano/a",["Noble","Spy","Noble"]],
+ ["Magistrato/a",["Noble","Noble","Mage"]],
+ ["Diplomatico/a",["Noble","Spy","Archmage"]],
+ ["Cavaliere errante",["Guard","Knight","Knight"]],
+ ["Esattore/trice delle tasse",["Noble","Thug","Veteran"]]]],
+["Religiosi",[
+ ["Accolito/a",["Acolyte","Acolyte","Priest"]],
+ ["Sacerdote/ssa",["Acolyte","Priest","Priest"]],
+ ["Monaco/a mendicante",["Commoner","Acolyte","Priest"]],
+ ["Predicatore/trice di strada",["Commoner","Cultist","Cult Fanatic"]],
+ ["Inquisitore/trice",["Priest","Cult Fanatic","Knight"]],
+ ["Eremita",["Commoner","Druid","Druid"]]]],
+["Criminali",[
+ ["Borsaiolo/a",["Bandit","Spy","Assassin"]],
+ ["Contrabbandiere/a",["Bandit","Bandit Captain","Bandit Captain"]],
+ ["Sicario/a",["Thug","Spy","Assassin"]],
+ ["Ricettatore/trice",["Commoner","Bandit","Spy"]],
+ ["Boss di quartiere",["Thug","Bandit Captain","Assassin"]],
+ ["Truffatore/trice",["Bandit","Spy","Spy"]],
+ ["Cultista in incognito",["Cultist","Cult Fanatic","Cult Fanatic"]]]],
+["Arcanisti e studiosi",[
+ ["Apprendista mago/a",["Commoner","Acolyte","Mage"]],
+ ["Mago/a di bottega",["Acolyte","Mage","Mage"]],
+ ["Studioso/a di antichità",["Commoner","Noble","Mage"]],
+ ["Bibliotecario/a",["Commoner","Acolyte","Mage"]],
+ ["Arcimago/a in ritiro",["Mage","Archmage","Archmage"]],
+ ["Indovino/a",["Commoner","Cultist","Mage"]]]],
+["Viandanti ed esploratori",[
+ ["Cacciatore/trice",["Scout","Scout","Veteran"]],
+ ["Guida di montagna",["Scout","Scout","Berserker"]],
+ ["Esploratore/trice",["Scout","Scout","Assassin"]],
+ ["Barbaro/a delle terre selvagge",["Tribal Warrior","Berserker","Berserker"]],
+ ["Cercatore/trice di tesori",["Bandit","Scout","Bandit Captain"]],
+ ["Druido/a del circolo locale",["Acolyte","Druid","Druid"]]]],
+["Intrattenitori e locande",[
+ ["Locandiere/a",["Commoner","Commoner","Thug"]],
+ ["Bardo/a girovago",["Commoner","Spy","Spy"]],
+ ["Attore/trice",["Commoner","Spy","Noble"]],
+ ["Gladiatore/trice",["Thug","Veteran","Gladiator"]],
+ ["Giocatore/trice d'azzardo",["Commoner","Spy","Bandit Captain"]],
+ ["Cantastorie",["Commoner","Commoner","Spy"]]]]];
+
+const ALIGNS=["Legale Buono","Neutrale Buono","Caotico Buono","Legale Neutrale","Neutrale Puro","Caotico Neutrale","Legale Malvagio","Neutrale Malvagio","Caotico Malvagio"];
+const AL_W=[2,3,2,2,3,2,1,1,1];
+
+/* ================= POOL NARRATIVI ================= */
+const P_ASPETTO=["una cicatrice che attraversa il sopracciglio","occhi di due colori diversi","mani perennemente macchiate d'inchiostro","un dente d'oro che luccica quando sorride","capelli raccolti in trecce elaborate","una vistosa ustione su un braccio","abiti eleganti ma logori sui bordi","un tatuaggio che spunta dal colletto","un anello che continua a rigirare al dito","una benda su un occhio","il naso rotto più volte","profumo intenso di spezie","una collana di denti di animale","dita affusolate da borsaiolo","una zoppia appena percettibile","spalle larghe da lavoratore","una voce segnata dal fumo","un cappello a cui non rinuncia mai","guanti che non toglie in pubblico","un medaglione che tocca quando è nervoso/a","unghie curatissime","una piuma colorata infilata nella cintura","cicatrici sottili sulle nocche","un orecchino spaiato"];
+const P_TRATTI=["parla sempre come se avesse fretta","ricorda il nome di chiunque abbia incontrato","non guarda mai negli occhi chi parla","ride nei momenti meno opportuni","è convinto/a che tutto abbia un prezzo","tratta gli sconosciuti come vecchi amici","non si fida di chi non beve con lui/lei","conta mentalmente qualsiasi cosa","è superstizioso/a fino al ridicolo","cita di continuo un mentore ormai morto","si vanta di imprese mai compiute","è di una gentilezza sospetta","non risponde mai direttamente a una domanda","colleziona pettegolezzi come monete","ha paura dei rumori forti","si offende con facilità sorprendente","parla dei propri affari sottovoce","dà consigli non richiesti a chiunque","è ossessionato/a dalla pulizia","non ammette mai di avere torto"];
+const P_VOCE=["voce roca e profonda","parlata velocissima","un forte accento di provincia","sussurra quasi sempre","voce squillante e teatrale","balbetta quando mente","strascica le vocali","intercalare costante («capisci?», «giusto?»)","tono monocorde e ipnotico","risatina nervosa a fine frase","voce dolce che non si alza mai","tono da comando, abituato a essere obbedito","pronuncia arcaica e formale","mastica le parole, difficile da capire","fischia le S","voce giovanile che contrasta con l'aspetto"];
+const P_IDEALI=["Libertà: nessuno deve comandare sulla mia vita.","Giustizia: i potenti non devono schiacciare i deboli.","Conoscenza: ogni segreto merita di essere svelato.","Tradizione: le vecchie usanze ci hanno tenuti vivi.","Ricchezza: l'oro apre ogni porta, e io le voglio tutte aperte.","Famiglia: il sangue viene prima di tutto.","Potere: chi non sale, scende.","Fede: gli dèi hanno un piano, io ne sono parte.","Sopravvivenza: domani è un lusso che va guadagnato.","Bellezza: il mondo è brutale, io creo qualcosa che non lo sia.","Redenzione: pago ogni giorno per ciò che ho fatto.","Comunità: il villaggio prima del singolo, sempre."];
+const P_LEGAMI=["deve tutto a un fratello/sorella che ora è nei guai","protegge un figlio/figlia che nessuno deve trovare","è devoto/a al tempio locale","serve (controvoglia) un potente locale","ama una persona sposata con qualcun altro","custodisce la memoria del proprio villaggio distrutto","ha un debito d'onore con un avventuriero","farebbe qualsiasi cosa per la propria gilda","tiene più al proprio animale che alle persone","vuole riscattare il nome della famiglia caduto in disgrazia","è l'ultimo/a custode di una promessa antica","ha giurato fedeltà a qualcuno che non lo merita"];
+const P_DIFETTI=["non sa tenere un segreto","il gioco d'azzardo lo/la sta rovinando","beve per dimenticare, e dimentica troppo","è codardo/a nel momento del bisogno","l'avidità vince su ogni scrupolo","è geloso/a fino alla follia","mente anche quando non serve","sottovaluta chiunque non sia come lui/lei","una rabbia improvvisa che spaventa","si fida della persona sbagliata, ogni volta","non riesce a dire di no a una sfida","è ricattabile, e qualcuno lo sa"];
+const P_SEGRETI=["è in debito con la malavita locale per una cifra enorme","non è chi dice di essere: il vero nome è cercato altrove","ha visto qualcosa nei boschi che non dovrebbe esistere","informa segretamente la guardia (o la gilda dei ladri)","custodisce un oggetto rubato che scotta troppo per venderlo","appartiene a un culto segreto, per ora innocuo… forse","è l'erede illegittimo/a di una famiglia importante","ha lasciato morire qualcuno per salvarsi, e c'era un testimone","conosce l'ubicazione di un tesoro ma non può raggiungerlo","è malato/a e nasconde i sintomi a tutti","ha venduto informazioni sui propri amici","una taglia pende sulla sua testa in un'altra città","fu l'unico sopravvissuto di una spedizione: cosa accadde davvero?","sta lentamente avvelenando qualcuno di molto vicino","ha perso la fede ma continua a fingere","scrive lettere a qualcuno che tutti credono morto"];
+const P_GANCI=["ha bisogno di una scorta per un viaggio che non può rimandare","offre una mappa in cambio di un favore pericoloso","qualcuno lo/la sta seguendo da giorni e chiede aiuto","ha ricevuto una lettera di minacce e sospetta un vicino","cerca qualcuno che recuperi un oggetto di famiglia rubato","ha sentito rumori impossibili provenire dalle fogne/cantine","vuole far recapitare un pacco senza domande","è convinto/a che il nuovo arrivato in città non sia umano","offre una ricompensa per la testa di una bestia locale","conosce un passaggio segreto e vuole venderne il segreto","suo fratello è scomparso vicino alle rovine","ha assistito a un omicidio e non sa di chi fidarsi","la sua merce è stata sequestrata ingiustamente: rivuole tutto","cerca cavie per una pozione di sua invenzione","il suo padrone è cambiato da una notte all'altra: non è più lui"];
+const P_ATTEGG=["Ostile: vede il party come una minaccia o dei rivali.","Diffidente: servirà più di una parola gentile.","Neutrale: ha i suoi affari, il party non lo riguarda.","Curioso: gli avventurieri sono la cosa più interessante del mese.","Amichevole: ben disposto/a, entro i limiti del buon senso.","Servizievole: vuole qualcosa e pensa che il party possa darglielo.","Impaurito: qualcosa lo/la terrorizza e si vede.","Adorante: ha sentito parlare delle gesta del party (vere o false)."];
+
+/* ================= STATBLOCK (SRD, Appendice B del Monster Manual) ================= */
+const SB={
+"Commoner":{it:"Popolano",size:"Medio",type:"umanoide",ac:"10",hp:"4 (1d8)",spd:"9 m",ab:[10,10,10,10,10,10],sen:"Percezione passiva 10",lang:"una lingua qualsiasi (di solito Comune)",cr:"0",xp:10,tr:[],act:[["Randello","Attacco con arma da mischia: +2 al colpire, portata 1,5 m, un bersaglio. Colpito: 2 (1d4) danni contundenti."]]},
+"Guard":{it:"Guardia",size:"Medio",type:"umanoide",ac:"16 (camicia di maglia, scudo)",hp:"11 (2d8+2)",spd:"9 m",ab:[13,12,12,10,11,10],skill:"Percezione +2",sen:"Percezione passiva 12",lang:"una lingua qualsiasi",cr:"1/8",xp:25,tr:[],act:[["Lancia","Attacco con arma da mischia o a distanza: +3 al colpire, portata 1,5 m o gittata 6/18 m. Colpito: 4 (1d6+1) danni perforanti, o 5 (1d8+1) se usata a due mani in mischia."]]},
+"Noble":{it:"Nobile",size:"Medio",type:"umanoide",ac:"15 (corazza di piastre)",hp:"9 (2d8)",spd:"9 m",ab:[11,12,11,12,14,16],skill:"Inganno +5, Intuizione +4, Persuasione +5",sen:"Percezione passiva 12",lang:"due lingue qualsiasi",cr:"1/8",xp:25,tr:[],act:[["Stocco","Attacco con arma da mischia: +3 al colpire, portata 1,5 m. Colpito: 5 (1d8+1) danni perforanti."]],rea:[["Parata","Il nobile aggiunge 2 alla propria CA contro un attacco in mischia che lo colpirebbe, se impugna un'arma da mischia."]]},
+"Bandit":{it:"Bandito",size:"Medio",type:"umanoide",ac:"12 (armatura di cuoio)",hp:"11 (2d8+2)",spd:"9 m",ab:[11,12,12,10,10,10],sen:"Percezione passiva 10",lang:"una lingua qualsiasi",cr:"1/8",xp:25,tr:[],act:[["Scimitarra","Attacco con arma da mischia: +3 al colpire, portata 1,5 m. Colpito: 4 (1d6+1) danni taglienti."],["Balestra leggera","Attacco con arma a distanza: +3 al colpire, gittata 24/96 m. Colpito: 5 (1d8+1) danni perforanti."]]},
+"Tribal Warrior":{it:"Guerriero Tribale",size:"Medio",type:"umanoide",ac:"12 (armatura di pelle)",hp:"11 (2d8+2)",spd:"9 m",ab:[13,11,12,8,11,8],sen:"Percezione passiva 10",lang:"una lingua qualsiasi",cr:"1/8",xp:25,tr:[["Tattiche di Branco","Vantaggio ai tiri per colpire contro una creatura se almeno un alleato le è entro 1,5 m ed è abile al combattimento."]],act:[["Lancia","Attacco con arma da mischia o a distanza: +3 al colpire, portata 1,5 m o gittata 6/18 m. Colpito: 4 (1d6+1) danni perforanti, o 5 (1d8+1) a due mani."]]},
+"Cultist":{it:"Cultista",size:"Medio",type:"umanoide",ac:"12 (armatura di cuoio)",hp:"9 (2d8)",spd:"9 m",ab:[11,12,10,10,11,10],skill:"Inganno +2, Religione +2",sen:"Percezione passiva 10",lang:"una lingua qualsiasi",cr:"1/8",xp:25,tr:[["Devozione Oscura","Vantaggio ai TS contro l'essere affascinato o spaventato."]],act:[["Scimitarra","Attacco con arma da mischia: +3 al colpire, portata 1,5 m. Colpito: 4 (1d6+1) danni taglienti."]]},
+"Acolyte":{it:"Accolito",size:"Medio",type:"umanoide",ac:"10",hp:"9 (2d8)",spd:"9 m",ab:[10,10,10,10,14,11],skill:"Medicina +4, Religione +2",sen:"Percezione passiva 12",lang:"una lingua qualsiasi",cr:"1/4",xp:50,tr:[["Incantesimi","Incantatore di 1° livello (Sag, CD 12, +4 a colpire). Trucchetti: light, sacred flame, thaumaturgy. 1° livello (3 slot): bless, cure wounds, sanctuary."]],act:[["Randello","Attacco con arma da mischia: +2 al colpire, portata 1,5 m. Colpito: 2 (1d4) danni contundenti."]]},
+"Scout":{it:"Esploratore",size:"Medio",type:"umanoide",ac:"13 (armatura di cuoio)",hp:"16 (3d8+3)",spd:"9 m",ab:[11,14,12,11,13,11],skill:"Natura +4, Percezione +5, Furtività +6, Sopravvivenza +5",sen:"Percezione passiva 15",lang:"una lingua qualsiasi",cr:"1/2",xp:100,tr:[["Udito e Vista Acuti","Vantaggio alle prove di Percezione basate su udito o vista."]],act:[["Multiattacco","Due attacchi in mischia o due a distanza."],["Spada corta","Attacco con arma da mischia: +4 al colpire, portata 1,5 m. Colpito: 5 (1d6+2) danni perforanti."],["Arco lungo","Attacco con arma a distanza: +4 al colpire, gittata 45/180 m. Colpito: 6 (1d8+2) danni perforanti."]]},
+"Thug":{it:"Scagnozzo",size:"Medio",type:"umanoide",ac:"11 (armatura di cuoio)",hp:"32 (5d8+10)",spd:"9 m",ab:[15,11,14,10,10,11],skill:"Intimidire +2",sen:"Percezione passiva 10",lang:"una lingua qualsiasi",cr:"1/2",xp:100,tr:[["Tattiche di Branco","Vantaggio ai tiri per colpire contro una creatura se almeno un alleato le è entro 1,5 m ed è abile al combattimento."]],act:[["Multiattacco","Due attacchi con la mazza."],["Mazza","Attacco con arma da mischia: +4 al colpire, portata 1,5 m. Colpito: 5 (1d6+2) danni contundenti."],["Balestra pesante","Attacco con arma a distanza: +2 al colpire, gittata 30/120 m. Colpito: 5 (1d10) danni perforanti."]]},
+"Spy":{it:"Spia",size:"Medio",type:"umanoide",ac:"12",hp:"27 (6d8)",spd:"9 m",ab:[10,15,10,12,14,16],skill:"Inganno +5, Intuizione +4, Indagare +5, Percezione +6, Persuasione +5, Rapidità di Mano +4, Furtività +4",sen:"Percezione passiva 16",lang:"due lingue qualsiasi",cr:"1",xp:200,tr:[["Azione Scaltra","A ogni turno può usare l'azione bonus per Scattare, Disingaggiare o Nascondersi."],["Attacco Furtivo (1/turno)","Infligge 7 (2d6) danni extra se colpisce con vantaggio, o se un alleato del bersaglio è entro 1,5 m da esso."]],act:[["Multiattacco","Due attacchi con la spada corta."],["Spada corta","Attacco con arma da mischia: +4 al colpire, portata 1,5 m. Colpito: 5 (1d6+2) danni perforanti."],["Balestra a mano","Attacco con arma a distanza: +4 al colpire, gittata 9/36 m. Colpito: 5 (1d6+2) danni perforanti."]]},
+"Priest":{it:"Sacerdote",size:"Medio",type:"umanoide",ac:"13 (camicia di maglia)",hp:"27 (5d8+5)",spd:"7,5 m",ab:[10,10,12,13,16,13],skill:"Medicina +7, Persuasione +3, Religione +4",sen:"Percezione passiva 13",lang:"due lingue qualsiasi",cr:"2",xp:450,tr:[["Eminenza Divina","Come azione bonus può spendere uno slot per infliggere 10 (3d6) danni radiosi extra con un attacco con arma (di più con slot superiori al 1°)."],["Incantesimi","Incantatore di 5° livello (Sag, CD 13, +5). Trucchetti: light, sacred flame, thaumaturgy. 1° (4 slot): cure wounds, guiding bolt, sanctuary. 2° (3): lesser restoration, spiritual weapon. 3° (2): dispel magic, spirit guardians."]],act:[["Mazza","Attacco con arma da mischia: +2 al colpire, portata 1,5 m. Colpito: 3 (1d6) danni contundenti."]]},
+"Cult Fanatic":{it:"Fanatico del Culto",size:"Medio",type:"umanoide",ac:"13 (armatura di cuoio)",hp:"33 (6d8+6)",spd:"9 m",ab:[11,14,12,10,13,14],skill:"Inganno +4, Persuasione +4, Religione +2",sen:"Percezione passiva 11",lang:"una lingua qualsiasi",cr:"2",xp:450,tr:[["Devozione Oscura","Vantaggio ai TS contro l'essere affascinato o spaventato."],["Incantesimi","Incantatore di 4° livello (Sag, CD 11, +3). Trucchetti: light, sacred flame, thaumaturgy. 1° (4 slot): command, inflict wounds, shield of faith. 2° (3): hold person, spiritual weapon."]],act:[["Multiattacco","Due attacchi con il pugnale."],["Pugnale","Attacco con arma da mischia o a distanza: +4 al colpire, portata 1,5 m o gittata 6/18 m. Colpito: 4 (1d4+2) danni perforanti."]]},
+"Bandit Captain":{it:"Capitano dei Banditi",size:"Medio",type:"umanoide",ac:"15 (armatura di cuoio borchiato)",hp:"65 (10d8+20)",spd:"9 m",ab:[15,16,14,14,11,14],save:"For +4, Des +5, Sag +2",skill:"Atletica +4, Inganno +4",sen:"Percezione passiva 10",lang:"due lingue qualsiasi",cr:"2",xp:450,tr:[],act:[["Multiattacco","Due attacchi con la scimitarra e uno con il pugnale."],["Scimitarra","Attacco con arma da mischia: +5 al colpire, portata 1,5 m. Colpito: 6 (1d6+3) danni taglienti."],["Pugnale","Attacco con arma da mischia o a distanza: +5 al colpire, portata 1,5 m o gittata 6/18 m. Colpito: 5 (1d4+3) danni perforanti."]],rea:[["Parata","Aggiunge 2 alla CA contro un attacco in mischia che lo colpirebbe, se impugna un'arma da mischia."]]},
+"Berserker":{it:"Berserker",size:"Medio",type:"umanoide",ac:"13 (armatura di pelle)",hp:"67 (9d8+27)",spd:"9 m",ab:[16,12,17,9,11,9],sen:"Percezione passiva 10",lang:"una lingua qualsiasi",cr:"2",xp:450,tr:[["Temerario","All'inizio del turno può ottenere vantaggio a tutti gli attacchi in mischia; gli attacchi contro di lui hanno vantaggio fino al suo prossimo turno."]],act:[["Ascia bipenne","Attacco con arma da mischia: +5 al colpire, portata 1,5 m. Colpito: 9 (1d12+3) danni taglienti."]]},
+"Druid":{it:"Druido",size:"Medio",type:"umanoide",ac:"11 (16 con barkskin)",hp:"27 (5d8+5)",spd:"9 m",ab:[10,12,13,12,15,11],skill:"Medicina +4, Natura +3, Percezione +4",sen:"Percezione passiva 14",lang:"Druidico più due lingue",cr:"2",xp:450,tr:[["Incantesimi","Incantatore di 4° livello (Sag, CD 12, +4). Trucchetti: druidcraft, produce flame, shillelagh. 1° (4 slot): entangle, longstrider, speak with animals, thunderwave. 2° (3): animal messenger, barkskin."]],act:[["Bastone ferrato","Attacco con arma da mischia: +2 al colpire (+4 con shillelagh), portata 1,5 m. Colpito: 3 (1d6) danni contundenti, o 6 (1d8+2) con shillelagh."]]},
+"Knight":{it:"Cavaliere",size:"Medio",type:"umanoide",ac:"18 (armatura completa)",hp:"52 (8d8+16)",spd:"9 m",ab:[16,11,14,11,11,15],save:"Cos +4, Sag +2",sen:"Percezione passiva 10",lang:"una lingua qualsiasi",cr:"3",xp:700,tr:[["Coraggioso","Vantaggio ai TS contro l'essere spaventato."]],act:[["Multiattacco","Due attacchi con lo spadone."],["Spadone","Attacco con arma da mischia: +5 al colpire, portata 1,5 m. Colpito: 10 (2d6+3) danni taglienti."],["Balestra pesante","Attacco con arma a distanza: +2 al colpire, gittata 30/120 m. Colpito: 5 (1d10) danni perforanti."],["Comando (Ricarica dopo riposo)","Per 1 minuto, ordini ai propri alleati: entro 9 m possono aggiungere 1d4 ai tiri per colpire e ai TS finché sentono il cavaliere (non su se stesso)."]],rea:[["Parata","Aggiunge 2 alla CA contro un attacco in mischia che lo colpirebbe, se impugna un'arma da mischia."]]},
+"Veteran":{it:"Veterano",size:"Medio",type:"umanoide",ac:"17 (mezza armatura)",hp:"58 (9d8+18)",spd:"9 m",ab:[16,13,14,10,11,10],skill:"Atletica +5, Percezione +2",sen:"Percezione passiva 12",lang:"una lingua qualsiasi",cr:"3",xp:700,tr:[],act:[["Multiattacco","Due attacchi con la spada lunga; se ha la spada corta sguainata, anche un attacco con essa."],["Spada lunga","Attacco con arma da mischia: +5 al colpire, portata 1,5 m. Colpito: 7 (1d8+3) danni taglienti, o 8 (1d10+3) a due mani."],["Spada corta","Attacco con arma da mischia: +5 al colpire, portata 1,5 m. Colpito: 6 (1d6+3) danni perforanti."],["Balestra pesante","Attacco con arma a distanza: +3 al colpire, gittata 30/120 m. Colpito: 6 (1d10+1) danni perforanti."]]},
+"Gladiator":{it:"Gladiatore",size:"Medio",type:"umanoide",ac:"16 (cuoio borchiato, scudo)",hp:"112 (15d8+45)",spd:"9 m",ab:[18,15,16,10,12,15],save:"For +7, Des +5, Cos +6",skill:"Atletica +10, Intimidire +5",sen:"Percezione passiva 11",lang:"una lingua qualsiasi",cr:"5",xp:1800,tr:[["Coraggioso","Vantaggio ai TS contro l'essere spaventato."],["Bruto","Un'arma da mischia infligge un dado extra di danno quando colpisce (incluso)."]],act:[["Multiattacco","Tre attacchi in mischia, oppure due attacchi a distanza con le lance."],["Lancia","Attacco con arma da mischia o a distanza: +7 al colpire, portata 1,5 m o gittata 6/18 m. Colpito: 11 (2d6+4) danni perforanti, o 13 (2d8+4) a due mani in mischia."],["Colpo di scudo","Attacco con arma da mischia: +7 al colpire, portata 1,5 m. Colpito: 9 (2d4+4) danni contundenti; se il bersaglio è Medio o più piccolo, TS For CD 15 o cade a terra prono."]],rea:[["Parata","Aggiunge 3 alla CA contro un attacco in mischia che lo colpirebbe, se impugna un'arma da mischia."]]},
+"Mage":{it:"Mago",size:"Medio",type:"umanoide",ac:"12 (15 con mage armor)",hp:"40 (9d8)",spd:"9 m",ab:[9,14,11,17,12,11],save:"Int +6, Sag +4",skill:"Arcano +6, Storia +6",sen:"Percezione passiva 11",lang:"quattro lingue qualsiasi",cr:"6",xp:2300,tr:[["Incantesimi","Incantatore di 9° livello (Int, CD 14, +6). Trucchetti: fire bolt, light, mage hand, prestidigitation. 1° (4 slot): detect magic, mage armor, magic missile, shield. 2° (3): misty step, suggestion. 3° (3): counterspell, fireball, fly. 4° (3): greater invisibility, ice storm. 5° (1): cone of cold."]],act:[["Pugnale","Attacco con arma da mischia o a distanza: +5 al colpire, portata 1,5 m o gittata 6/18 m. Colpito: 4 (1d4+2) danni perforanti."]]},
+"Assassin":{it:"Assassino",size:"Medio",type:"umanoide",ac:"15 (cuoio borchiato)",hp:"78 (12d8+24)",spd:"9 m",ab:[11,16,14,13,11,10],save:"Des +6, Int +4",skill:"Acrobazia +6, Inganno +3, Percezione +3, Furtività +9",res:"veleno",sen:"Percezione passiva 13",lang:"il Gergo Ladresco più due lingue",cr:"8",xp:3900,tr:[["Assassinare","Nel primo turno ha vantaggio contro chi non ha ancora agito; ogni colpo su una creatura sorpresa è un critico."],["Evasione","Sui TS su Destrezza per dimezzare i danni: nessun danno se supera, metà se fallisce."],["Attacco Furtivo (1/turno)","Infligge 14 (4d6) danni extra se colpisce con vantaggio o se un alleato del bersaglio è entro 1,5 m da esso."]],act:[["Multiattacco","Due attacchi con la spada corta."],["Spada corta","Attacco con arma da mischia: +6 al colpire, portata 1,5 m. Colpito: 6 (1d6+3) danni perforanti più 24 (7d6) danni da veleno (TS Cos CD 15 per dimezzare)."],["Balestra leggera","Attacco con arma a distanza: +6 al colpire, gittata 24/96 m. Colpito: 7 (1d8+3) danni perforanti più 24 (7d6) danni da veleno (TS Cos CD 15 per dimezzare)."]]},
+"Archmage":{it:"Arcimago",size:"Medio",type:"umanoide",ac:"12 (15 con mage armor)",hp:"99 (18d8)",spd:"9 m",ab:[10,14,12,20,15,16],save:"Int +9, Sag +6",skill:"Arcano +13, Storia +13",res:"danni dagli incantesimi; contundenti, perforanti e taglienti non magici (da stoneskin)",sen:"Percezione passiva 12",lang:"sei lingue qualsiasi",cr:"12",xp:8400,tr:[["Resistenza alla Magia","Vantaggio ai TS contro incantesimi ed effetti magici."],["Incantesimi","Incantatore di 18° livello (Int, CD 17, +9). Trucchetti: fire bolt, light, mage hand, prestidigitation, shocking grasp. 1° (4): detect magic, identify, mage armor, magic missile. 2° (3): detect thoughts, mirror image, misty step. 3° (3): counterspell, fly, lightning bolt. 4° (3): banishment, fire shield, stoneskin. 5° (3): cone of cold, scrying, wall of force. 6° (1): globe of invulnerability. 7° (1): teleport. 8° (1): mind blank. 9° (1): time stop."]],act:[["Pugnale","Attacco con arma da mischia o a distanza: +6 al colpire, portata 1,5 m o gittata 6/18 m. Colpito: 4 (1d4+2) danni perforanti."]]}
+};
+
+/* ================= TABELLE RAPIDE DM ================= */
+const DM_T={
+ innA:["Grifone","Drago","Pony","Cinghiale","Corvo","Unicorno","Boccale","Calderone","Elmo","Scudo","Gatto","Troll","Barile","Falco","Nano","Fantasma","Ariete","Tasso"],
+ innB:["Ubriaco","Dorato","Ridente","Rampante","Arrugginito","Danzante","Silenzioso","Rosso","Errante","Fumante","Storto","Fortunato","Addormentato","Senza Testa","Generoso"],
+ innX:["la zuppa di cinghiale è famosa in tutta la valle","l'oste ascolta tutto e vende informazioni","c'è una rissa quasi ogni sera","una stanza è infestata, o così dicono","si gioca d'azzardo nel retro","il vino è annacquato ma la musica è ottima","è il ritrovo della gilda locale","un avventore fissa il party da quando è entrato"],
+ shopT:["Fabbro","Alchimista","Erborista","Sarto","Gioielliere","Cartografo","Macellaio","Libraio","Falegname","Mercante di curiosità","Conciatore","Fornaio"],
+ shopX:["prezzi onesti ma modi burberi","vende anche merce di dubbia provenienza","è in debito con la malavita","cerca qualcuno per una commissione rischiosa","ha un oggetto insolito in vetrina che non vuole vendere","parla malissimo del negozio concorrente","paga bene per materiali da mostro","il retrobottega nasconde più del dovuto"],
+ vilA:["Ponte","Vado","Colle","Borgo","Pietra","Selva","Riva","Campo","Torre","Rocca","Fonte","Passo"],
+ vilB:["chiaro","scuro","verde","vecchio","rosso","freddo","alto","lungo","muto","felice","spina","corvo"],
+ vilX:["famoso per il formaggio stagionato nelle grotte","il mulino è fermo da tre giorni, e nessuno sa perché","metà del villaggio non parla all'altra metà","il vecchio pozzo è transennato da anni","si prepara la festa del raccolto","le pecore spariscono una alla volta","il tempio ha un nuovo, giovanissimo sacerdote","i bambini raccontano di luci nel bosco"],
+ shipA:["La Sirena","Il Vento","La Fortuna","L'Aurora","Il Kraken","La Vedova","Il Delfino","La Tempesta","Il Gabbiano","La Lama"],
+ shipB:["d'Argento","del Nord","Ridente","Nera","Veloce","di Mezzanotte","Salata","degli Stolti","Scarlatta","Silenziosa"],
+ shipX:["il capitano non sale a terra da anni","trasporta un carico non dichiarato","metà ciurma è stata assoldata ieri","una figura incappucciata ha pagato per non fare domande","la polena porta fortuna, dicono; è stata rubata","cerca marinai: le paghe sono sospettosamente alte"],
+ weather:["Sereno e ventoso: viaggiare è piacevole.","Pioggia leggera e insistente: terreno fangoso, tracce facili da seguire.","Nebbia fitta fino a metà mattina: visibilità 18 m, percezione svantaggiata a vista.","Temporale in arrivo da ovest: entro sera servirà un riparo.","Caldo afoso: marce forzate più pesanti (rischio sfinimento).","Freddo pungente: senza equipaggiamento adatto, TS su Costituzione a fine giornata.","Cielo coperto e aria immobile: gli animali sono nervosi.","Grandine improvvisa per un'ora: cercare riparo o danni lievi.","Vento forte: tiri a distanza oltre metà gittata con svantaggio.","Giornata perfetta, quasi troppo: i superstiziosi la chiamano «quiete del drago»."],
+ travel:["Un carro rovesciato blocca la strada: il mercante offre una ricompensa per l'aiuto (o è un'esca).","Un mercante ambulante con merci curiose e una gran voglia di chiacchierare.","Tracce fresche e insolitamente grandi attraversano il sentiero.","Un ponte crollato: guado pericoloso o deviazione di mezza giornata.","Un viandante ferito chiede aiuto; il suo racconto non torna del tutto.","Colonna di fumo oltre la collina: un accampamento o un incendio.","Un santuario abbandonato sul ciglio della strada; qualcuno ci ha lasciato offerte fresche.","Esattori del pedaggio: sembrano ufficiali, forse lo sono davvero.","Un animale insolitamente docile segue il gruppo con insistenza.","Cadavere sul sentiero, spogliato di tutto tranne una lettera sigillata.","Un gruppo di pellegrini invita il party a condividere il fuoco e le voci che girano.","Nella notte, il suono di corni lontani: caccia o battaglia?"]};
+function dmRoll(t){
+  let txt="";
+  if(t==="inn")txt=`🏨 <b>Locanda «${R(["Il","Al"])} ${R(DM_T.innA)} ${R(DM_T.innB)}»</b> — ${R(DM_T.innX)}. Oste: ${R(NM.hum[R(["m","f"])])}.`;
+  else if(t==="shop")txt=`🛒 <b>${R(DM_T.shopT)}</b> di ${R(NM.hum[R(["m","f"])])} ${R(NM.hum.s)} — ${R(DM_T.shopX)}.`;
+  else if(t==="village")txt=`🏘 <b>${R(DM_T.vilA)}${R(DM_T.vilB)}</b> (${20+D(20)*15} anime) — ${R(DM_T.vilX)}.`;
+  else if(t==="ship")txt=`⛵ <b>«${R(DM_T.shipA)} ${R(DM_T.shipB)}»</b> — capitano ${R(NM.hum[R(["m","f"])])} ${R(NM.hum.s)}; ${R(DM_T.shipX)}.`;
+  else if(t==="weather")txt=`🌦 ${R(DM_T.weather)}`;
+  else if(t==="travel")txt=`🧭 ${R(DM_T.travel)}`;
+  const log=$("dmLog");
+  log.innerHTML=`<p style="padding:6px 0;border-bottom:1px dotted var(--border);font-size:.92rem">${txt}</p>`+log.innerHTML;
+  const ps=log.querySelectorAll("p");if(ps.length>8)ps[ps.length-1].remove();
+}
+/* ================= GENERAZIONE COERENTE (v2) =================
+   Le etichette del mestiere (e del profilo campagna) orientano aspetto, motivazioni, segreti e ganci,
+   così un fabbro ha dettagli da fabbro e un cultista segreti da cultista. */
+const CAT_TAGS={"Popolani e lavoratori":["popolo"],"Mercanti e artigiani":["commercio","artigiano"],"Guardie e militari":["militare"],
+  "Nobiltà e potere":["nobile","potere"],"Religiosi":["fede"],"Criminali":["crimine"],"Arcanisti e studiosi":["arcano","sapere"],
+  "Viandanti ed esploratori":["natura","viaggio"],"Intrattenitori e locande":["locanda","arte"]};
+const OCC_TAGS=[[/Fabbro|Minatore|Carpentiere/,"forgia"],[/Pescatore|Contrabband/,"costa"],[/Becchino|Inquisitore/,"morte"],[/Alchimista|mago|Arcimago|Indovino/,"arcano"],
+  [/Cuoco|Locandiere|Stalliere/,"locanda"],[/Usuraio|Esattore|Gioielliere|Mercante/,"denaro"],[/Cultista|Predicatore/,"culto"],[/Cacciatore|Guida|Druido|Eremita|Barbaro/,"natura"],
+  [/Bardo|Attore|Cantastorie/,"arte"],[/Cortigiano|Diplomatico|Magistrato|Nobile/,"intrigo"],[/Sicario|Borsaiolo|Ricettatore|Truffatore|Boss/,"crimine"],[/Disertore|Mercenario/,"guerra"]];
+function npcTags(cat,occ){const t=(CAT_TAGS[cat]||[]).slice();OCC_TAGS.forEach(([re,tg])=>{if(re.test(occ))t.push(tg)});return t.concat(profTags())}
+const G_NPC={
+ tratto_mest:[{t:"mani segnate da vecchie bruciature",tags:["forgia"]},{t:"avambracci enormi e una spalla più bassa dell'altra",tags:["forgia","artigiano"]},
+  {t:"le unghie sempre nere di polvere di carbone",tags:["forgia"]},{t:"odore di salmastro che non va mai via",tags:["costa"]},{t:"un tatuaggio da marinaio sbiadito sul polso",tags:["costa"]},
+  {t:"terra di cimitero sotto le unghie",tags:["morte"]},{t:"un rosario di ossa di piccoli animali",tags:["morte","culto"]},{t:"sopracciglia bruciacchiate da qualche esperimento",tags:["arcano"]},
+  {t:"le dita macchiate di reagenti colorati",tags:["arcano","sapere"]},{t:"occhiali spessi tenuti insieme con lo spago",tags:["sapere"]},{t:"un grembiule unto annodato in vita",tags:["locanda"]},
+  {t:"anelli a ogni dito, alcuni chiaramente falsi",tags:["denaro","commercio"]},{t:"una bilancetta d'ottone appesa alla cintura",tags:["denaro","commercio"]},
+  {t:"un simbolo sacro consumato dalle carezze",tags:["fede"]},{t:"la tonsura fatta male, da solo/a",tags:["fede"]},{t:"un marchio a fuoco nascosto sotto il colletto",tags:["culto","crimine"]},
+  {t:"un pugnale sempre a portata di mano, anche a tavola",tags:["crimine"]},{t:"un dito mozzato e la mano che si muove in fretta",tags:["crimine"]},
+  {t:"la postura rigida di chi ha marciato per anni",tags:["militare","guerra"]},{t:"una vecchia ferita di freccia al collo",tags:["militare","guerra"]},
+  {t:"abiti di ottima fattura, ma passati di moda da dieci anni",tags:["nobile"]},{t:"un anello con sigillo che gira e rigira tra le dita",tags:["nobile","intrigo"]},
+  {t:"pelle cotta dal sole e rughe da strizzare gli occhi",tags:["natura","viaggio"]},{t:"piume e ossicini intrecciati ai capelli",tags:["natura"]},
+  {t:"un liuto con una corda rotta a tracolla",tags:["arte"]},{t:"il trucco di scena mai tolto del tutto",tags:["arte"]},{t:"stivali che hanno visto mille strade",tags:["viaggio"]},
+  {t:"le guance arrossate dal vento gelido",tags:["artico","montagna"]},{t:"un velo per la sabbia sempre al collo",tags:["deserto"]},{t:"un cappello di paglia bucato",tags:["popolo"]}],
+ vuole:[{t:"ripagare un debito prima che lo venga a sapere la famiglia",tags:["denaro"]},{t:"una bottega tutta sua, lontano dal padrone",tags:["artigiano","popolo"]},
+  {t:"forgiare un'arma degna di una leggenda",tags:["forgia"]},{t:"vendicare un compagno caduto per colpa di un ufficiale",tags:["militare","guerra"]},{t:"una promozione, a qualunque costo",tags:["militare"]},
+  {t:"riportare la casata all'antico splendore",tags:["nobile"]},{t:"un seggio nel consiglio cittadino",tags:["potere","intrigo"]},{t:"la prova che il proprio dio esiste davvero",tags:["fede"]},
+  {t:"convertire l'intero villaggio",tags:["fede","culto"]},{t:"risvegliare ciò che dorme sotto la città",tags:["culto"],w:1},{t:"uscire dal giro prima che sia troppo tardi",tags:["crimine"]},
+  {t:"il controllo del quartiere",tags:["crimine","potere"]},{t:"un tomo che si dice perduto",tags:["arcano","sapere"]},{t:"essere ammesso/a all'accademia che l'ha respinto/a",tags:["arcano"]},
+  {t:"trovare la fonte di cui parlano le leggende",tags:["natura","viaggio"]},{t:"proteggere il bosco dai taglialegna",tags:["natura"]},{t:"che la sua canzone sia cantata in ogni taverna",tags:["arte"]},
+  {t:"comprare la locanda in cui lavora",tags:["locanda"]},{t:"una barca sua e il mare aperto",tags:["costa"]},{t:"essere lasciato/a in pace",w:1},{t:"sapere che fine ha fatto un fratello scomparso"},
+  {t:"un amore impossibile, ricambiato",w:1},{t:"che gli eroi siano davvero eroi",tags:["eroico"]},{t:"sopravvivere a un altro inverno",tags:["cupo","popolo"]},{t:"un buon pasto, una buona risata e nessun guaio",tags:["leggero"]}],
+ teme:[{t:"il fuoco, da quando ha visto bruciare la propria casa"},{t:"di essere riconosciuto/a da qualcuno del passato",tags:["crimine","intrigo"]},{t:"i morti che non restano morti",tags:["morte","cupo"]},
+  {t:"la povertà più di ogni mostro",tags:["denaro","commercio"]},{t:"perdere il favore del suo signore",tags:["nobile","militare"]},{t:"che il suo dio l'abbia abbandonato/a",tags:["fede"]},
+  {t:"la magia, in ogni sua forma",tags:["popolo","magia-bassa"]},{t:"il mare aperto, pur vivendoci accanto",tags:["costa"]},{t:"le profondità e il buio",tags:["forgia","sottosuolo"]},
+  {t:"la gilda dei ladri, che sa troppo di lui/lei",tags:["commercio","crimine"]},{t:"di invecchiare senza aver fatto nulla di memorabile",tags:["arte","eroico"]},
+  {t:"un sogno ricorrente che crede profetico",tags:["arcano","fede"]},{t:"i cani, irrazionalmente",tags:["leggero"]},{t:"che qualcuno scopra il suo segreto"},{t:"la solitudine"},
+  {t:"i boschi di notte, per qualcosa che vi ha visto",tags:["natura"]},{t:"tornare in guerra",tags:["guerra"]}],
+ serve:[{t:"qualcuno che scorti un carico senza fare domande",tags:["commercio","crimine"]},{t:"un ingrediente raro che cresce solo in luoghi pericolosi",tags:["arcano","natura"]},
+  {t:"un testimone disposto a parlare in tribunale",tags:["potere","intrigo"]},{t:"una lettera consegnata a mano, in un posto lontano",tags:["viaggio"]},
+  {t:"del denaro, molto e in fretta",tags:["denaro","crimine"]},{t:"qualcuno che ritrovi un oggetto rubato dal tempio",tags:["fede"]},{t:"braccia forti per liberare una miniera crollata",tags:["forgia"]},
+  {t:"un alibi per la notte scorsa",tags:["crimine"]},{t:"che qualcuno faccia tacere una voce di corridoio",tags:["nobile","intrigo"]},{t:"una cura per un male che nessuno sa nominare",tags:["cupo"]},
+  {t:"un pubblico, anche piccolo",tags:["arte"]},{t:"clienti, prima che chiuda bottega",tags:["locanda","commercio"]},{t:"un ufficiale che chiuda un occhio",tags:["militare","crimine"]},{t:"un passaggio sicuro fuori città"}],
+ contra:["generoso/a con tutti, ma rancoroso/a fino alla morte","coraggioso/a in battaglia, terrorizzato/a dai topi","pio/a e devoto/a, ma baro/a a carte",
+  "spietato/a negli affari, tenerissimo/a con gli animali","colto/a e raffinato/a, ma superstizioso/a come un contadino","sincero/a fino alla brutalità, eppure custode di un enorme segreto",
+  "pigro/a in tutto, tranne quando si parla di vendetta","ama la compagnia, ma non dice mai nulla di sé","impeccabile in pubblico, disastroso/a in privato","pacifista convinto/a, con un passato da soldato"],
+ modo:[{t:"chiama tutti «ragazzo» o «ragazza», a prescindere dall'età"},{t:"conclude ogni affare con «che gli dei ci guardino»",tags:["commercio","fede"]},{t:"conta le monete due volte, sempre",tags:["denaro"]},
+  {t:"cita proverbi di un villaggio che nessuno conosce"},{t:"batte il pugno sul tavolo quando ha ragione (cioè sempre)",tags:["forgia","militare"]},{t:"parla di sé in terza persona",tags:["arte","nobile"]},
+  {t:"risponde alle domande con altre domande",tags:["intrigo","arcano"]},{t:"ha una battuta pronta per ogni funerale",tags:["morte","leggero"]},{t:"saluta con un inchino esagerato",tags:["nobile","arte"]},
+  {t:"annusa l'aria prima di decidere",tags:["natura"]},{t:"giocherella con un coltellino mentre parla",tags:["crimine"]},{t:"si fa il segno sacro a ogni brutta notizia",tags:["fede","popolo"]},
+  {t:"usa parole difficili, spesso a sproposito",tags:["sapere"]},{t:"canticchia sempre la stessa canzone di mare",tags:["costa"]}],
+ /* fazioni: nome + scopo */
+ faz_tipo:[{t:"Gilda",tags:["commercio","artigiano","forgia"]},{t:"Confraternita",tags:["fede","culto"]},{t:"Ordine",tags:["militare","fede"]},{t:"Circolo",tags:["arcano","natura"]},
+  {t:"Compagnia",tags:["commercio","viaggio","arte"]},{t:"Casata",tags:["nobile","potere"]},{t:"Famiglia",tags:["crimine"]},{t:"Società segreta",tags:["intrigo","culto"]},{t:"Lega",tags:["popolo","militare"]}],
+ faz_nome:[{t:"della Lanterna Spenta",tags:["crimine","cupo"]},{t:"del Martello d'Argento",tags:["forgia"]},{t:"dei Mercanti del Sale",tags:["commercio","costa"]},{t:"della Rosa Nera",tags:["intrigo","nobile"]},
+  {t:"del Sole Invitto",tags:["fede","eroico"]},{t:"della Quercia Antica",tags:["natura"]},{t:"del Terzo Occhio",tags:["arcano"]},{t:"delle Mani Grigie",tags:["popolo","crimine"]},
+  {t:"del Corvo Bianco",tags:["morte","culto"]},{t:"della Bilancia",tags:["denaro","potere"]},{t:"della Strada Lunga",tags:["viaggio"]},{t:"del Grifone",tags:["militare","eroico"]},
+  {t:"della Marea",tags:["costa"]},{t:"del Calice Rotto",tags:["locanda","arte","leggero"]},{t:"dell'Ultima Veglia",tags:["morte","fede"]},{t:"della Pietra Profonda",tags:["forgia","sottosuolo"]}],
+ faz_scopo:[{t:"controllare il commercio del porto",tags:["costa","commercio"]},{t:"mettere un loro uomo sul trono",tags:["nobile","intrigo"]},{t:"proteggere un antico segreto",tags:["arcano","fede"]},
+  {t:"cacciare la magia dalla città",tags:["magia-bassa","fede"]},{t:"accumulare ricchezze in vista di una guerra",tags:["denaro","militare"]},{t:"risvegliare un'entità dimenticata",tags:["culto","cupo"]},
+  {t:"difendere i poveri dai soprusi dei nobili",tags:["popolo","eroico"]},{t:"impadronirsi delle miniere",tags:["forgia"]},{t:"tenere la foresta fuori dalla portata degli uomini",tags:["natura"]},
+  {t:"spartirsi i quartieri della città",tags:["crimine"]},{t:"ritrovare un artefatto perduto",tags:["arcano","viaggio"]},{t:"organizzare la festa più memorabile del secolo",tags:["leggero","arte"]}],
+ faz_ruolo:["membro di basso rango, ancora in prova","informatore/trice esterno/a","membro fidato/a","ex membro, uscito/a in cattivi rapporti","agente infiltrato/a da una fazione rivale","uno dei capi, anche se pochi lo sanno"],
+ /* relazioni per i gruppi collegati: {A} e {B} vengono sostituiti dopo */
+ rel:[{t:"{A} è in debito con {B} e non sa come ripagarlo/a",tags:["denaro","crimine"]},{t:"{A} è segretamente innamorato/a di {B}"},{t:"{A} e {B} sono fratelli, ma non si parlano da anni"},
+  {t:"{A} ricatta {B} per un vecchio errore",tags:["crimine","intrigo"]},{t:"{A} ha tradito {B} in passato, e {B} non lo ha scoperto",tags:["intrigo","cupo"]},{t:"{A} lavora per {B}, a malincuore"},
+  {t:"{A} protegge {B} da un pericolo di cui {B} non sa nulla"},{t:"{A} e {B} sono rivali in affari",tags:["commercio","denaro"]},{t:"{A} sospetta che {B} sia coinvolto/a in una sparizione",tags:["cupo"]},
+  {t:"{A} è il mentore di {B}",tags:["sapere","arcano","militare"]},{t:"{A} ha salvato la vita a {B}",tags:["eroico"]},{t:"{A} e {B} hanno un patto segreto",tags:["intrigo","culto"]},
+  {t:"{A} vuole sposare {B}, che non ne vuole sapere",tags:["leggero","nobile"]},{t:"{A} e {B} si giocano a dadi ogni sera, e {A} perde sempre",tags:["locanda","leggero"]}]};
+/* nomi generati a sillabe, per cultura: inizio + (centro) + fine */
+const SYL={
+ hum:{a:["Al","Bar","Cor","Ed","Gar","Hal","Mar","Ro","Ser","Tor","Wil","El","Ber","Ar","Lin"],b:["","an","e","i","o","ri","en"],m:["ric","dan","mund","win","bert","las","ic","ald"],f:["a","wen","ine","issa","ora","elle","ys"],s:["Ash","Black","Brook","Fair","Grey","Stone","Thorn","Wood","Mill","Hale"],s2:["ford","wood","well","more","ley","ton","brook","field"]},
+ dwf:{a:["Bal","Bru","Dur","Gim","Kor","Thra","Ulf","Vor","Har","Bel","Dag","Rur"],b:["","a","i","o"],m:["dak","grim","in","rik","nar","mund","dek"],f:["dis","hild","ra","run","na","dra"],s:["Iron","Stone","Gold","Battle","Deep","Fire","Anvil","Rock"],s2:["beard","hammer","fist","forge","delver","helm","shield"]},
+ elf:{a:["Ae","Cael","Ela","Fae","Gal","Ith","Lae","Myr","Nae","Syl","Tha","Va"],b:["","la","ri","the","va","li","re"],m:["dor","ril","ion","las","thir","ran"],f:["wen","riel","thiel","lia","ne","sa"],s:["Moon","Star","Leaf","Silver","Dawn","Wind","Mist","Night"],s2:["whisper","bloom","song","shade","brook","glade","fall"]},
+ hf:{a:["Bil","Cor","Fin","Lid","Mer","Pip","Ros","Tam","Wel","Bel"],b:["","a","o","i"],m:["bo","do","nan","ry","wick","ro"],f:["ly","sy","ra","na","bell","ie"],s:["Tea","Good","Under","Brush","Green","Thistle","Honey"],s2:["leaf","barrel","hill","bottom","gather","foot","dale"]},
+ gnm:{a:["Bim","Fon","Glim","Nib","Orr","Wren","Zook","Dim","Tink","Ella"],b:["","a","i","le"],m:["ble","bo","kin","nock","wick","zle"],f:["la","ni","wyn","bie","ra"],s:["Cog","Spark","Gear","Fizzle","Wobble","Tinker"],s2:["whistle","bottom","spring","gadget","nose","wick"]},
+ orc:{a:["Gor","Kra","Mog","Ruk","Thok","Ur","Zug","Bru","Gash","Vol"],b:["","a","u","o"],m:["ash","gar","nak","rok","dush","mak"],f:["a","ka","ra","gha","sha"],s:["Skull","Blood","Iron","Bone","Black","Red"],s2:["tusk","fang","cleaver","splitter","maw","jaw"]},
+ tif:{a:["Aka","Dam","Kal","Mor","Nem","Ori","Ska","Val","Zar","Lev"],b:["","a","i","e"],m:["meth","ros","zar","thos","kas","non"],f:["ria","ka","nis","eth","tha"],s:["Ash","Sorrow","Ember","Cinder","Night"],s2:["","fall","vow","whisper","born"]},
+ drg:{a:["Ar","Bala","Dra","Ghe","Kri","Med","Nad","Rho","Sha","Tor"],b:["","a","i","o"],m:["jhan","sar","rash","nar","vok","kar"],f:["ra","thys","ra","sora","nala"],s:["Kepesh","Kerr","Myastan","Daar","Fenken","Yarjerit","Verthisa"],s2:[""]},
+ gob:{a:["Snik","Grib","Zag","Nog","Rikk","Bix","Skab"],b:["","i","a"],m:["lit","gut","nob","sik","zz"],f:["sy","ka","ni","za"],s:["Mud","Rat","Stink","Quick","Sharp"],s2:["foot","tooth","finger","ear",""]},
+ exo:{a:["Xo","Vae","Ky","Ze","Qua","Ith","Ny","Oru"],b:["","l","r","s"],m:["thor","lix","rak","van","quen"],f:["thra","lys","na","vae","sha"],s:["Of-the-Deep","Starborn","Ashwalker","Of-Many-Eyes"],s2:[""]}};
+function genName(grp,sex){const S=SYL[grp]||SYL.hum;
+  let n=rPick(S.a)+rPick(S.b)+rPick(sex==="f"?S.f:S.m);n=n.charAt(0).toUpperCase()+n.slice(1).toLowerCase();
+  const sur=rPick(S.s)+rPick(S.s2);return n+" "+sur}
+/* luoghi tipici per «NPC su misura» */
+const NPC_PLACES={
+ "Locanda":{cat:["Intrattenitori e locande","Popolani e lavoratori","Criminali","Viandanti ed esploratori"],tags:["locanda"]},
+ "Porto":{cat:["Mercanti e artigiani","Criminali","Popolani e lavoratori","Guardie e militari"],tags:["costa","commercio"]},
+ "Tempio":{cat:["Religiosi","Popolani e lavoratori","Nobiltà e potere"],tags:["fede"]},
+ "Mercato":{cat:["Mercanti e artigiani","Popolani e lavoratori","Criminali","Intrattenitori e locande"],tags:["commercio"]},
+ "Caserma o mura":{cat:["Guardie e militari","Popolani e lavoratori"],tags:["militare"]},
+ "Bassifondi":{cat:["Criminali","Popolani e lavoratori","Religiosi"],tags:["crimine","cupo"]},
+ "Castello o palazzo":{cat:["Nobiltà e potere","Guardie e militari","Popolani e lavoratori","Arcanisti e studiosi"],tags:["nobile","intrigo"]},
+ "Villaggio rurale":{cat:["Popolani e lavoratori","Religiosi","Viandanti ed esploratori"],tags:["popolo"]},
+ "Accademia o biblioteca":{cat:["Arcanisti e studiosi","Nobiltà e potere","Religiosi"],tags:["arcano","sapere"]},
+ "Strada o foresta":{cat:["Viandanti ed esploratori","Criminali","Mercanti e artigiani"],tags:["natura","viaggio"]},
+ "Miniera o forgia":{cat:["Mercanti e artigiani","Popolani e lavoratori","Guardie e militari"],tags:["forgia"]}};
+/* fazioni del tool Mondo, se presenti */
+function worldFactions(){try{const w=JSON.parse(localStorage.getItem("dnd5e_world")||"{}");return Array.isArray(w.factions)?w.factions:[]}catch(e){return[]}}
+function makeFaction(tags){const wf=worldFactions();
+  if(wf.length&&rnd()<.6){const f=rPick(wf);return{nome:f.name,scopo:f.goal||"",ruolo:rPick(G_NPC.faz_ruolo),world:true}}
+  return{nome:gPick(G_NPC.faz_tipo,tags)+" "+gPick(G_NPC.faz_nome,tags),scopo:gPick(G_NPC.faz_scopo,tags),ruolo:rPick(G_NPC.faz_ruolo)}}
+/* arricchisce un NPC base con i campi coerenti al mestiere */
+function enrichNpc(n,extraTags){
+  const tags=npcTags(n.cat,n.occ).concat(extraTags||[]);n.tags=tags;
+  n.aspetto=[gPick(G_NPC.tratto_mest,tags)||n.aspetto[0],n.aspetto[1]];
+  n.vuole=gPick(G_NPC.vuole,tags);n.teme=gPick(G_NPC.teme,tags);n.serve=gPick(G_NPC.serve,tags);
+  n.contra=rPick(G_NPC.contra);n.modo=gPick(G_NPC.modo,tags);
+  n.fazione=rnd()<.6?makeFaction(tags):null;
+  return n}
+/* ================= GENERAZIONE ================= */
+let N=null;
+function wPick(arr,wIdx){const tot=arr.reduce((t,x)=>t+x[wIdx],0);let r=rnd()*tot;for(const x of arr){r-=x[wIdx];if(r<=0)return x}return arr[0]}
+function pickAlign(){const tot=AL_W.reduce((a,b)=>a+b,0);let r=rnd()*tot;for(let i=0;i<ALIGNS.length;i++){r-=AL_W[i];if(r<=0)return ALIGNS[i]}return ALIGNS[4]}
+function ageDesc(){return R(["giovane","giovane","adulto/a","adulto/a","adulto/a","di mezza età","di mezza età","anziano/a"])}
+
+function makeNpc(){
+  const fR=$("fRace").value, fS=$("fSex").value, fC=$("fCat").value, fP=$("fPow").value, fA=$("fAl").value;
+  const race=fR?NRACES.find(r=>r[0]===fR):wPick(NRACES,3);
+  const sex=fS||R(["m","f"]);
+  const pl=NPC_PLACES[PLACE_SEL.kind];
+  const plCat=pl?rPick(pl.cat):null;
+  const cat=fC?CATS.find(c=>c[0]===fC):plCat?CATS.find(c=>c[0]===plCat):R(CATS);
+  const occ=R(cat[1]);
+  const powIdx=fP==="1"?R([0,1,1,1,2]):parseInt(fP,10);
+  const sbKey=occ[1][powIdx];
+  const pool=NM[race[2]]||NM.hum;
+  const name=npcName(race[2],sex);
+  return {
+    name, race:race[1], raceEn:race[0], raceNote:race[4], sex, age:ageDesc(),
+    align:fA||pickAlign(), cat:cat[0], occ:occ[0], sb:sbKey,
+    aspetto:[R(P_ASPETTO),R(P_ASPETTO)], tratto:R(P_TRATTI), voce:R(P_VOCE),
+    ideale:R(P_IDEALI), legame:R(P_LEGAMI), difetto:R(P_DIFETTI),
+    segreto:R(P_SEGRETI), gancio:R(P_GANCI), atteggiamento:R(P_ATTEGG)
+  };
+}
+let QL=[];
+function genNpc(list){
+  $("quickList").innerHTML="";
+  if(list===true){
+    QL=[];
+    let h='<div class="panel" style="margin-top:18px"><h2>Lista rapida</h2><div class="hint">Cinque spunti immediati: clicca 🔍 per aprire un NPC completo basato su quella riga.</div>';
+    for(let i=0;i<5;i++){const q=newNpc();QL.push(q);
+      h+=`<p style="padding:7px 0;border-bottom:1px dotted var(--border);font-size:.93rem">🎭 <b style="color:var(--gold-l)">${q.name}</b> — ${q.race} ${q.sex==="f"?"♀":"♂"}, ${q.occ}. <i style="color:var(--muted)">${q.tratto}.</i> <button class="btn small" onclick="showNpc(${i})">🔍 Apri</button></p>`}
+    h+='</div>';$("quickList").innerHTML=h;$("npcWrap").style.display="none";return;
+  }
+  N=newNpc();render();
+}
+/* ---- v2: seme, luogo, nomi, gruppi ---- */
+let PLACE_SEL={kind:"",name:""};
+function readPlace(){const v=$("fPlace").value||"";
+  if(v.startsWith("D:")){const p=diaryLoad().places.find(x=>x.id===v.slice(2));PLACE_SEL={kind:placeKindOf(p),name:p?p.name:""}}
+  else PLACE_SEL={kind:v,name:v};return PLACE_SEL}
+/* un luogo del diario viene ricondotto a un tipo noto dalle parole del nome e delle note */
+function placeKindOf(p){if(!p)return"";const t=((p.name||"")+" "+(p.note||"")).toLowerCase();
+  const map=[["Locanda",/locand|taverna|osteria|bettola/],["Porto",/porto|molo|banchin/],["Tempio",/tempio|santuar|chiesa|cattedral|abbazi/],["Mercato",/mercato|piazza|bazar|fiera/],
+   ["Caserma o mura",/caserm|mura|fortezz|guarnig/],["Bassifondi",/bassifond|vicol|fogn|quartiere/],["Castello o palazzo",/castell|palazz|reggia|corte/],["Villaggio rurale",/villagg|fattori|borgo|frazion/],
+   ["Accademia o biblioteca",/accadem|bibliotec|torre|scuola|archiv/],["Strada o foresta",/strada|bosco|foresta|sentier|selva/],["Miniera o forgia",/miniera|forgia|cava|fucina/]];
+  const m=map.find(([k,re])=>re.test(t));return m?m[0]:""}
+function npcName(grp,sex){const mode=($("fNames")&&$("fNames").value)||"mix";
+  const pool=NM[grp]||NM.hum;
+  if(mode==="classic"||(mode==="mix"&&rnd()<.5))return R(pool[sex])+" "+R(pool.s);
+  return genName(grp,sex)}
+function newNpc(seed){
+  readPlace();
+  const sd=seed||($("fSeed").value||"").trim()||newSeed();$("fSeed").value="";
+  const pl=NPC_PLACES[PLACE_SEL.kind];
+  const n=withSeed(sd,()=>enrichNpc(makeNpc(),pl?pl.tags:[]));
+  n.seed=sd;if(PLACE_SEL.name)n.where=PLACE_SEL.name;return n}
+let GROUP=null;
+function genGroup(){
+  readPlace();const sd=($("fSeed").value||"").trim()||newSeed();$("fSeed").value="";
+  const pl=NPC_PLACES[PLACE_SEL.kind];
+  GROUP=withSeed(sd,()=>{
+    const k=rInt(3,5),list=[];for(let i=0;i<k;i++){const n=enrichNpc(makeNpc(),pl?pl.tags:[]);if(PLACE_SEL.name)n.where=PLACE_SEL.name;n.id="npc_"+Date.now()+"_"+i;n.seed=sd+"·"+(i+1);list.push(n)}
+    /* una fazione comune per due di loro, e una rete di relazioni che li collega tutti */
+    const fz=makeFaction(list[0].tags);list[0].fazione=fz;list[1].fazione=Object.assign({},fz,{ruolo:rPick(G_NPC.faz_ruolo)});
+    const rels=[];const pairs=new Set(),usedT=new Set();
+    const first=n=>n.name.split(" ")[0];
+    const addRel=(a,b)=>{const key=Math.min(a,b)+"-"+Math.max(a,b);if(a===b||pairs.has(key))return;pairs.add(key);
+      let t;for(let k=0;k<12;k++){t=gPick(G_NPC.rel,list[a].tags.concat(list[b].tags));if(!usedT.has(t))break}usedT.add(t);
+      rels.push({a,b,t:t.replace(/\{A\}/g,first(list[a])).replace(/\{B\}/g,first(list[b]))})};
+    for(let i=1;i<k;i++)addRel(i,rInt(0,i-1));addRel(rInt(0,k-1),rInt(0,k-1));
+    return{seed:sd,list,rels,fz,place:PLACE_SEL.name}});
+  renderGroup();
+}
+function renderGroup(){const g=GROUP;if(!g)return;$("npcWrap").style.display="none";
+  const first=n=>esc(n.name.split(" ")[0]);
+  $("quickList").innerHTML=`<div class="panel" style="margin-top:18px"><h2>👥 Gruppo collegato${g.place?" — "+esc(g.place):""}</h2>
+   <div class="hint">${g.list.length} NPC con legami tra loro: una rete di agganci pronta. Seme <span style="font-family:monospace">${g.seed}</span>.</div>
+   ${g.list.map((n,i)=>`<p style="padding:8px 0;border-bottom:1px dotted var(--border);font-size:.93rem">🎭 <b style="color:var(--gold-l)">${esc(n.name)}</b> — ${esc(n.race)} ${n.sex==="f"?"♀":"♂"}, ${esc(n.occ)}${n.fazione?` · <i>${esc(n.fazione.nome)}</i>`:""}<br>
+     <span style="color:var(--muted)">Vuole ${esc(n.vuole)}; teme ${esc(n.teme)}.</span> <button class="btn small" onclick="openGroupNpc(${i})">🔍 Apri</button></p>`).join("")}
+   <h4 style="font-family:var(--font-display);color:var(--gold-l);margin:12px 0 6px;font-size:.85rem;letter-spacing:1px">🔗 Legami</h4>
+   ${g.rels.map(r=>`<p style="font-size:.92rem;padding:3px 0">• ${esc(r.t)}.</p>`).join("")}
+   <p style="font-size:.9rem;margin-top:8px"><b>Fazione in comune:</b> ${esc(g.fz.nome)}${g.fz.scopo?" — vuole "+esc(g.fz.scopo):""} (${first(g.list[0])} e ${first(g.list[1])} ne fanno parte).</p>
+   <div class="toolbar"><button class="btn gold" onclick="groupToDiary()">📖 Tutti al diario</button><button class="btn" onclick="groupSave()">💾 Salva tutti</button><button class="btn" onclick="genGroup()">🎲 Nuovo gruppo</button></div></div>`}
+function openGroupNpc(i){if(!GROUP||!GROUP.list[i])return;N=GROUP.list[i];render();$("npcWrap").scrollIntoView({behavior:"smooth"})}
+function npcDiaryItem(n){
+  const att={"amichevole":"Amichevole","servizievole":"Amichevole","ostile":"Ostile","diffidente":"Diffidente","impaurit":"Diffidente","neutrale":"Neutrale","curios":"Neutrale"};
+  const a=Object.keys(att).find(k=>(n.atteggiamento||"").toLowerCase().includes(k));
+  const note=[`${n.race||""}${n.occ?", "+n.occ:""}`,n.vuole&&"Vuole: "+n.vuole,n.teme&&"Teme: "+n.teme,n.fazione&&"Fazione: "+n.fazione.nome+" ("+n.fazione.ruolo+")",
+    n.gancio&&"Gancio: "+n.gancio,n.segreto&&"Segreto: "+n.segreto].filter(Boolean).join(" · ");
+  return{name:(n.name||"").trim(),where:n.where||"",att:a?att[a]:"Neutrale",note}}
+function groupToDiary(){if(!GROUP)return;let add=0,upd=0;
+  GROUP.list.forEach(n=>{toDiary("npcs",npcDiaryItem(n))==="added"?add++:upd++});
+  GROUP.rels.forEach(r=>toDiary("hooks",{text:"Legame: "+r.t}));
+  alert(`📖 Diario aggiornato: ${add} PNG aggiunti${upd?`, ${upd} aggiornati`:""} e ${GROUP.rels.length} legami tra gli agganci.`)}
+function groupSave(){if(!GROUP)return;const r=roster();GROUP.list.forEach(n=>{if(!r.some(x=>x.id===n.id))r.push(n)});lsSet("dnd5e_npcs",r);alert(`💾 ${GROUP.list.length} NPC salvati.`)}
+
+function showNpc(i){if(!QL[i])return;N=QL[i];$("quickList").innerHTML="";render()}
+function reroll(f){
+  if(!N)return;
+  const m={tratto:()=>{N.tratto=R(P_TRATTI);N.voce=R(P_VOCE)},motiv:()=>{N.ideale=R(P_IDEALI);N.legame=R(P_LEGAMI);N.difetto=R(P_DIFETTI)},segreto:()=>N.segreto=R(P_SEGRETI),gancio:()=>N.gancio=R(P_GANCI),att:()=>N.atteggiamento=R(P_ATTEGG),
+    nome:()=>{const race=NRACES.find(r=>r[0]===N.raceEn)||NRACES[0];N.name=npcName(race[2],N.sex)},
+    vts:()=>{const t=N.tags||npcTags(N.cat,N.occ);N.vuole=gPick(G_NPC.vuole,t);N.teme=gPick(G_NPC.teme,t);N.serve=gPick(G_NPC.serve,t)},
+    contra:()=>{N.contra=rPick(G_NPC.contra);N.modo=gPick(G_NPC.modo,N.tags||[])},
+    faz:()=>{N.fazione=makeFaction(N.tags||npcTags(N.cat,N.occ))},
+    aspetto:()=>N.aspetto=[gPick(G_NPC.tratto_mest,N.tags||npcTags(N.cat,N.occ)),R(P_ASPETTO)]};
+  if(m[f])m[f]();render();
+}
+function render(){
+  if(!N)return;
+  ks();
+  $("npcWrap").style.display="grid";
+  const d=$("dossier");
+  const rr=f=>`<span class="rr" onclick="reroll('${f}')" title="Rigenera questa sezione">🎲</span>`;
+  d.innerHTML=`
+   <div class="nname">${N.name} ${rr("nome")}</div>
+   <div class="nsub">${N.race} ${N.sex==="f"?"♀":"♂"} · ${N.age} · ${N.align} · <b>${N.occ}</b> (${N.cat})${N.where?" · 📍 "+esc(N.where):""}</div>
+   <div class="sec"><h4>Aspetto ${rr("aspetto")}</h4><p>Ha ${N.aspetto[0]} e ${N.aspetto[1]}.</p></div>
+   <div class="sec"><h4>Personalità e voce ${rr("tratto")}</h4><p>Questo personaggio ${N.tratto}. Voce: ${N.voce}.</p></div>
+   ${N.vuole?`<div class="sec"><h4>Desideri, paure, bisogni ${rr("vts")}</h4><p><b>Vuole:</b> ${N.vuole}.<br><b>Teme:</b> ${N.teme}.<br><b>Bisogno:</b> ${N.serve}.</p></div>`:""}
+   ${N.contra?`<div class="sec"><h4>Contraddizione e modi ${rr("contra")}</h4><p>È ${N.contra}. ${cap(N.modo||"")}.</p></div>`:""}
+   ${N.vuole?`<div class="sec"><h4>Fazione ${rr("faz")}</h4><p>${N.fazione?`<b>${esc(N.fazione.nome)}</b>${N.fazione.scopo?" — vuole "+esc(N.fazione.scopo):""}. Ruolo: ${N.fazione.ruolo}.${N.fazione.world?" <i>(dal tool Mondo)</i>":""}`:"Nessuna affiliazione nota."}</p></div>`:""}
+   <div class="sec"><h4>Ideale, legame, difetto ${rr("motiv")}</h4><p><b>Ideale.</b> ${N.ideale}<br><b>Legame.</b> ${cap(N.legame)}.<br><b>Difetto.</b> ${cap(N.difetto)}.</p></div>
+   <div class="sec secret"><h4>Segreto (solo per il DM) ${rr("segreto")}</h4><p>${cap(N.segreto)}.</p></div>
+   <div class="sec"><h4>Gancio di trama ${rr("gancio")}</h4><p>${cap(N.gancio)}.</p></div>
+   <div class="sec"><h4>Atteggiamento verso il party ${rr("att")}</h4><p>${N.atteggiamento}</p></div>
+   ${N.seed?`<div style="font-size:.7rem;color:#8a744c;margin-top:8px;text-align:right">seme ${N.seed}</div>`:""}`;
+  renderSb();
+}
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+function renderSb(){
+  const m=SB[N.sb];const p=$("sbPane");if(!m){p.innerHTML="";return}
+  const AB=["FOR","DES","COS","INT","SAG","CAR"];
+  const mod=v=>{const x=Math.floor((v-10)/2);return(x>=0?"+":"")+x};
+  let h=`<div class="mm"><div class="mname">${m.it} <span style="font-size:.72rem;color:#8a744c">(${N.sb})</span></div>
+   <div class="mtype">Umanoide di taglia ${m.size} (${N.race}), ${N.align.toLowerCase()}</div><div class="rule"></div>
+   <div class="stat"><b>Classe Armatura</b> ${m.ac}</div>
+   <div class="stat"><b>Punti Ferita</b> ${m.hp}</div>
+   <div class="stat"><b>Velocità</b> ${m.spd}</div><div class="rule"></div>
+   <div class="abgrid">${m.ab.map((v,i)=>`<div class="aa"><b>${AB[i]}</b><span>${v} (${mod(v)})</span></div>`).join("")}</div><div class="rule"></div>`;
+  if(m.save)h+=`<div class="stat"><b>Tiri Salvezza</b> ${m.save}</div>`;
+  if(m.skill)h+=`<div class="stat"><b>Abilità</b> ${m.skill}</div>`;
+  if(m.res)h+=`<div class="stat"><b>Resistenze ai Danni</b> ${m.res}</div>`;
+  h+=`<div class="stat"><b>Sensi</b> ${m.sen}</div>
+   <div class="stat"><b>Linguaggi</b> ${m.lang}</div>
+   <div class="stat"><b>Sfida</b> ${m.cr} (${m.xp} XP)</div><div class="rule"></div>`;
+  (m.tr||[]).forEach(t=>h+=`<div class="tr"><b><i>${t[0]}.</i></b> ${t[1]}</div>`);
+  h+=`<h5>Azioni</h5>`;(m.act||[]).forEach(t=>h+=`<div class="tr"><b><i>${t[0]}.</i></b> ${t[1]}</div>`);
+  if(m.rea&&m.rea.length){h+=`<h5>Reazioni</h5>`;m.rea.forEach(t=>h+=`<div class="tr"><b><i>${t[0]}.</i></b> ${t[1]}</div>`)}
+  h+=`<div class="rnote"><b>Tratti razziali (${N.race}):</b> ${N.raceNote}</div></div>`;
+  p.innerHTML=h;
+}
+
+/* ================= SALVATAGGIO ================= */
+function roster(){return lsGet("dnd5e_npcs",[])}
+function saveNpc(){
+  if(!N)return;const r=roster();
+  const i=r.findIndex(x=>x.id===N.id);
+  if(!N.id)N.id="npc_"+Date.now();
+  if(i>=0)r[i]=N;else r.push(N);
+  lsSet("dnd5e_npcs",r);alert("💾 NPC salvato: "+N.name);
+}
+function openSaved(){
+  const r=roster();
+  $("savedList").innerHTML="<tr><th>Nome</th><th>Razza</th><th>Ruolo</th><th></th></tr>"+
+   (r.length?r.map(n=>`<tr><td><b style="color:var(--gold-l)">${n.name}</b></td><td>${n.race}</td><td>${n.occ}</td>
+    <td style="text-align:right;white-space:nowrap">
+     <button class="btn small" onclick='loadNpc("${n.id}")'>🔍 Apri</button>
+     <button class="btn small" onclick='exportNpc("${n.id}")'>⬇</button>
+     <button class="btn small" onclick='delNpc("${n.id}")'>🗑</button></td></tr>`).join("")
+   :'<tr><td colspan="4" style="color:var(--muted)">Nessun NPC salvato.</td></tr>');
+  $("savedModal").style.display="flex";
+}
+function closeSaved(){$("savedModal").style.display="none"}
+function loadNpc(id){const n=roster().find(x=>x.id===id);if(n){N=n;closeSaved();$("quickList").innerHTML="";render()}}
+function delNpc(id){if(!confirm("Eliminare questo NPC?"))return;lsSet("dnd5e_npcs",roster().filter(x=>x.id!==id));openSaved()}
+function exportNpc(id){
+  const n=id?roster().find(x=>x.id===id):N;if(!n)return;
+  const blob=new Blob([JSON.stringify(n,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download=(n.name||"npc").replace(/\s+/g,"_")+".json";a.click();
+}
+/* NPC → Diario di Campagna («PNG incontrati») */
+function npcToDiary(){
+  if(!N)return;
+  const it=npcDiaryItem(N);const ex=diaryLoad().npcs.some(x=>(x.name||"").trim().toLowerCase()===it.name.toLowerCase());
+  if(ex&&!confirm(`«${it.name}» è già nel diario. Aggiornare le sue note?`))return;
+  toDiary("npcs",it);
+  alert(`📖 «${it.name}» ${ex?"aggiornato":"aggiunto"} tra i PNG incontrati del Diario di Campagna.`);
+}
+/* export in formato bestiario (Homebrew del generatore incontri) */
+function exportMonster(){
+  if(!N)return;const m=SB[N.sb];if(!m)return;
+  const out={n:N.name+" — "+m.it,it:N.name,src:"HB",cr:m.cr,
+    sz:m.size,tp:"umanoide ("+N.race+")",al:(N.align||"neutrale").toLowerCase(),
+    ac:m.ac,hp:m.hp,spd:m.spd,ab:m.ab.slice(),
+    sen:m.sen,lg:m.lang,env:["qualsiasi"],
+    tr:(m.tr||[]).concat([["Tratti razziali ("+N.race+")",N.raceNote],["Ruolo",N.occ+" ("+N.cat+"). "+cap(N.tratto)+"."]]),
+    act:(m.act||[]).slice(),rea:(m.rea||[]).slice()};
+  if(m.save)out.sv=m.save;if(m.skill)out.sk=m.skill;if(m.res)out.res=m.res;
+  const blob=new Blob([JSON.stringify(out,null,1)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download=(N.name||"npc").replace(/\s+/g,"_")+"_bestiario.json";a.click();
+  alert("🐉 File creato. Nel generatore incontri: 🛠 Homebrew → ⬆ Importa JSON, e l'NPC entra nel bestiario e nel tracker.");
+}
+/* backup suite */
+const SUITE_KEYS=["dnd5e_chars","dnd5e_draft","dnd5e_lang","dnd5e_homebrew","dnd5e_npcs","enc_src","enc_saved","enc_trk","enc_hb","dnd5e_diary","dnd5e_puzzles","dnd5e_profile","dnd5e_world"];
+function backupSuite(){
+  const data={type:"dnd5e_suite_backup",ver:2,date:new Date().toISOString(),store:{}};
+  let n=0;SUITE_KEYS.forEach(k=>{try{const v=localStorage.getItem(k);if(v!=null){data.store[k]=v;n++}}catch(e){}});
+  if(!n){alert("Nulla da salvare.");return}
+  const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="dnd5e_suite_backup_"+new Date().toISOString().slice(0,10)+".json";a.click();
+}
+function restoreSuite(file){
+  const rd=new FileReader();
+  rd.onload=()=>{try{
+    const d=JSON.parse(rd.result);
+    if(d.type!=="dnd5e_suite_backup"||!d.store||typeof d.store!=="object")throw 0;
+    const keys=Object.keys(d.store).filter(k=>SUITE_KEYS.includes(k)&&typeof d.store[k]==="string");
+    if(!keys.length)throw 0;
+    if(!confirm("Ripristinare il backup? Tutti i dati della suite in questo browser verranno sostituiti da quelli del file."))return;
+    /* sostituzione completa: le chiavi della suite assenti nel backup vengono rimosse, così non restano dati misti */
+    SUITE_KEYS.forEach(k=>{try{if(keys.includes(k))localStorage.setItem(k,safeStoreVal(k,d.store[k]));else localStorage.removeItem(k)}catch(e){}});
+    alert("✅ Backup ripristinato. La pagina verrà ricaricata.");location.reload();
+  }catch(err){alert("File di backup non valido.")}};
+  rd.readAsText(file);
+}
+function importNpc(){$("impFile").click()}
+$("impFile").addEventListener("change",e=>{
+  const f=e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{try{const n=safeParse(rd.result,PZ_ALLOW);if(!n.name||!n.sb)throw 0;n.id="npc_"+Date.now();N=n;$("quickList").innerHTML="";render()}catch(err){alert("File JSON non valido.")}};
+  rd.readAsText(f);e.target.value="";
+});
+
+/* ================= LINK CONDIVISIBILE ================= */
+const b64e=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+const b64d=s=>safeParse(decodeURIComponent(escape(atob(s))),PZ_ALLOW);
+function shareNpc(){
+  if(!N)return;
+  const url=location.href.split("#")[0]+"#npc="+b64e(N);
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(url).then(()=>alert("🔗 Link copiato negli appunti.")).catch(()=>prompt("Copia il link:",url));
+  else prompt("Copia il link:",url);
+}
+/* ================= INIT ================= */
+(function(){
+  $("fRace").innerHTML+=NRACES.map(r=>`<option value="${r[0]}">${r[1]}</option>`).join("");
+  $("fCat").innerHTML+=CATS.map(c=>`<option value="${c[0]}">${c[0]}</option>`).join("");
+  $("fAl").innerHTML+=ALIGNS.map(a=>`<option>${a}</option>`).join("");
+  const dp=diaryLoad().places.filter(p=>p.name);
+  $("fPlace").innerHTML+=`<optgroup label="Tipi di luogo">${Object.keys(NPC_PLACES).map(k=>`<option>${k}</option>`).join("")}</optgroup>`+
+    (dp.length?`<optgroup label="Luoghi del Diario">${dp.map(p=>`<option value="D:${esc(p.id)}">${esc(p.name)}</option>`).join("")}</optgroup>`:"");
+  profBadge("pfBadgeN");
+  if(location.hash.indexOf("#npc=")===0){
+    try{
+      const o=b64d(location.hash.slice(5));
+      if(o&&o.name&&o.sb&&confirm(`Questo link contiene l'NPC «${o.name}». Aprirlo?`)){
+        N=o;render();
+      }
+      history.replaceState(null,"",location.pathname+location.search);
+    }catch(e){}
+  }
+})();
+</script>
+</body>
+</html>

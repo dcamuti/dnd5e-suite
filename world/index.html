@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generatore del Mondo D&D 5E</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@700&display=swap');
+:root{
+  --bg:#16100b; --border:#4a3826; --gold:#c9a227; --gold-l:#eccb62;
+  --ink:#ece2d0; --muted:#a89878; --red:#8b2e2e; --green:#5a8a5a;
+  --font-display:'Cinzel',Georgia,serif;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+body{color:var(--ink); font-family:Georgia,'Times New Roman',serif; min-height:100vh;
+  background:radial-gradient(1200px 500px at 50% -10%, #2c2114 0%, transparent 60%),radial-gradient(900px 600px at 110% 110%, #241a10 0%, transparent 55%),var(--bg);
+  background-attachment:fixed}
+::selection{background:var(--red); color:#fff}
+::-webkit-scrollbar{width:10px}::-webkit-scrollbar-track{background:#1a1410}::-webkit-scrollbar-thumb{background:#4a3826;border-radius:6px}
+.app-header{background:linear-gradient(180deg,#2c2013,#191209 90%); border-bottom:1px solid #6a521f; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; position:relative}
+.app-header::after{content:""; position:absolute; left:0; right:0; bottom:-5px; height:3px; background:linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold-l) 50%, var(--gold) 80%, transparent); opacity:.55}
+.app-header h1{font-family:var(--font-display); font-size:1.45rem; color:var(--gold-l); letter-spacing:2px}
+.app-header h1 small{display:block; font-family:Georgia,serif; font-size:.72rem; color:var(--muted); letter-spacing:3px; margin-top:3px; text-transform:uppercase; font-weight:normal}
+.btn{background:linear-gradient(180deg,#332818,#261d11); color:var(--ink); border:1px solid var(--border); border-radius:8px; padding:9px 18px; font-family:var(--font-display); font-weight:600; font-size:.88rem; cursor:pointer; transition:all .18s}
+.btn:hover{border-color:var(--gold); color:var(--gold-l)}
+.btn.gold{background:linear-gradient(180deg,#d4ab35,#8f6f1a); border-color:var(--gold-l); color:#1a1206; font-weight:700}
+.btn.gold:hover{filter:brightness(1.12)}
+.btn.small{padding:5px 12px; font-size:.75rem}
+.sep{display:inline-block; vertical-align:middle; width:1px; height:24px; background:var(--border); margin:0 4px}
+.suite-nav{max-width:1100px; margin:14px auto -8px; padding:0 20px; display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.suite-nav .sn-lbl{font-family:var(--font-display); font-size:.68rem; letter-spacing:2px; color:var(--muted)}
+.suite-nav a{background:linear-gradient(180deg,#2c2216,#241b10); border:1px solid var(--border); border-radius:20px; padding:5px 14px; font-size:.8rem; color:var(--ink); text-decoration:none; font-family:var(--font-display); transition:all .15s}
+.suite-nav a:hover{border-color:var(--gold); color:var(--gold-l)}
+.suite-nav a.on{background:linear-gradient(180deg,#a13636,#7a2626); border-color:#c95454; color:#fff; pointer-events:none}
+main{max-width:1100px; margin:0 auto; padding:24px 20px}
+.tabbar{display:flex; gap:6px; margin-bottom:18px; flex-wrap:wrap}
+.tabbar .tab{flex:1; min-width:120px; text-align:center; padding:10px 4px; background:linear-gradient(180deg,#241b11,#1d150c); border:1px solid var(--border); border-radius:8px; font-family:var(--font-display); color:var(--muted); cursor:pointer; font-size:.85rem; transition:all .18s}
+.tabbar .tab:hover{border-color:var(--gold); color:var(--gold-l)}
+.tabbar .tab.active{background:linear-gradient(180deg,#a13636,#7a2626); color:#fff; border-color:#c95454}
+.panel{background:linear-gradient(170deg,#241b12,#1e160d); border:1px solid var(--border); border-radius:14px; padding:22px; margin-bottom:18px; box-shadow:0 10px 34px rgba(0,0,0,.45)}
+.panel h2{font-family:var(--font-display); color:var(--gold-l); font-size:1.2rem; margin-bottom:4px}
+.panel h2::after{content:""; display:block; width:64px; height:2px; margin-top:6px; background:linear-gradient(90deg,var(--gold),transparent)}
+.panel .hint{color:var(--muted); font-size:.85rem; margin:8px 0 12px; line-height:1.5}
+input[type=text],input[type=number],select,textarea{background:#1a130b; color:var(--ink); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:.92rem}
+input:focus,select:focus,textarea:focus{outline:none; border-color:var(--gold); box-shadow:0 0 0 2px rgba(201,162,39,.15)}
+label.fld{display:inline-block; margin:0 14px 12px 0; vertical-align:top}
+label.fld span{display:block; font-size:.7rem; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:1.5px; font-family:var(--font-display)}
+.toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; align-items:center}
+/* scheda pergamena */
+.card{background:radial-gradient(700px 300px at 50% -5%, #fffdf4 0%, transparent 65%), linear-gradient(160deg,#f9f4e6,#f1e9d4); color:#241e14; border:1px solid #c9b88f; border-radius:6px; padding:22px 26px; margin-top:16px;
+  box-shadow:0 12px 44px rgba(0,0,0,.6), inset 0 0 0 3px #f9f4e6, inset 0 0 0 4px #b09a6a; position:relative}
+.card h3{font-family:'Cinzel Decorative','Cinzel',Georgia,serif; color:#8b2e2e; font-size:1.5rem; line-height:1.2}
+.card .sub{font-style:italic; color:#5a4a32; margin:2px 0 10px; font-size:.95rem}
+.card .sec{border-top:1px solid #d8ccb2; padding:8px 0 4px}
+.card .sec h4{font-family:var(--font-display); font-size:.68rem; text-transform:uppercase; letter-spacing:2.5px; color:#8b2e2e; margin-bottom:4px}
+.card .sec p,.card li{font-size:.93rem; line-height:1.55}
+.card ul{margin-left:18px}
+.card .dm{background:rgba(139,46,46,.07); border-left:3px solid #8b2e2e; padding:6px 10px; border-radius:4px}
+.card .tag{display:inline-block; font-size:.7rem; border:1px solid #c9b88f; border-radius:10px; padding:0 7px; margin-left:4px; color:#6b5636; font-style:normal}
+.card .tag.v{color:#2f6b2f;border-color:#9cc59c}.card .tag.f{color:#8b2e2e;border-color:#d7a0a0}.card .tag.p{color:#8a6a1a;border-color:#d8c08a}
+.card .seed{font-size:.7rem; color:#8a744c; text-align:right; margin-top:6px}
+.card table{border-collapse:collapse; width:100%; margin-top:4px}
+.card td{border-bottom:1px dotted #d8ccb2; padding:3px 6px; font-size:.9rem; vertical-align:top}
+/* fazioni */
+.fz{background:linear-gradient(160deg,#2a2013,#231a0e); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px}
+.fz h3{font-family:var(--font-display); color:var(--gold-l); font-size:1rem}
+.fz .meta{color:var(--muted); font-size:.85rem; margin:3px 0 8px}
+.clock{display:flex; gap:4px; margin:6px 0; flex-wrap:wrap}
+.clock span{width:26px; height:14px; border:1px solid var(--gold); border-radius:3px; cursor:pointer}
+.clock span.on{background:linear-gradient(90deg,#d4ab35,#8f6f1a)}
+.fz ol{margin-left:20px; font-size:.88rem; line-height:1.6}
+.fz ol li.done{color:var(--muted); text-decoration:line-through}
+.fz ol li.next{color:var(--gold-l)}
+.xbtn{cursor:pointer; color:var(--muted)}
+.xbtn:hover{color:#e07a7a}
+#toastBox{position:fixed; left:50%; transform:translateX(-50%); bottom:24px; z-index:120; background:linear-gradient(180deg,#3d2f1b,#2e2312); border:1px solid var(--gold); color:var(--gold-l); padding:9px 22px; border-radius:24px; font-family:var(--font-display); font-size:.85rem; opacity:0; pointer-events:none; transition:opacity .25s}
+#toastBox.show{opacity:1}
+#savedList .row{display:flex; gap:8px; align-items:center; background:linear-gradient(160deg,#2a2013,#231a0e); border:1px solid var(--border); border-radius:9px; padding:8px 12px; margin-bottom:7px}
+@media (max-width:700px){.card{padding:16px}.tabbar .tab{min-width:95px}}
+@media print{
+  body{background:#fff}
+  .app-header,.suite-nav,.tabbar,.panel>h2,.panel>.hint,.panel>label,.panel>.toolbar,.panel>div[id^=pf],#toastBox,.fz .toolbar{display:none !important}
+  .panel{border:none; box-shadow:none; background:#fff; padding:0}
+  .card{box-shadow:none; break-inside:avoid}
+  body.nodm .card .dm,body.nodm .dmonly{display:none !important}
+}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <h1>🌍 Generatore del Mondo <small>Insediamenti · Locande · Rovine · Viaggi · Eventi · Fazioni</small></h1>
+  <div>
+    <button class="btn" onclick="openSaved()">📂 Salvati</button>
+    <button class="btn" onclick="doPrint(false)" title="Stampa senza le parti riservate al DM">🖨 Stampa (giocatori)</button>
+    <button class="btn" onclick="doPrint(true)">🖨 Stampa (DM)</button>
+    <span class="sep"></span>
+    <button class="btn" onclick="backupSuite()">🗄 Backup suite</button>
+    <label class="btn" style="cursor:pointer">⬆ Ripristina backup<input type="file" accept=".json" style="display:none" onchange="if(this.files[0])restoreSuite(this.files[0]);this.value=''"></label>
+  </div>
+</header>
+<nav class="suite-nav">
+  <span class="sn-lbl">SUITE D&amp;D 5E</span>
+  <a href="../characters/index.html">⚔️ Schede PG</a>
+  <a href="../npcs/index.html">🎭 NPC</a>
+  <a href="../encounters/index.html">🐉 Incontri</a>
+  <a class="on" href="../world/index.html">🌍 Mondo</a>
+  <a href="../journal/index.html">📖 Diario</a>
+  <a href="../puzzles/index.html">🔐 Enigmi</a>
+</nav>
+<main>
+  <div class="tabbar">
+    <div class="tab active" id="tab-set" onclick="showTab('set')">🏘 Insediamenti</div>
+    <div class="tab" id="tab-inn" onclick="showTab('inn')">🍺 Locande</div>
+    <div class="tab" id="tab-rov" onclick="showTab('rov')">🏚 Rovine</div>
+    <div class="tab" id="tab-tra" onclick="showTab('tra')">🧭 Viaggi</div>
+    <div class="tab" id="tab-eve" onclick="showTab('eve')">⚡ Eventi</div>
+    <div class="tab" id="tab-fz" onclick="showTab('fz')">⚔ Fazioni</div>
+  </div>
+  <div id="pfBadgeW" style="margin:-6px 0 14px"></div>
+
+  <div id="view-set" class="panel">
+    <h2>🏘 Insediamenti</h2>
+    <div class="hint">Un paese completo a strati: governo, economia, il problema del momento (un aggancio pronto), i luoghi con chi li gestisce, le voci di paese — marcate vere, false o parziali — e il segreto che solo tu conosci.</div>
+    <label class="fld"><span>Dimensione</span><select id="sSize"><option value="">Casuale</option></select></label>
+    <label class="fld"><span>Ambiente</span><select id="sEnv" class="envSel"></select></label>
+    <label class="fld"><span>Seme</span><input type="text" id="sSeed" size="8" placeholder="casuale"></label>
+    <div class="toolbar" style="margin-top:0"><button class="btn gold" onclick="run('set')">🎲 Genera insediamento</button></div>
+    <div id="out-set"></div>
+  </div>
+
+  <div id="view-inn" class="panel" style="display:none">
+    <h2>🍺 Locande vive</h2>
+    <div class="hint">Non solo un nome: menu con i prezzi, tre avventori che stanno già facendo qualcosa e una scena in corso quando il party apre la porta.</div>
+    <label class="fld"><span>Ambiente</span><select id="iEnv" class="envSel"></select></label>
+    <label class="fld"><span>Seme</span><input type="text" id="iSeed" size="8" placeholder="casuale"></label>
+    <div class="toolbar" style="margin-top:0"><button class="btn gold" onclick="run('inn')">🎲 Genera locanda</button></div>
+    <div id="out-inn"></div>
+  </div>
+
+  <div id="view-rov" class="panel" style="display:none">
+    <h2>🏚 Rovine e luoghi selvaggi</h2>
+    <div class="hint">Ogni rovina ha una storia: chi l'ha costruita e perché, cosa l'ha distrutta, chi ci vive adesso. Più un pericolo, un tesoro e un aggancio per entrarci.</div>
+    <label class="fld"><span>Ambiente</span><select id="rEnv" class="envSel"></select></label>
+    <label class="fld"><span>Seme</span><input type="text" id="rSeed" size="8" placeholder="casuale"></label>
+    <div class="toolbar" style="margin-top:0"><button class="btn gold" onclick="run('rov')">🎲 Genera rovina</button></div>
+    <div id="out-rov"></div>
+  </div>
+
+  <div id="view-tra" class="panel" style="display:none">
+    <h2>🧭 Viaggio giorno per giorno</h2>
+    <div class="hint">Meteo, evento del giorno e accampamento per ogni tappa, coerenti con il terreno. Circa un giorno su tre non succede nulla: anche la calma racconta.</div>
+    <label class="fld"><span>Giorni</span><select id="tDays"><option>2</option><option selected>3</option><option>5</option><option>7</option><option>10</option></select></label>
+    <label class="fld"><span>Terreno</span><select id="tEnv" class="envSel"></select></label>
+    <label class="fld"><span>Seme</span><input type="text" id="tSeed" size="8" placeholder="casuale"></label>
+    <div class="toolbar" style="margin-top:0"><button class="btn gold" onclick="run('tra')">🎲 Genera viaggio</button></div>
+    <div id="out-tra"></div>
+  </div>
+
+  <div id="view-eve" class="panel" style="display:none">
+    <h2>⚡ Eventi e colpi di scena</h2>
+    <div class="hint">Una catena causa → effetto → conseguenza per muovere il mondo, due colpi di scena da tenere in tasca e un incontro che non si risolve con le spade.</div>
+    <label class="fld"><span>Ambiente</span><select id="eEnv" class="envSel"></select></label>
+    <label class="fld"><span>Seme</span><input type="text" id="eSeed" size="8" placeholder="casuale"></label>
+    <div class="toolbar" style="margin-top:0"><button class="btn gold" onclick="run('eve')">🎲 Genera evento</button></div>
+    <div id="out-eve"></div>
+  </div>
+
+  <div id="view-fz" class="panel" style="display:none">
+    <h2>⚔ Fazioni e i loro piani</h2>
+    <div class="hint">Ogni fazione ha un obiettivo e un piano in più tappe (l'«orologio»). Tra una sessione e l'altra premi <b>⏳ Avanza</b>: le fazioni procedono da sole, generano notizie e voci, e il resoconto finisce nel Diario. Il generatore NPC può assegnare i suoi personaggi a queste fazioni.</div>
+    <div class="toolbar" style="margin-top:0">
+      <button class="btn gold" onclick="newFaction()">➕ Nuova fazione</button>
+      <button class="btn gold" onclick="advanceFactions()">⏳ Avanza tra sessioni</button>
+    </div>
+    <div id="fzReport"></div>
+    <div id="fzList" style="margin-top:14px"></div>
+  </div>
+</main>
+
+<div id="savedModal" onclick="if(event.target===this)closeSaved()" style="display:none;position:fixed;inset:0;background:rgba(10,7,4,.75);backdrop-filter:blur(3px);z-index:110;align-items:center;justify-content:center;padding:20px">
+  <div class="panel" style="max-width:720px;width:100%;max-height:86vh;overflow-y:auto;margin:0">
+    <h2>📂 Creazioni salvate</h2>
+    <div class="hint">Insediamenti, locande, rovine, viaggi ed eventi salvati in questo browser (rientrano nel backup della suite).</div>
+    <div id="savedList"></div>
+    <div class="toolbar"><button class="btn" onclick="closeSaved()">Chiudi</button></div>
+  </div>
+</div>
+<div id="toastBox"></div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const R=a=>a[Math.floor(rnd()*a.length)];
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+/* ================= DATI ESTERNI (file importati, link condivisi, backup) =================
+   Tutto ciò che arriva da fuori viene ripulito prima di entrare nella suite:
+   niente markup, virgolette o entità che possano "uscire" dagli attributi HTML;
+   gli id vengono ridotti a caratteri sicuri. Solo i campi player/dm degli enigmi
+   possono contenere HTML, che passa da un filtro a lista bianca. */
+const PZ_ALLOW=false;
+const PZ_HTML_KEYS=["player","dm"];
+function cleanHtml(html){
+  try{const doc=new DOMParser().parseFromString("<body>"+(html||"")+"</body>","text/html");
+    doc.body.querySelectorAll("script,iframe,object,embed,link,meta,base,form,frame,frameset,noscript,template,style").forEach(n=>n.remove());
+    doc.body.querySelectorAll("*").forEach(el=>[...el.attributes].forEach(a=>{
+      const n=a.name.toLowerCase(),v=(a.value||"").replace(/[\s\u0000-\u001f]/g,"").toLowerCase();
+      const urlAttr=["href","src","xlink:href","action","formaction","background","poster"].includes(n);
+      if(n.startsWith("on")||n==="srcdoc"||(urlAttr&&(v.startsWith("javascript:")||v.startsWith("vbscript:")||(v.startsWith("data:")&&!v.startsWith("data:image/")))))el.removeAttribute(a.name)}));
+    return doc.body.innerHTML}catch(e){return String(html||"").replace(/[<>]/g,"")}}
+function cleanStr(v){return v.replace(/[<>]/g,"").replace(/"/g,"”").replace(/&(?=[#A-Za-z0-9])/g,"＆")}
+function safeParse(txt,allowPzHtml){
+  return JSON.parse(txt,(k,v)=>{
+    if(typeof v!=="string")return v;
+    if(allowPzHtml&&PZ_HTML_KEYS.includes(k))return cleanHtml(v);
+    if(k==="id")return v.replace(/[^\w-]/g,"");
+    return cleanStr(v)})}
+/* valore di una chiave del backup: è JSON (tranne la lingua, che è testo semplice) */
+function safeStoreVal(k,v){try{return JSON.stringify(safeParse(v,k==="dnd5e_puzzles"))}catch(e){return String(v).replace(/[^\w-]/g,"")}}
+/* ==== MOTORE SUITE v1 ==== */
+/* Base comune dei generatori: casualità con seme, modelli con etichette, profilo campagna, invio al diario.
+   Questo blocco è identico in tutti i tool della suite: modificarlo ovunque insieme. */
+/* --- casualità con seme (mulberry32): stesso seme → stesso risultato --- */
+function mkRng(seed){let a=0;const s=String(seed);for(let i=0;i<s.length;i++)a=(Math.imul(a^s.charCodeAt(i),2654435761)+i)>>>0;
+  return()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296}}
+let RNG=Math.random;
+const rnd=()=>RNG();
+const rInt=(a,b)=>a+Math.floor(rnd()*(b-a+1));
+const rDie=n=>1+Math.floor(rnd()*n);
+const rPick=a=>a[Math.floor(rnd()*a.length)];
+const rShuffle=a=>{const b=a.slice();for(let i=b.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
+const rSample=(a,n)=>rShuffle(a).slice(0,n);
+function newSeed(){return Math.random().toString(36).slice(2,8)}
+/* esegue fn con il generatore fissato sul seme indicato */
+function withSeed(seed,fn){const prev=RNG;RNG=mkRng(seed);try{return fn()}finally{RNG=prev}}
+
+/* --- profilo campagna (impostato nel Diario, letto da tutti i generatori) --- */
+const PROF_OPTS={
+  tono:[["eroico","Eroico"],["cupo","Cupo"],["leggero","Leggero"]],
+  amb:[["misto","Misto"],["citta","Città"],["costa","Costa e mare"],["foresta","Foreste"],["montagna","Montagne"],["pianura","Pianure e colline"],["palude","Paludi"],["deserto","Deserto"],["artico","Terre gelide"],["sottosuolo","Sottosuolo"]],
+  magia:[["bassa","Magia rara"],["media","Magia presente"],["alta","Magia ovunque"]]};
+const PROF_DEF={tono:"eroico",amb:"misto",magia:"media"};
+let PROF_OVR=null;/* modifica temporanea, solo per questa pagina */
+function profGet(){let p={};try{p=JSON.parse(localStorage.getItem("dnd5e_profile")||"{}")||{}}catch(e){}
+  const o=Object.assign({},PROF_DEF,p,PROF_OVR||{});
+  for(const k in PROF_OPTS)if(!PROF_OPTS[k].some(x=>x[0]===o[k]))o[k]=PROF_DEF[k];return o}
+function profSave(p){try{localStorage.setItem("dnd5e_profile",JSON.stringify(p))}catch(e){}}
+function profLabel(k,v){const x=(PROF_OPTS[k]||[]).find(y=>y[0]===v);return x?x[1]:v}
+/* etichette attive: tono, ambiente, magia (es. ["cupo","costa","magia-bassa"]) */
+function profTags(extra){const p=profGet();return[p.tono,p.amb,"magia-"+p.magia].concat(extra||[]).filter(Boolean)}
+/* badge del profilo: clic per cambiarlo solo in questa pagina */
+function profBadge(elId,onChange){const el=document.getElementById(elId);if(!el)return;
+  const p=profGet();
+  el.innerHTML=`<span class="pf-badge" title="Profilo campagna: orienta i generatori. Si imposta nel Diario; qui puoi cambiarlo solo per questa pagina.">🧭 ${profLabel("tono",p.tono)} · ${profLabel("amb",p.amb)} · ${profLabel("magia",p.magia)}${PROF_OVR?' <i style="opacity:.7">(temporaneo)</i>':""} ▾</span>
+   <span class="pf-pop" style="display:none">${Object.keys(PROF_OPTS).map(k=>`<select data-k="${k}">${PROF_OPTS[k].map(([v,l])=>`<option value="${v}"${p[k]===v?" selected":""}>${l}</option>`).join("")}</select>`).join("")}
+   ${PROF_OVR?'<a class="pf-reset">↺ usa il profilo del Diario</a>':""}</span>`;
+  const pop=el.querySelector(".pf-pop");
+  el.querySelector(".pf-badge").onclick=()=>{pop.style.display=pop.style.display==="none"?"inline-flex":"none"};
+  pop.querySelectorAll("select").forEach(sel=>sel.onchange=()=>{PROF_OVR=PROF_OVR||{};PROF_OVR[sel.dataset.k]=sel.value;profBadge(elId,onChange);if(onChange)onChange()});
+  const rs=pop.querySelector(".pf-reset");if(rs)rs.onclick=()=>{PROF_OVR=null;profBadge(elId,onChange);if(onChange)onChange()};
+}
+(function(){try{const st=document.createElement("style");st.textContent=
+  ".pf-badge{display:inline-block;cursor:pointer;background:linear-gradient(180deg,#2c2216,#241b10);border:1px solid #4a3826;border-radius:20px;padding:4px 12px;font-size:.78rem;color:#ece2d0}"+
+  ".pf-badge:hover{border-color:#c9a227;color:#eccb62}.pf-pop{gap:6px;margin-left:8px;flex-wrap:wrap;align-items:center}.pf-pop select{font-size:.78rem;padding:3px 6px}"+
+  ".pf-reset{color:#eccb62;cursor:pointer;font-size:.75rem;text-decoration:underline}@media print{.pf-badge,.pf-pop{display:none!important}}";
+  document.head.appendChild(st)}catch(e){}})();
+
+/* --- modelli con etichette ---
+   G = { chiave: [ "testo", {t:"testo", tags:["costa","cupo"], w:2}, ... ] }
+   Nel testo: {chiave} espande · {chiave>v} espande e ricorda in v · {$v} riusa · {a|b|c} scelta in linea · {^chiave} con iniziale maiuscola.
+   Le voci con etichette in comune con il contesto pesano di più; un'etichetta "!x" rende la voce valida SOLO se il contesto ha x. */
+function gPick(list,tags){
+  const ok=[],w=[];let tot=0;
+  (list||[]).forEach(e=>{const o=typeof e==="string"?{t:e}:e;const tg=o.tags||[];
+    if(tg.some(t=>t[0]==="!"&&!tags.includes(t.slice(1))))return;
+    const m=tg.filter(t=>tags.includes(t[0]==="!"?t.slice(1):t)).length;
+    const ww=(o.w||1)*(1+2*m);ok.push(o);w.push(ww);tot+=ww});
+  if(!ok.length)return"";
+  let r=rnd()*tot;for(let i=0;i<ok.length;i++){r-=w[i];if(r<=0)return ok[i].t}return ok[ok.length-1].t}
+function gExpand(G,tpl,ctx,depth){ctx=ctx||{};ctx.tags=ctx.tags||[];ctx.vars=ctx.vars||{};depth=depth||0;
+  if(depth>12)return tpl;
+  return String(tpl).replace(/\{([^{}]+)\}/g,(m,body)=>{
+    if(body[0]==="$")return ctx.vars[body.slice(1)]??"";
+    if(body.includes("|"))return gExpand(G,rPick(body.split("|")),ctx,depth+1);
+    let cap=false;if(body[0]==="^"){cap=true;body=body.slice(1)}
+    const [key,save]=body.split(">");
+    if(!G[key])return m;
+    let out=gExpand(G,gPick(G[key],ctx.tags),ctx,depth+1);
+    if(cap)out=out.charAt(0).toUpperCase()+out.slice(1);
+    if(save)ctx.vars[save]=out;
+    return out})}
+
+/* --- invio al Diario di Campagna --- */
+function diaryLoad(){let D={};try{D=JSON.parse(localStorage.getItem("dnd5e_diary")||"{}")||{}}catch(e){}
+  ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(D[k]))D[k]=[]});return D}
+function diarySave(D){try{localStorage.setItem("dnd5e_diary",JSON.stringify(D))}catch(e){}}
+const diaryId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+/* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione */
+function toDiary(kind,item){const D=diaryLoad();
+  if(kind==="session"){if(D.sessions.length)D.sessions[0].text=(D.sessions[0].text?D.sessions[0].text+"\n\n":"")+item;
+    else D.sessions.unshift({id:diaryId(),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});diarySave(D);return"added"}
+  const key=kind==="hooks"?"text":"name";
+  const ex=D[kind].find(x=>(x[key]||"").trim().toLowerCase()===(item[key]||"").trim().toLowerCase());
+  if(ex){Object.assign(ex,item,{id:ex.id});diarySave(D);return"updated"}
+  D[kind].unshift(Object.assign({id:diaryId()},kind==="hooks"?{done:false}:{},item));diarySave(D);return"added"}
+/* ==== FINE MOTORE SUITE ==== */
+/* ================= BACKUP SUITE ================= */
+const SUITE_KEYS=["dnd5e_chars","dnd5e_draft","dnd5e_lang","dnd5e_homebrew","dnd5e_npcs","enc_src","enc_saved","enc_trk","enc_hb","dnd5e_diary","dnd5e_puzzles","dnd5e_profile","dnd5e_world"];
+function backupSuite(){
+  const data={type:"dnd5e_suite_backup",ver:2,date:new Date().toISOString(),store:{}};
+  let n=0;SUITE_KEYS.forEach(k=>{try{const v=localStorage.getItem(k);if(v!=null){data.store[k]=v;n++}}catch(e){}});
+  if(!n){alert("Nulla da salvare.");return}
+  const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="dnd5e_suite_backup_"+new Date().toISOString().slice(0,10)+".json";a.click();
+}
+function restoreSuite(file){
+  const rd=new FileReader();
+  rd.onload=()=>{try{
+    const d=JSON.parse(rd.result);
+    if(d.type!=="dnd5e_suite_backup"||!d.store||typeof d.store!=="object")throw 0;
+    const keys=Object.keys(d.store).filter(k=>SUITE_KEYS.includes(k)&&typeof d.store[k]==="string");
+    if(!keys.length)throw 0;
+    if(!confirm("Ripristinare il backup? Tutti i dati della suite in questo browser verranno sostituiti da quelli del file."))return;
+    /* sostituzione completa: le chiavi della suite assenti nel backup vengono rimosse, così non restano dati misti */
+    SUITE_KEYS.forEach(k=>{try{if(keys.includes(k))localStorage.setItem(k,safeStoreVal(k,d.store[k]));else localStorage.removeItem(k)}catch(e){}});
+    alert("✅ Backup ripristinato. La pagina verrà ricaricata.");location.reload();
+  }catch(err){alert("File di backup non valido.")}};
+  rd.readAsText(file);
+}
+
+const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+function toast(m){const t=$("toastBox");t.textContent=m;t.className="show";clearTimeout(toast._t);toast._t=setTimeout(()=>t.className="",2400)}
+function ks(){const y=window.scrollY;requestAnimationFrame(()=>window.scrollTo(0,y))}
+/* ================= CONTENUTI (modelli con etichette) =================
+   Etichette: ambiente (citta, costa, foresta, montagna, pianura, palude, deserto, artico, sottosuolo),
+   tono (eroico, cupo, leggero), magia (magia-bassa, magia-media, magia-alta). "!x" = solo con x. */
+const GW={
+ /* --- nomi di luogo --- */
+ pre:[{t:"Rocca",tags:["montagna"]},{t:"Monte",tags:["montagna"]},{t:"Sasso",tags:["montagna","pianura"]},{t:"Porto",tags:["!costa"],w:3},{t:"Riva",tags:["costa","palude"]},
+  {t:"Selva",tags:["foresta"]},{t:"Bosco",tags:["foresta"]},{t:"Fosso",tags:["palude"]},{t:"Acqua",tags:["palude","costa"]},{t:"Pozzo",tags:["deserto","pianura"]},
+  {t:"Duna",tags:["!deserto"]},{t:"Brina",tags:["!artico"]},{t:"Neve",tags:["artico","montagna"]},{t:"Fondo",tags:["sottosuolo"]},{t:"Grotta",tags:["sottosuolo"]},
+  "Borgo","Valle","Ponte","Torre","Castel","Fonte","Corvo","Lupo","Campo","Pietra","Croce","Prato"],
+ suf:[{t:"nera",tags:["cupo"]},{t:"fonda",tags:["sottosuolo","cupo"]},{t:"grigia"},{t:"alta",tags:["montagna"]},{t:"vecchia"},{t:"del Re",tags:["eroico"],w:.4},{t:"di Sotto"},
+  {t:"bruciata",tags:["cupo"]},{t:"dei Salici",tags:["palude","pianura"]},{t:"dell'Orso",tags:["foresta","montagna"]},{t:"ventosa",tags:["costa","montagna"]},{t:"d'Argento",tags:["eroico"]},
+  {t:"delle Nebbie",tags:["palude","cupo"]},{t:"Marina",tags:["!costa"]},{t:"dei Gabbiani",tags:["!costa"]},{t:"del Sale",tags:["costa","deserto"]},{t:"delle Mele",tags:["leggero","pianura"]},
+  {t:"Allegra",tags:["leggero"]},{t:"dei Pini",tags:["foresta","montagna"]},{t:"di Ghiaccio",tags:["!artico"]},{t:"del Miraggio",tags:["!deserto"]},{t:"dei Funghi",tags:["sottosuolo","leggero"]},
+  {t:"Santa",tags:["eroico"]},{t:"dei Morti",tags:["cupo"],w:.5},{t:"al Guado",tags:["pianura"]},{t:"dell'Aquila",tags:["montagna"]}],
+ /* --- insediamenti --- */
+ governo:[{t:"un consiglio di anziani che non decide mai nulla",tags:["leggero"]},{t:"un borgomastro eletto, onesto ma sopraffatto"},{t:"un nobile che vive lontano e manda solo esattori",tags:["cupo"]},
+  {t:"la gilda dei mercanti, che compra le leggi a peso d'oro",tags:["citta","costa"]},{t:"un ordine religioso, severo e rispettato",tags:["eroico"]},{t:"un capitano mercenario che si è autoproclamato protettore",tags:["cupo"]},
+  {t:"una sacerdotessa che interpreta i sogni del dio locale"},{t:"un mago che governa dalla torre e appare una volta l'anno",tags:["magia-alta"]},
+  {t:"un clan di nani, secondo leggi antiche e incise nella pietra",tags:["montagna","sottosuolo"]},{t:"un druido e il suo circolo, in nome del bosco",tags:["foresta"]},
+  {t:"un'ammiraglia in pensione, che comanda il paese come il ponte della sua nave",tags:["costa"]},{t:"un tiranno benevolo, finché nessuno lo contraddice"},{t:"una famiglia di contrabbandieri, apertamente",tags:["costa","cupo"]}],
+ economia:[{t:"pesca e salatura del pesce",tags:["costa"]},{t:"commercio marittimo e dogane",tags:["costa","citta"]},{t:"miniere di ferro e d'argento",tags:["montagna","sottosuolo"]},
+  {t:"legname e carbone di bosco",tags:["foresta"]},{t:"caccia e pellicce",tags:["foresta","artico"]},{t:"grano, vino e mercati settimanali",tags:["pianura"]},{t:"torba e erbe medicinali",tags:["palude"]},
+  {t:"carovane, spezie e acqua venduta a caro prezzo",tags:["deserto"]},{t:"funghi, cristalli e commerci con i drow",tags:["sottosuolo"]},{t:"artigianato e botteghe di lusso",tags:["citta"]},
+  {t:"pedaggi sul ponte e sul guado"},{t:"pellegrini diretti al santuario"},{t:"reagenti magici rari",tags:["magia-alta"]},{t:"allevamento di pecore e formaggi",tags:["montagna","pianura"]}],
+ problema:[{t:"da settimane spariscono bambini, sempre al calar della nebbia",tags:["cupo"]},{t:"la sorgente si è avvelenata e nessuno sa perché"},{t:"un drago giovane pretende un tributo mensile",tags:["eroico"]},
+  {t:"due famiglie potenti sono a un passo dalla faida"},{t:"i raccolti marciscono in una notte",tags:["pianura","cupo"]},{t:"le navi non tornano più dal largo",tags:["costa"]},
+  {t:"una miniera ha aperto una galleria che non dovrebbe esistere",tags:["montagna","sottosuolo"]},{t:"i lupi sono diventati troppo intelligenti",tags:["foresta"]},
+  {t:"un culto predica la fine del mondo in piazza, e la gente lo ascolta",tags:["cupo","citta"]},{t:"l'esattore è stato trovato morto e il nobile vuole un colpevole entro tre giorni"},
+  {t:"la festa del patrono è tra una settimana e la statua del santo è sparita",tags:["leggero"]},{t:"una tempesta di sabbia ha sepolto metà del villaggio",tags:["deserto"]},
+  {t:"il ghiaccio del lago si è incrinato e da sotto qualcosa bussa",tags:["artico"]},{t:"le paludi avanzano ogni giorno di qualche passo",tags:["palude"]},
+  {t:"la magia smette di funzionare entro le mura",tags:["magia-alta","magia-media"]},{t:"un gruppo di banditi è stato assunto come guardia cittadina"},{t:"una pestilenza leggera ma ostinata",tags:["cupo"]},
+  {t:"un'invasione di gatti, comparsi tutti la stessa notte",tags:["leggero"]}],
+ atmosfera:[{t:"case di pietra annerite dal fumo e silenzio a ogni finestra",tags:["cupo"]},{t:"bandierine colorate e musica dalla piazza",tags:["leggero"]},{t:"odore di salsedine e reti stese al sole",tags:["costa"]},
+  {t:"tetti spioventi carichi di neve e camini sempre accesi",tags:["artico","montagna"]},{t:"palafitte collegate da passerelle che scricchiolano",tags:["palude"]},{t:"vicoli stretti, mercati affollati, cento lingue diverse",tags:["citta"]},
+  {t:"capanne tra le radici di alberi enormi",tags:["foresta"]},{t:"mura di fango cotto e tende colorate contro il sole",tags:["deserto"]},{t:"caverne illuminate da funghi che pulsano piano",tags:["sottosuolo"]},
+  {t:"campi dorati a perdita d'occhio e un mulino che non smette mai di girare",tags:["pianura"]},{t:"una cinta di mura troppo grande per quel che resta del paese",tags:["cupo"]},{t:"una piazza con una statua di eroe, lucidata ogni mattina",tags:["eroico"]}],
+ segreto_luogo:[{t:"il borgomastro è un doppelganger da undici anni",tags:["cupo"]},{t:"sotto la piazza c'è una cripta che tutti fingono di non conoscere"},{t:"il pozzo comunicante con il Piano delle Ombre",tags:["magia-alta","cupo"]},
+  {t:"metà del paese lavora segretamente per i contrabbandieri",tags:["costa"]},{t:"la reliquia del tempio è un falso; l'originale è stato venduto",tags:["eroico","leggero"]},
+  {t:"il paese è stato fondato da un patto con una fata, che ora vuole il suo pagamento",tags:["foresta","magia-media"]},{t:"il fiume trasporta oro: lo sa solo il mugnaio"},
+  {t:"i morti del cimitero vengono «presi in prestito» di notte",tags:["cupo"]},{t:"la torre in rovina fuori città è ancora abitata",tags:["magia-alta"]},{t:"ogni inverno una persona scompare, e il villaggio lo sa"}],
+ voce:[{t:"Dicono che {v_cosa}.",w:3},{t:"La vecchia del mulino giura che {v_cosa}."},{t:"All'osteria si mormora che {v_cosa}."},{t:"Un mercante di passaggio ha raccontato che {v_cosa}."}],
+ v_cosa:[{t:"nella foresta si è vista una luce verde a mezzanotte",tags:["foresta","magia-media"]},{t:"il figlio del fabbro è tornato dalla guerra, ma non è più lui",tags:["cupo"]},{t:"una nave carica d'oro è affondata davanti al faro",tags:["costa"]},
+  {t:"il nobile ha debiti con una strega",tags:["magia-media"]},{t:"qualcuno paga bene chi porta teste di goblin"},{t:"nella miniera abbandonata si sente ancora picconare",tags:["montagna","sottosuolo","cupo"]},
+  {t:"il prete beve di nascosto, e parla nel sonno"},{t:"un cavaliere cerca uomini coraggiosi per una missione al nord",tags:["eroico"]},{t:"sotto la sabbia c'è una città intera",tags:["deserto"]},
+  {t:"il lago ghiacciato non si è mai sciolto, neanche d'estate",tags:["artico"]},{t:"la locandiera ha sposato tre mariti, e sono tutti spariti",tags:["leggero","cupo"]},{t:"le rane della palude parlano, se le paghi",tags:["palude","leggero"]},
+  {t:"il drago della montagna è morto, e nessuno ha reclamato il tesoro",tags:["montagna","eroico"]},{t:"stanotte i gatti non torneranno a casa",tags:["leggero"]},{t:"un mago cerca cavie per un esperimento «del tutto sicuro»",tags:["magia-alta","leggero"]}],
+ luogo_tipo:["Locanda","Bottega","Tempio","Fabbro","Mercato","Casa del borgomastro","Mulino","Guardiola","Bottega dell'erborista","Stalla e scuderia","Porto","Biblioteca","Bisca"],
+ luogo_det:[{t:"è più vecchio del paese stesso"},{t:"ha una porta sul retro che non si apre mai"},{t:"è il punto d'incontro di tutti i pettegolezzi"},{t:"è in rovina, ma ancora frequentato",tags:["cupo"]},
+  {t:"ha appena cambiato proprietario, e nessuno si fida"},{t:"espone un trofeo di caccia mostruoso",tags:["eroico"]},{t:"ha un'insegna che cambia ogni giorno, per scherzo",tags:["leggero"]},{t:"è protetto da glifi incisi sugli stipiti",tags:["magia-media","magia-alta"]}],
+ /* --- locande --- */
+ inn_n1:["Il Grifone","Il Drago","Il Cinghiale","La Lanterna","Il Boccale","Il Corvo","La Sirena","L'Ancora","Il Calderone","La Rosa","Il Gatto","Il Troll","Il Barile","L'Elmo","La Volpe","Il Viandante","La Lepre","Il Cavaliere"],
+ inn_n2:["Zoppo","Ubriaco","d'Oro","Ridente","Addormentato","Nero","Affamato","Sdentato","Fortunato","Spaccato","Cantante","Senza Testa","Pigro","Ruggente","Bagnato","Gentile"],
+ inn_atm:[{t:"fumosa e rumorosa, con una partita a dadi che degenera ogni ora"},{t:"silenziosa e pulitissima: la locandiera non tollera schiamazzi",tags:["eroico"]},{t:"semideserta, con candele che si spengono da sole",tags:["cupo"]},
+  {t:"invasa da marinai in libera uscita",tags:["costa"]},{t:"piena di cacciatori che si contendono il racconto più grosso",tags:["foresta","montagna"]},{t:"elegante, con un bardo che suona solo per chi paga",tags:["citta"]},
+  {t:"una caverna riscaldata da un fungo gigante",tags:["sottosuolo"]},{t:"una tenda enorme dove si beve latte di cammello fermentato",tags:["deserto"]},{t:"accogliente, con un camino in cui si potrebbe arrostire un bue",tags:["artico","leggero"]}],
+ piatto:[{t:"zuppa di cipolle e pane nero",p:"2 ma"},{t:"stufato di montone con le patate",p:"4 ma"},{t:"pesce affumicato e cavolo",p:"3 ma",tags:["costa","palude"]},{t:"spiedo di cinghiale al ginepro",p:"6 ma",tags:["foresta"]},
+  {t:"polenta con formaggio fuso",p:"3 ma",tags:["montagna","pianura"]},{t:"datteri, focaccia e agnello speziato",p:"5 ma",tags:["deserto"]},{t:"zuppa di funghi di caverna (non chiedete quali)",p:"2 ma",tags:["sottosuolo","leggero"]},
+  {t:"torta di carne «del giorno» (non chiedete di quale giorno)",p:"2 ma",tags:["leggero"]},{t:"arrosto di cervo con salsa ai frutti di bosco",p:"8 ma",tags:["foresta","eroico"]},{t:"anguille in umido",p:"3 ma",tags:["palude"]},
+  {t:"brodo bollente di ossa e orzo",p:"1 ma",tags:["artico","cupo"]},{t:"crostata di mele e miele",p:"2 ma",tags:["pianura","leggero"]}],
+ bevanda:[{t:"birra scura della casa",p:"4 mr"},{t:"vino rosso annacquato",p:"2 ma"},{t:"idromele speziato",p:"5 ma",tags:["foresta","artico"]},{t:"acquavite di prugne «che sveglia i morti»",p:"1 mo",tags:["leggero","cupo"]},
+  {t:"grog dei marinai",p:"3 ma",tags:["costa"]},{t:"tè di erbe di palude, amaro",p:"1 ma",tags:["palude"]},{t:"vino elfico, per chi può permetterselo",p:"5 mo",tags:["foresta","magia-alta"]},{t:"birra di funghi luminosa",p:"5 mr",tags:["sottosuolo"]}],
+ avventore_fa:[{t:"gioca a carte e bara malissimo"},{t:"fissa la porta come se aspettasse qualcuno"},{t:"canta una canzone triste, stonando"},{t:"cerca di vendere una mappa «autentica»"},
+  {t:"dorme con la testa sul tavolo e una lettera sigillata in mano"},{t:"discute animatamente di tasse"},{t:"offre da bere a chiunque abbia l'aria da avventuriero",tags:["eroico"]},
+  {t:"si fascia una ferita fresca e non vuole dire come se l'è fatta",tags:["cupo"]},{t:"scommette che riesce a bere un barile intero",tags:["leggero"]},{t:"recluta marinai per un viaggio misterioso",tags:["costa"]},
+  {t:"mostra a tutti un dente di drago (probabilmente di mucca)",tags:["leggero"]},{t:"scrive febbrilmente su un taccuino, guardando il party"}],
+ scena:[{t:"Una rissa sta per scoppiare tra due tavoli: basterebbe una parola sbagliata."},{t:"Il locandiere chiede aiuto: in cantina «c'è qualcosa» da ieri sera."},
+  {t:"Entra una guardia ferita, cerca qualcuno e crolla prima di dire chi.",tags:["cupo","eroico"]},{t:"Si tiene una gara di indovinelli: il premio è una notte gratis.",tags:["leggero"]},
+  {t:"Un bardo improvvisa una canzone sulle (presunte) imprese del party.",tags:["leggero","eroico"]},{t:"La luce cala, tutti tacciono: entra un uomo incappucciato e si siede al posto «riservato».",tags:["cupo"]},
+  {t:"Un nobile in incognito viene riconosciuto, e qualcuno estrae un pugnale."},{t:"Un gatto ha rubato la chiave della stanza migliore e si è nascosto sul tetto.",tags:["leggero"]},
+  {t:"La tempesta fuori costringe tutti a restare: e uno degli ospiti mente sul proprio nome."}],
+ /* --- rovine e luoghi selvaggi --- */
+ rov_tipo:[{t:"una torre di guardia diroccata"},{t:"un tempio in rovina"},{t:"un castello abbandonato",tags:["eroico","cupo"]},{t:"un osservatorio",tags:["magia-alta","montagna"]},
+  {t:"un faro spento",tags:["!costa"],w:2},{t:"un monastero tra le rocce",tags:["montagna"]},{t:"un villaggio fantasma",tags:["cupo"]},{t:"un cerchio di pietre",tags:["foresta","pianura"]},
+  {t:"una miniera abbandonata",tags:["montagna","sottosuolo"]},{t:"una piramide sepolta a metà",tags:["!deserto"],w:2},{t:"una nave incagliata nel ghiaccio",tags:["!artico"],w:2},
+  {t:"una città nanica",tags:["!sottosuolo"],w:2},{t:"una villa su palafitte",tags:["!palude"],w:2},{t:"un ponte gigantesco che non porta da nessuna parte"},{t:"una cripta di famiglia"}],
+ rov_chi:[{t:"un ordine di cavalieri ormai estinto",tags:["eroico"]},{t:"un arcimago ossessionato dalle stelle",tags:["magia-alta"]},{t:"un clan di nani in fuga",tags:["montagna","sottosuolo"]},
+  {t:"un impero dimenticato"},{t:"un culto del serpente",tags:["deserto","palude","cupo"]},{t:"un re-poeta che amava le feste",tags:["leggero"]},{t:"una famiglia di mercanti di schiavi",tags:["cupo"]},
+  {t:"gli elfi, prima che gli umani arrivassero",tags:["foresta"]},{t:"un pirata leggendario",tags:["costa"]},{t:"un druido che voleva fermare l'inverno",tags:["artico"]}],
+ rov_per:[{t:"proteggere un artefatto"},{t:"imprigionare qualcosa che non poteva essere ucciso",tags:["cupo"]},{t:"studiare il cielo"},{t:"nascondere un tesoro"},{t:"onorare un dio oggi dimenticato"},
+  {t:"difendere il confine"},{t:"vivere lontano da tutti"},{t:"organizzare la festa definitiva",tags:["leggero"]}],
+ rov_fine:[{t:"una maledizione lanciata da un rivale",tags:["magia-media","magia-alta"]},{t:"un'epidemia",tags:["cupo"]},{t:"un terremoto"},{t:"un tradimento dall'interno"},
+  {t:"l'assalto di un drago",tags:["eroico"]},{t:"un esperimento finito male",tags:["magia-alta"]},{t:"la fame, durante un lungo assedio"},{t:"un incendio la notte di festa",tags:["leggero","cupo"]},
+  {t:"una mareggiata che si portò via metà delle mura",tags:["costa"]},{t:"una tempesta di sabbia che seppellì ogni cosa",tags:["deserto"]}],
+ rov_ora:[{t:"una banda di goblin che si crede padrona del regno"},{t:"i non morti dei vecchi abitanti",tags:["cupo"]},{t:"un orso gufo con i suoi piccoli",tags:["foresta","montagna"]},
+  {t:"un cultista solitario e i suoi seguaci",tags:["cupo"]},{t:"contrabbandieri, che pagano bene il silenzio",tags:["costa"]},{t:"un mimic molto paziente",tags:["leggero"]},
+  {t:"un drago giovane",tags:["eroico"]},{t:"uno spettro che crede di essere ancora vivo"},{t:"un gruppo di avventurieri rivali",tags:["eroico","leggero"]},{t:"ragni giganti",tags:["foresta","sottosuolo"]},
+  {t:"un elementale imprigionato",tags:["magia-alta"]},{t:"nessuno: ed è proprio questo che inquieta",tags:["cupo"]},{t:"lucertoloidi e coccodrilli",tags:["palude"]},{t:"yeti e lupi invernali",tags:["artico"]}],
+ rov_aggancio:[{t:"Un erudito paga 50 mo per una copia delle iscrizioni dell'ingresso."},{t:"Un contadino giura che di notte dalla rovina partono luci colorate.",tags:["magia-media","magia-alta"]},
+  {t:"Una bambina ci è entrata per una scommessa e non è più tornata.",tags:["cupo","eroico"]},{t:"Una mappa trovata su un nemico sconfitto indica una stanza segreta."},{t:"Il signore locale vuole sapere chi si è stabilito lì, e paga bene."},
+  {t:"A ogni luna nuova dalla rovina arriva un'eco di campane.",tags:["cupo"]},{t:"Un mercante ha perso lì il suo asino, e con l'asino la dote della figlia.",tags:["leggero"]},{t:"Due cercatori di tesori si sono sfidati: chi torna per primo con la prova vince."}],
+ rov_tesoro:["un forziere sepolto sotto l'altare","una biblioteca di libri incantati, per metà bruciati","le armi dei fondatori, appese alle pareti","una mappa verso un luogo ancora più antico","un uovo di cui nessuno conosce la specie","il diario dell'ultimo abitante"],
+ rov_pericolo:["pavimenti marci sopra un salto di dieci metri","una trappola ancora armata nell'ingresso principale","gas velenoso nelle cantine","crolli improvvisi","un guardiano costruito che obbedisce a ordini dimenticati","acqua che sale con la marea"],
+ /* --- viaggi --- */
+ meteo:[{t:"cielo terso e vento leggero"},{t:"pioggia fine e insistente"},{t:"nebbia fitta fino a mezzogiorno",tags:["palude","costa"]},{t:"temporale violento nel pomeriggio"},{t:"caldo soffocante",tags:["deserto","pianura"]},
+  {t:"tempesta di sabbia",tags:["!deserto"]},{t:"bufera di neve",tags:["artico","montagna"]},{t:"gelo pungente e cielo di piombo",tags:["artico"]},{t:"vento forte da nord"},{t:"umidità e zanzare",tags:["palude"]},{t:"aria immobile e buio perenne",tags:["!sottosuolo"],w:3}],
+ viaggio_ev:[{t:"Un ponte crollato costringe a una deviazione di mezza giornata."},{t:"Un mercante con il carro impantanato chiede aiuto e offre sconti.",tags:["leggero","eroico"]},
+  {t:"Tracce di un grosso predatore seguono il sentiero da ore.",tags:["foresta","montagna"]},{t:"Un viandante silenzioso si unisce al gruppo per un tratto e sparisce all'alba.",tags:["cupo"]},
+  {t:"Un altarino lungo la strada: chi lascia un'offerta riceve un sogno premonitore.",tags:["magia-media"]},{t:"Un posto di blocco di soldati chiede un pedaggio non previsto."},
+  {t:"Una carovana di pellegrini canta in lontananza.",tags:["eroico","pianura"]},{t:"Si trova un accampamento abbandonato in fretta, con il fuoco ancora caldo.",tags:["cupo"]},
+  {t:"Un'oasi segnata sulla mappa è prosciugata.",tags:["!deserto"]},{t:"Una valanga blocca il passo.",tags:["!montagna","artico"]},{t:"La barca del traghettatore è sulla riva sbagliata.",tags:["palude","pianura"]},
+  {t:"Un gruppo di bambini gioca agli avventurieri e scambia il party per i cattivi.",tags:["leggero"]},{t:"Una nave pirata all'orizzonte.",tags:["!costa"]},{t:"Una galleria si apre su una caverna enorme e silenziosa.",tags:["!sottosuolo"]},
+  {t:"Un lupo ferito, intrappolato in una tagliola.",tags:["foresta"]},{t:"Un cartello indica un villaggio che non è su nessuna mappa."}],
+ campo:[{t:"Notte tranquilla: chi fa la guardia vede una stella cadente."},{t:"Qualcosa ruba metà delle provviste durante la notte.",tags:["leggero"]},{t:"Ululati in lontananza; nessuno dorme bene (niente beneficio del riposo lungo con TS Cos CD 10 fallito).",tags:["cupo"]},
+  {t:"Un viandante chiede di dividere il fuoco: ha notizie della prossima città."},{t:"Il terreno è gelato: servono coperte extra o un livello di indebolimento.",tags:["artico","montagna"]},{t:"Luci danzanti nella palude; chi le segue si perde.",tags:["palude"]}],
+ /* --- eventi --- */
+ ev_causa:[{t:"Un'eclissi inattesa",tags:["magia-media","magia-alta"]},{t:"La morte improvvisa del signore locale"},{t:"Il crollo del prezzo del grano"},{t:"Una cometa nel cielo",tags:["eroico","magia-alta"]},
+  {t:"Il ritorno di un esiliato"},{t:"Il furto della reliquia del tempio"},{t:"Una nave straniera attraccata senza equipaggio",tags:["costa"]},{t:"Il risveglio di qualcosa sotto la montagna",tags:["montagna","sottosuolo"]},
+  {t:"Una tempesta che dura tre giorni"},{t:"Una lettera anonima consegnata a tutte le famiglie nobili",tags:["citta"]},{t:"Un matrimonio combinato tra due casate rivali",tags:["leggero"]}],
+ ev_effetto:[{t:"scoppiano tumulti nel quartiere povero",tags:["cupo","citta"]},{t:"i mercanti chiudono bottega e i prezzi raddoppiano"},{t:"un culto guadagna centinaia di seguaci",tags:["cupo"]},
+  {t:"le guardie arrestano chiunque sembri straniero (incluso il party)"},{t:"si organizza una grande festa per esorcizzare la paura",tags:["leggero"]},{t:"un eroe locale parte da solo per risolvere la faccenda, e non torna",tags:["eroico"]},
+  {t:"due fazioni si accusano a vicenda"},{t:"una taglia viene messa sulla testa di qualcuno che il party conosce"},{t:"la magia diventa imprevedibile per qualche giorno",tags:["magia-alta","magia-media"]}],
+ ev_conseg:[{t:"se il party non interviene, entro una settimana {ev_peggio}."},{t:"qualcuno di potente offre al party un lavoro molto ben pagato, e molto ambiguo."},{t:"un PNG amico del party è coinvolto, e chiede aiuto in segreto."},
+  {t:"la verità è più semplice e più triste di quanto tutti credano.",tags:["cupo"]},{t:"si scopre che dietro c'è una fazione che il party ha già incontrato."}],
+ ev_peggio:["la città sarà sotto legge marziale","un innocente verrà giustiziato in piazza","il colpevole lascerà la regione con il bottino","la fazione rivale prenderà il controllo del consiglio","le strade saranno chiuse fino a primavera"],
+ colpo:[{t:"Il mandante della missione è anche il colpevole."},{t:"Il «mostro» sta proteggendo qualcuno."},{t:"Un alleato del party lavora segretamente per l'avversario."},{t:"L'oggetto cercato è già stato distrutto: resta solo un falso."},
+  {t:"Il nemico offre una tregua sincera, per un pericolo più grande.",tags:["eroico"]},{t:"La vittima non è mai morta: ha inscenato tutto.",tags:["leggero","cupo"]},{t:"Arriva un secondo gruppo di avventurieri con lo stesso incarico.",tags:["leggero"]},
+  {t:"La mappa è giusta, ma è disegnata al contrario."},{t:"Un PG viene riconosciuto come qualcun altro: un ricercato.",tags:["cupo"]},{t:"Il tempo stringe: l'evento accade un giorno prima del previsto."},
+  {t:"Il cattivo ha ragione, almeno in parte.",tags:["cupo"]},{t:"Un incantesimo protettivo cede proprio ora.",tags:["magia-media","magia-alta"]}],
+ incontro_nc:[{t:"Un ambulante con un carretto di pozioni dalle etichette sbagliate.",tags:["leggero","magia-media"]},{t:"Un cavaliere ferito che chiede di portare un messaggio alla sua dama.",tags:["eroico"]},
+  {t:"Un funerale silenzioso attraversa la strada; il defunto si muove nella bara.",tags:["cupo"]},{t:"Un gruppo di monaci in pellegrinaggio, legati da un voto di silenzio."},
+  {t:"Un bambino perduto che parla una lingua antica."},{t:"Un mercante di schiavi con una scorta numerosa.",tags:["cupo"]},{t:"Un unicorno che osserva da lontano.",tags:["!foresta","magia-alta"]},
+  {t:"Pescatori che litigano per una sirena impigliata nella rete.",tags:["!costa"]},{t:"Una carovana in panne sotto il sole, con l'acqua finita.",tags:["!deserto"]},{t:"Un eremita che baratta storie con cibo."},
+  {t:"Un druido arrabbiato perché il party ha calpestato un fiore raro.",tags:["foresta","leggero"]},{t:"Un nano che cerca la strada di casa da quarant'anni.",tags:["montagna","sottosuolo","leggero"]}],
+ /* --- fazioni --- */
+ fz_tipo:["Gilda","Confraternita","Ordine","Circolo","Compagnia","Casata","Famiglia","Società segreta","Lega","Culto","Corporazione"],
+ fz_nome:[{t:"della Lanterna Spenta",tags:["cupo"]},{t:"del Martello d'Argento",tags:["montagna"]},{t:"dei Mercanti del Sale",tags:["costa","deserto"]},{t:"della Rosa Nera",tags:["citta"]},
+  {t:"del Sole Invitto",tags:["eroico"]},{t:"della Quercia Antica",tags:["foresta"]},{t:"del Terzo Occhio",tags:["magia-alta"]},{t:"delle Mani Grigie"},{t:"del Corvo Bianco",tags:["cupo"]},
+  {t:"della Bilancia"},{t:"della Strada Lunga"},{t:"del Grifone",tags:["eroico"]},{t:"della Marea",tags:["costa"]},{t:"del Calice Rotto",tags:["leggero"]},{t:"dell'Ultima Veglia",tags:["cupo"]},
+  {t:"della Pietra Profonda",tags:["sottosuolo","montagna"]},{t:"del Vento di Sabbia",tags:["deserto"]},{t:"della Stella Polare",tags:["artico"]},{t:"del Giunco",tags:["palude"]}],
+ fz_scopo:[{t:"controllare tutto il commercio della regione"},{t:"mettere un proprio uomo sul trono"},{t:"proteggere un antico segreto"},{t:"cacciare la magia dalla regione",tags:["magia-bassa"]},
+  {t:"risvegliare un'entità dimenticata",tags:["cupo"]},{t:"difendere i poveri dai soprusi",tags:["eroico"]},{t:"impadronirsi delle miniere",tags:["montagna"]},{t:"ritrovare un artefatto perduto"},
+  {t:"vendicarsi della famiglia regnante"},{t:"aprire una via commerciale con l'Ombroscuro",tags:["sottosuolo","magia-alta"]},{t:"diventare la compagnia teatrale più famosa del regno",tags:["leggero"]}],
+ fz_risorsa:["oro in abbondanza","informatori ovunque","un piccolo esercito di mercenari","un mago di grande potere","la fiducia del popolo","documenti compromettenti su mezza nobiltà","un artefatto antico","navi e porti","il favore di un dio"],
+ fz_passo:[{t:"raccogliere fondi con affari loschi"},{t:"corrompere un funzionario chiave"},{t:"eliminare un testimone scomodo",tags:["cupo"]},{t:"reclutare un esperto (forse un PG?)"},{t:"recuperare una mappa o una chiave"},
+  {t:"sabotare un rivale"},{t:"conquistare la fiducia del popolo con un gesto plateale"},{t:"spostare uomini e armi in città"},{t:"compiere un rituale preparatorio",tags:["magia-media","magia-alta","cupo"]},
+  {t:"stringere un'alleanza inattesa"},{t:"impadronirsi di un luogo strategico"},{t:"far arrestare un innocente al posto loro"}],
+ fz_notizia:[{t:"Si dice che {$fz} abbia {fz_fatto}."},{t:"Un informatore giura che {$fz} è dietro a {fz_cosa}."},{t:"In piazza si parla solo di {$fz}: {fz_fatto2}."}],
+ fz_fatto:["comprato il silenzio di mezza guardia","perso un carico importante","guadagnato un nuovo, potente alleato","fatto sparire qualcuno","celebrato una vittoria in gran segreto"],
+ fz_cosa:["l'incendio al porto","la sparizione dell'esattore","i nuovi dazi","la morte del vecchio mercante","i disordini dell'ultima settimana"],
+ fz_fatto2:["i loro uomini sono ovunque","qualcuno li ha visti litigare tra loro","hanno annunciato un premio per chi porta notizie","il loro capo non si vede da giorni"]
+};
+const LOC_SIZES=[["borgo","Borgo",[40,120]],["villaggio","Villaggio",[150,600]],["cittadina","Cittadina",[1000,5000]],["citta","Città",[8000,25000]],["metropoli","Metropoli",[40000,120000]]];
+
+/* ================= NOMI E PERSONE ================= */
+const NOMI={m:["Aldo","Bertrando","Corrado","Dario","Ettore","Fosco","Gualtiero","Ivo","Lapo","Manfredi","Nardo","Ottone","Piero","Rinaldo","Sandro","Tancredi","Ugo","Vanni","Brann","Osric","Tobia","Galeazzo","Ruggero","Baldo"],
+  f:["Ada","Bice","Costanza","Delia","Elena","Fiora","Gemma","Ilaria","Lena","Matilde","Nives","Olimpia","Pia","Rosalba","Selvaggia","Tea","Ursula","Viola","Brina","Agnese","Mirella","Cunegonda","Ginevra","Ortensia"]};
+const COGNOMI=["Ferraguti","Malaspina","Della Rocca","Bassi","Corvino","Lanzi","Pellegrini","Roncaglia","Vescovi","Zanetti","Grifoni","Mazzola","Neri","Orsini","Saltarelli","Tosi","Bruni","Quaglia","Fumagalli","Pietrabianca","Cavalcanti","Moretti","Spada","Ventura"];
+const MESTIERI={Locanda:"oste",Bottega:"bottegaio/a",Tempio:"sacerdote/ssa",Fabbro:"fabbro","Mercato":"capomercato","Casa del borgomastro":"borgomastro",Mulino:"mugnaio/a",Guardiola:"capitano/a della guardia",
+  "Bottega dell'erborista":"erborista","Stalla e scuderia":"stalliere/a",Porto:"capitano/a di porto",Biblioteca:"bibliotecario/a",Bisca:"biscazziere/a"};
+const PERS_TRATTO=["sorride troppo","non si fida degli stranieri","parla a voce altissima","è curioso/a di tutto","ha sempre fame","è malinconico/a","è avido/a ma onesto/a","è gentilissimo/a, e nasconde qualcosa","odia il proprio lavoro","è un pettegolo/a incallito/a","è stanco/a e distratto/a","è nervoso/a da qualche giorno"];
+const DIVINITA=["della Madre Luna","del Fabbro Celeste","dei Sette Venti","della Dama delle Maree","del Viandante","della Spiga d'Oro","del Guardiano dei Morti","della Fiamma Eterna"];
+/* nome di locanda con accordo di genere: «La Lanterna Nera», «Il Drago Nero» */
+function innName(){const a=R(GW.inn_n1);let b=R(GW.inn_n2);if(/^(La |L'Ancora)/.test(a)&&/o$/.test(b))b=b.slice(0,-1)+"a";return a+" "+b}
+function persona(){const sx=rnd()<.5?"m":"f";return{nome:R(NOMI[sx])+" "+R(COGNOMI),sx,tratto:R(PERS_TRATTO)}}
+/* ================= CONTESTO ================= */
+const ENV_LIST=PROF_OPTS.amb.slice();
+/* ambiente scelto nel selettore, o dal profilo; "misto" pesca un ambiente a caso */
+function envOfV(v){v=v||profGet().amb;if(v==="misto")v=R(ENV_LIST.filter(x=>x[0]!=="misto"))[0];return v}
+function envOf(selId){let v=($(selId)&&$(selId).value)||profGet().amb;if(v==="misto")v=R(ENV_LIST.filter(x=>x[0]!=="misto"))[0];return v}
+function mkCtx(env,extra){const p=profGet();return{tags:[p.tono,"magia-"+p.magia,env].concat(extra||[]),vars:{}}}
+/* le voci legate a un ambiente valgono solo in quell'ambiente (niente datteri in riva al mare);
+   tono e magia restano preferenze, non vincoli */
+const ENVS=new Set(PROF_OPTS.amb.map(x=>x[0]).filter(x=>x!=="misto"));
+const _GF={};
+function gFilt(tags){const envs=tags.filter(t=>ENVS.has(t));const key=envs.sort().join(",");if(_GF[key])return _GF[key];
+  const G={};for(const k in GW){const a=GW[k];if(!Array.isArray(a)){G[k]=a;continue}
+    G[k]=a.filter(e=>{if(typeof e==="string")return true;const et=(e.tags||[]).map(t=>t.replace("!","")).filter(t=>ENVS.has(t));return!et.length||et.some(t=>envs.includes(t))})}
+  return _GF[key]=G}
+const X=(key,C)=>gExpand(gFilt(C.tags),"{"+key+"}",C);
+/* più voci diverse dalla stessa tabella */
+function Xn(key,C,n){const out=[];for(let i=0;i<n*8&&out.length<n;i++){const v=X(key,C);if(!out.includes(v))out.push(v)}while(out.length<n)out.push(X(key,C));return out}
+/* accordo di genere tra prefisso e aggettivo (Monte Alto, Rocca Alta) */
+const PRE_F=new Set(["Brina","Rocca","Riva","Selva","Acqua","Duna","Neve","Grotta","Valle","Torre","Fonte","Pietra","Croce"]);
+const ADJ_M={nera:"nero",fonda:"fondo",grigia:"grigio",alta:"alto",vecchia:"vecchio",bruciata:"bruciato",ventosa:"ventoso",Allegra:"Allegro",Santa:"Santo",Marina:"Marino"};
+function placeName(C){const p=X("pre",C);let s=X("suf",C);if(!PRE_F.has(p)&&ADJ_M[s])s=ADJ_M[s];
+  return rnd()<.15&&ADJ_M[X("suf",C)]===undefined&&/^(nera|nero|alta|alto|fonda|fondo)$/.test(s)?p+s:p+" "+s}
+const envName=e=>(PROF_OPTS.amb.find(x=>x[0]===e)||["",e])[1];
+let CUR={};/* ultima creazione per scheda */
+function seedFrom(id){const v=($(id).value||"").trim();$(id).value="";return v||newSeed()}
+
+/* ================= INSEDIAMENTI ================= */
+function genSettlement(seed){const envSel=$("sEnv").value;const sz=$("sSize").value;
+  return withSeed(seed,()=>{const env=envOfV(envSel);const C=mkCtx(env);
+    const size=sz?LOC_SIZES.find(x=>x[0]===sz):R(LOC_SIZES.slice(0,4));
+    if(size[0]==="citta"||size[0]==="metropoli")C.tags.push("citta");
+    const pop=Math.round(size[2][0]+rnd()*(size[2][1]-size[2][0]));
+    const nLuoghi=size[0]==="borgo"?2:size[0]==="villaggio"?3:size[0]==="cittadina"?4:5;
+    const tipi=["Locanda"].concat(rSample(GW.luogo_tipo.filter(t=>t!=="Locanda"&&(t!=="Porto"||env==="costa")),nLuoghi-1));
+    const dets=Xn("luogo_det",C,tipi.length);
+    const luoghi=tipi.map((t,ti)=>{const g=persona();
+      const nome=t==="Locanda"?`Locanda «${innName()}»`:t==="Tempio"?`Tempio ${R(DIVINITA)}`:t==="Bottega"?`Bottega di ${g.nome.split(" ")[0]}`:t;
+      return{tipo:t,nome,gestore:g,ruolo:MESTIERI[t]||"gestore",det:dets[ti]}});
+    const voci=Xn("voce",C,3).map(t=>({t,v:R(["vera","vera","falsa","parziale"])}));
+    return{type:"set",seed,env,name:placeName(C),size:size[1],pop,governo:X("governo",C),economia:X("economia",C),problema:X("problema",C),
+      atmosfera:X("atmosfera",C),segreto:X("segreto_luogo",C),luoghi,voci}})}
+function htmlSettlement(S){
+  const vt={vera:"v",falsa:"f",parziale:"p"};
+  return`<div class="card"><h3>${esc(S.name)}</h3><div class="sub">${S.size} · circa ${S.pop.toLocaleString("it-IT")} abitanti · ${envName(S.env)}</div>
+   <div class="sec"><h4>Prima impressione</h4><p>${cap(S.atmosfera)}.</p></div>
+   <div class="sec"><h4>Chi comanda · di cosa si vive</h4><p>Governa ${S.governo}. L'economia si regge su ${S.economia}.</p></div>
+   <div class="sec"><h4>Il problema del momento (aggancio)</h4><p>${cap(S.problema)}.</p></div>
+   <div class="sec"><h4>Luoghi notevoli</h4><ul>${S.luoghi.map(l=>`<li><b>${esc(l.nome)}</b> — ${l.det}. ${cap(l.ruolo)}: <b>${esc(l.gestore.nome)}</b>, che ${l.gestore.tratto}.</li>`).join("")}</ul></div>
+   <div class="sec"><h4>Voci di paese</h4><ul>${S.voci.map(v=>`<li>${esc(v.t)} <span class="dmonly tag ${vt[v.v]}">${v.v}</span></li>`).join("")}</ul></div>
+   <div class="sec"><h4>Segreto (solo DM)</h4><p class="dm">${cap(S.segreto)}.</p></div>
+   <div class="seed">seme ${S.seed}</div></div>`}
+function diarySettlement(S){
+  toDiary("places",{name:S.name,note:`${S.size}, ${S.pop} ab. · ${envName(S.env)} · Governo: ${S.governo} · Economia: ${S.economia} · Luoghi: ${S.luoghi.map(l=>l.nome+" ("+l.gestore.nome+")").join(", ")} · Segreto: ${S.segreto}`});
+  toDiary("hooks",{text:`${S.name}: ${S.problema}`});
+  S.luoghi.forEach(l=>toDiary("npcs",{name:l.gestore.nome,where:S.name+" — "+l.nome,att:"Neutrale",note:`${cap(l.ruolo)}; ${l.gestore.tratto}`}));
+  return`${S.name}: luogo, aggancio e ${S.luoghi.length} PNG`}
+
+/* ================= LOCANDE ================= */
+function genInn(seed){const envSel=$("iEnv").value;
+  return withSeed(seed,()=>{const env=envOfV(envSel);const C=mkCtx(env);
+    const pick=k=>{const l=gFilt(C.tags)[k];const sel=[];
+      for(let i=0;i<20&&sel.length<(k==="piatto"?3:2);i++){const txt=gPick(l,C.tags);const o=l.find(e=>e.t===txt);if(o&&!sel.includes(o))sel.push(o)}return sel};
+    const oste=persona();
+    return{type:"inn",seed,env,name:innName(),atm:X("inn_atm",C),oste,piatti:pick("piatto"),bevande:pick("bevanda"),
+      avventori:Xn("avventore_fa",C,3).map(fa=>({p:persona(),fa})),scena:X("scena",C),voce:X("voce",C),
+      stanza:R(["5 ma la notte (pagliericcio in comune)","8 ma la notte","1 mo la notte, colazione compresa","2 mo per la stanza migliore, con camino"])}})}
+function htmlInn(I){return`<div class="card"><h3>Locanda «${esc(I.name)}»</h3><div class="sub">${cap(I.atm)}</div>
+   <div class="sec"><h4>L'oste</h4><p><b>${esc(I.oste.nome)}</b>, che ${I.oste.tratto}.</p></div>
+   <div class="sec"><h4>Menu</h4><table>${I.piatti.map(p=>`<tr><td>${cap(p.t)}</td><td style="text-align:right;white-space:nowrap">${p.p}</td></tr>`).join("")}${I.bevande.map(p=>`<tr><td>${cap(p.t)}</td><td style="text-align:right;white-space:nowrap">${p.p}</td></tr>`).join("")}<tr><td><i>Stanza</i></td><td style="text-align:right">${I.stanza}</td></tr></table></div>
+   <div class="sec"><h4>Avventori</h4><ul>${I.avventori.map(a=>`<li><b>${esc(a.p.nome)}</b> ${a.fa} (${a.p.tratto}).</li>`).join("")}</ul></div>
+   <div class="sec"><h4>Quando entrate…</h4><p>${I.scena}</p></div>
+   <div class="sec"><h4>Si sente dire</h4><p>${esc(I.voce)}</p></div>
+   <div class="seed">seme ${I.seed}</div></div>`}
+function diaryInn(I){toDiary("places",{name:"Locanda «"+I.name+"»",note:`${I.atm} · Oste: ${I.oste.nome} · Avventori: ${I.avventori.map(a=>a.p.nome).join(", ")}`});
+  toDiary("npcs",{name:I.oste.nome,where:"Locanda «"+I.name+"»",att:"Neutrale",note:"Oste; "+I.oste.tratto});return"la locanda e l'oste"}
+
+/* ================= ROVINE ================= */
+function genRuin(seed){const envSel=$("rEnv").value;
+  return withSeed(seed,()=>{const env=envOfV(envSel);const C=mkCtx(env);
+    return{type:"rov",seed,env,tipo:X("rov_tipo",C),name:placeName(C),chi:X("rov_chi",C),per:X("rov_per",C),fine:X("rov_fine",C),ora:X("rov_ora",C),
+      anni:R([60,150,300,800,2000]),pericolo:R(GW.rov_pericolo),tesoro:R(GW.rov_tesoro),aggancio:X("rov_aggancio",C)}})}
+function htmlRuin(V){return`<div class="card"><h3>${esc(V.name)}</h3><div class="sub">${cap(V.tipo)} · ${envName(V.env)} · in rovina da circa ${V.anni} anni</div>
+   <div class="sec"><h4>Storia</h4><p>Il luogo fu costruito da <b>${V.chi}</b> per ${V.per}, e fu abbandonato dopo ${V.fine}.</p></div>
+   <div class="sec"><h4>Chi ci vive ora</h4><p>${cap(V.ora)}.</p></div>
+   <div class="sec"><h4>Pericolo</h4><p>${cap(V.pericolo)}.</p></div>
+   <div class="sec"><h4>Tesoro (solo DM)</h4><p class="dm">${cap(V.tesoro)}.</p></div>
+   <div class="sec"><h4>Come ci arrivano i PG</h4><p>${esc(V.aggancio)}</p></div>
+   <div class="seed">seme ${V.seed}</div></div>`}
+function diaryRuin(V){toDiary("places",{name:V.name+" ("+V.tipo+")",note:`Costruita da ${V.chi} per ${V.per}; caduta per ${V.fine}. Ora: ${V.ora}. Pericolo: ${V.pericolo}. Tesoro: ${V.tesoro}`});
+  toDiary("hooks",{text:V.name+": "+V.aggancio});return"la rovina e un aggancio"}
+
+/* ================= VIAGGI ================= */
+function genTravel(seed){const envSel=$("tEnv").value,days=parseInt($("tDays").value,10)||3;
+  return withSeed(seed,()=>{const env=envOfV(envSel);const C=mkCtx(env);const used=new Set();
+    const dd=[...Array(days)].map((_,i)=>{const r=rnd();let ev="";
+      if(r<.35)ev="";else if(r<.8){for(let k=0;k<8;k++){ev=X("viaggio_ev",C);if(!used.has(ev))break}used.add(ev)}else ev="Incontro: "+X("incontro_nc",C);
+      return{meteo:X("meteo",C),ev,campo:rnd()<.45?X("campo",C):""}});
+    return{type:"tra",seed,env,days:dd}})}
+function htmlTravel(T){return`<div class="card"><h3>Viaggio di ${T.days.length} giorni</h3><div class="sub">${envName(T.env)}</div>
+   <table>${T.days.map((d,i)=>`<tr><td style="white-space:nowrap"><b>Giorno ${i+1}</b></td><td><i>${cap(d.meteo)}.</i> ${d.ev?esc(d.ev):"<span style='color:#8a744c'>Nessun evento: il cammino procede.</span>"}${d.campo?`<br><span style="font-size:.85rem">🔥 ${esc(d.campo)}</span>`:""}</td></tr>`).join("")}</table>
+   <div class="seed">seme ${T.seed}</div></div>`}
+function diaryTravel(T){toDiary("session",`— 🧭 Viaggio (${T.days.length} giorni, ${envName(T.env)}) —\n`+T.days.map((d,i)=>`G${i+1}: ${d.meteo}. ${d.ev||"—"}`).join("\n"));return"il resoconto del viaggio (nella sessione)"}
+
+/* ================= EVENTI ================= */
+function genEvent(seed){const envSel=$("eEnv").value;
+  return withSeed(seed,()=>{const env=envOfV(envSel);const C=mkCtx(env);let c1=X("colpo",C),c2;for(let k=0;k<8;k++){c2=X("colpo",C);if(c2!==c1)break}
+    return{type:"eve",seed,env,causa:X("ev_causa",C),effetto:X("ev_effetto",C),conseg:X("ev_conseg",C),colpi:[c1,c2],nc:X("incontro_nc",C)}})}
+function htmlEvent(E){return`<div class="card"><h3>${esc(E.causa)}</h3><div class="sub">${envName(E.env)}</div>
+   <div class="sec"><h4>Causa → effetto → conseguenza</h4><p><b>${esc(E.causa)}</b>: ${E.effetto}. E ${E.conseg}</p></div>
+   <div class="sec"><h4>Colpi di scena (solo DM)</h4><ul class="dm" style="margin-left:0;padding-left:26px">${E.colpi.map(c=>`<li>${esc(c)}</li>`).join("")}</ul></div>
+   <div class="sec"><h4>Incontro senza spade</h4><p>${esc(E.nc)}</p></div>
+   <div class="seed">seme ${E.seed}</div></div>`}
+function diaryEvent(E){toDiary("hooks",{text:`${E.causa}: ${E.effetto}`});return"l'evento tra gli agganci"}
+
+/* ================= DISPATCH ================= */
+const GEN={set:[genSettlement,htmlSettlement,diarySettlement,"sSeed",S=>S.name],inn:[genInn,htmlInn,diaryInn,"iSeed",I=>"Locanda «"+I.name+"»"],
+  rov:[genRuin,htmlRuin,diaryRuin,"rSeed",V=>V.name+" ("+V.tipo+")"],tra:[genTravel,htmlTravel,diaryTravel,"tSeed",T=>"Viaggio di "+T.days.length+" giorni"],eve:[genEvent,htmlEvent,diaryEvent,"eSeed",E=>E.causa]};
+function run(k){const g=GEN[k];CUR[k]=g[0](seedFrom(g[3]));show(k)}
+function show(k){const g=GEN[k],o=CUR[k];if(!o)return;
+  $("out-"+k).innerHTML=g[1](o)+`<div class="toolbar"><button class="btn gold" onclick="toDiaryCur('${k}')">📖 Al diario</button><button class="btn" onclick="saveCur('${k}')">💾 Salva</button><button class="btn" onclick="$('${g[3]}').value='${o.seed}';run('${k}')" title="Rigenera identico dal seme">↻ Stesso seme</button></div>`}
+function toDiaryCur(k){const o=CUR[k];if(!o)return;const what=GEN[k][2](o);toast("📖 Nel diario: "+what)}
+function saveCur(k){const o=CUR[k];if(!o)return;const W=world();W.saved=W.saved||[];
+  if(!W.saved.some(x=>x.type===o.type&&x.seed===o.seed))W.saved.unshift(Object.assign({id:diaryId(),title:GEN[k][4](o),date:new Date().toISOString().slice(0,10)},o));
+  W.saved=W.saved.slice(0,80);worldSave(W);toast("💾 Salvato")}
+function openSaved(){const W=world(),l=W.saved||[];const ic={set:"🏘",inn:"🍺",rov:"🏚",tra:"🧭",eve:"⚡"};
+  $("savedList").innerHTML=l.length?l.map(x=>`<div class="row"><span style="flex:1">${ic[x.type]||""} <b style="color:var(--gold-l)">${esc(x.title)}</b> <span style="color:var(--muted);font-size:.78rem">${x.date}</span></span>
+    <button class="btn small" onclick="loadSaved('${x.id}')">Apri</button><span class="xbtn" onclick="delSaved('${x.id}')">✕</span></div>`).join(""):`<p style="color:var(--muted)">Nulla di salvato.</p>`;
+  $("savedModal").style.display="flex"}
+function closeSaved(){$("savedModal").style.display="none"}
+function loadSaved(id){const x=(world().saved||[]).find(s=>s.id===id);if(!x)return;CUR[x.type]=x;closeSaved();showTab(x.type);show(x.type)}
+function delSaved(id){const W=world();W.saved=(W.saved||[]).filter(s=>s.id!==id);worldSave(W);openSaved()}
+function doPrint(dm){document.body.classList.toggle("nodm",!dm);window.print();setTimeout(()=>document.body.classList.remove("nodm"),800)}
+
+/* ================= FAZIONI E OROLOGI ================= */
+function world(){const w=lsGet("dnd5e_world",{});if(!Array.isArray(w.factions))w.factions=[];if(!Array.isArray(w.saved))w.saved=[];return w}
+function worldSave(w){lsSet("dnd5e_world",w)}
+function newFaction(){const env=profGet().amb==="misto"?R(ENV_LIST.slice(1))[0]:profGet().amb;
+  const f=withSeed(newSeed(),()=>{const C=mkCtx(env);
+    const n=4+Math.floor(rnd()*3);const passi=[];for(let k=0;k<20&&passi.length<n-1;k++){const p=X("fz_passo",C);if(!passi.includes(p))passi.push(p)}
+    const goal=X("fz_scopo",C);passi.push("ottenere il risultato finale: "+goal);
+    const capo=persona();
+    return{id:diaryId(),name:R(GW.fz_tipo)+" "+X("fz_nome",C),goal,leader:capo.nome,leaderTr:capo.tratto,res:R(GW.fz_risorsa),steps:passi,prog:0,log:[]}});
+  const W=world();W.factions.unshift(f);worldSave(W);renderFactions();toast("⚔ Nuova fazione: "+f.name)}
+function fzSet(id,v){const W=world(),f=W.factions.find(x=>x.id===id);if(!f)return;f.prog=Math.max(0,Math.min(f.steps.length,v));worldSave(W);renderFactions()}
+function fzDel(id){if(!confirm("Eliminare questa fazione?"))return;const W=world();W.factions=W.factions.filter(x=>x.id!==id);worldSave(W);renderFactions()}
+function fzRename(id,v){const W=world(),f=W.factions.find(x=>x.id===id);if(!f)return;f.name=v.trim()||f.name;worldSave(W)}
+function fzDiaryId(id){const f=world().factions.find(x=>x.id===id);if(f)fzDiary(f)}
+function fzDiary(f){toDiary("hooks",{text:`${f.name} vuole ${f.goal} (capo: ${f.leader})`});toast("📖 Fazione tra gli agganci del diario")}
+function renderFactions(){const W=world();
+  $("fzList").innerHTML=W.factions.length?W.factions.map(f=>`<div class="fz">
+    <h3><input type="text" value="${esc(f.name)}" onchange="fzRename('${f.id}',this.value)" style="font-family:var(--font-display);color:var(--gold-l);background:transparent;border:none;font-size:1rem;width:100%;padding:0"></h3>
+    <div class="meta">Vuole <b>${esc(f.goal)}</b> · Guida: ${esc(f.leader)}, che ${esc(f.leaderTr)} · Punto di forza: ${esc(f.res)}</div>
+    <div class="clock" title="Clicca un segmento per impostare l'avanzamento">${f.steps.map((s,i)=>`<span class="${i<f.prog?"on":""}" onclick="fzSet('${f.id}',${i<f.prog&&i===f.prog-1?i:i+1})"></span>`).join("")}<span style="border:none;width:auto;cursor:default;font-size:.8rem;color:var(--muted)">&nbsp;${f.prog}/${f.steps.length}</span></div>
+    <ol>${f.steps.map((s,i)=>`<li class="${i<f.prog?"done":i===f.prog?"next":""}">${esc(cap(s))}</li>`).join("")}</ol>
+    ${f.log.length?`<div style="font-size:.8rem;color:var(--muted);margin-top:6px">Ultime notizie: ${f.log.slice(0,2).map(esc).join(" · ")}</div>`:""}
+    <div class="toolbar"><button class="btn small" onclick="fzSet('${f.id}',${f.prog+1})">＋ Avanza</button><button class="btn small" onclick="fzSet('${f.id}',${f.prog-1})">－ Indietro</button>
+     <button class="btn small" onclick="fzDiaryId('${f.id}')">📖 Al diario</button><span class="xbtn" style="margin-left:auto" onclick="fzDel('${f.id}')">✕ Elimina</span></div></div>`).join("")
+   :`<p style="color:var(--muted)">Nessuna fazione. Creane due o tre in competizione tra loro: il mondo si muoverà da solo.</p>`}
+/* tra una sessione e l'altra: ogni fazione tira 1d6 (1–2 ferma, 3–5 +1 tappa, 6 +2) e produce una notizia */
+function advanceFactions(){const W=world();if(!W.factions.length){toast("Crea prima una fazione");return}
+  const lines=[];const C=mkCtx(profGet().amb);
+  W.factions.forEach(f=>{if(f.prog>=f.steps.length){lines.push({f,t:`${f.name} ha già raggiunto il suo scopo: il mondo ne porta i segni.`,done:true});return}
+    const d=1+Math.floor(Math.random()*6),adv=d<=2?0:d<=5?1:2;const before=f.prog;f.prog=Math.min(f.steps.length,f.prog+adv);
+    C.vars.fz=f.name;const news=gExpand(GW,"{fz_notizia}",C);
+    let t;if(!adv)t=`${f.name} resta in attesa (d6: ${d}). ${news}`;
+    else{const fatti=f.steps.slice(before,f.prog);t=`${f.name} avanza (d6: ${d}): ${fatti.map(cap).join("; ")}. ${news}`;
+      if(f.prog>=f.steps.length)t+=` ⚠ IL PIANO SI È COMPIUTO: ${f.goal}.`}
+    f.log.unshift(news);f.log=f.log.slice(0,6);lines.push({f,t,news})});
+  worldSave(W);renderFactions();
+  $("fzReport").innerHTML=`<div class="card"><h3>⏳ Tra una sessione e l'altra</h3><ul>${lines.map(l=>`<li>${esc(l.t)}</li>`).join("")}</ul>
+    <div class="toolbar"><button class="btn gold" onclick="fzReportToDiary()">📖 Resoconto nel diario</button></div></div>`;
+  window._fzLines=lines.map(l=>l.t);window._fzNews=lines.filter(l=>l.news).map(l=>l.news)}
+function fzReportToDiary(){if(!window._fzLines)return;toDiary("session","— ⏳ Nel frattempo, le fazioni —\n"+window._fzLines.join("\n"));
+  (window._fzNews||[]).forEach(n=>toDiary("hooks",{text:"Voce: "+n}));toast("📖 Resoconto e voci nel diario")}
+
+/* ================= SCHEDE / INIT ================= */
+function showTab(t){["set","inn","rov","tra","eve","fz"].forEach(x=>{$("view-"+x).style.display=x===t?"":"none";$("tab-"+x).classList.toggle("active",x===t)});if(t==="fz")renderFactions()}
+(function(){
+  $("sSize").innerHTML+=LOC_SIZES.map(s=>`<option value="${s[0]}">${s[1]}</option>`).join("");
+  document.querySelectorAll(".envSel").forEach(s=>s.innerHTML=`<option value="">Dal profilo</option>`+ENV_LIST.map(([v,l])=>`<option value="${v}">${l}</option>`).join(""));
+  profBadge("pfBadgeW");renderFactions();
+})();
+
+</script>
+</body>
+</html>

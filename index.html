@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suite D&D 5E</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@700&display=swap');
+:root{
+  --bg:#16100b; --border:#4a3826; --gold:#c9a227; --gold-l:#eccb62;
+  --ink:#ece2d0; --muted:#a89878; --red:#8b2e2e;
+  --font-display:'Cinzel',Georgia,serif;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+body{color:var(--ink); font-family:Georgia,'Times New Roman',serif; min-height:100vh;
+  background:
+   radial-gradient(1200px 500px at 50% -10%, #2c2114 0%, transparent 60%),
+   radial-gradient(900px 600px at 110% 110%, #241a10 0%, transparent 55%),
+   var(--bg);
+  background-attachment:fixed}
+::selection{background:var(--red); color:#fff}
+header{text-align:center; padding:56px 20px 34px; position:relative}
+header::after{content:""; display:block; width:min(420px,70%); height:3px; margin:26px auto 0; background:linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold-l) 50%, var(--gold) 80%, transparent); opacity:.55}
+h1{font-family:'Cinzel Decorative',var(--font-display); font-size:clamp(2rem,6vw,3.2rem); color:var(--gold-l); letter-spacing:3px; line-height:1.15}
+header p{color:var(--muted); margin-top:10px; font-size:1rem}
+main{max-width:900px; margin:0 auto; padding:10px 20px 60px}
+.tools{list-style:none; display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px}
+.tools a{display:flex; gap:14px; align-items:flex-start; height:100%; padding:18px; text-decoration:none; color:var(--ink); background:linear-gradient(170deg,#241b12,#1e160d); border:1px solid var(--border); border-radius:12px; transition:border-color .15s}
+.tools a:hover{border-color:var(--gold)}
+.tools a:focus-visible{outline:2px solid var(--gold-l); outline-offset:3px}
+.ico{font-size:1.9rem; line-height:1}
+.tools h2{font-family:var(--font-display); color:var(--gold-l); font-size:1.08rem; margin-bottom:4px}
+.tools p{color:var(--muted); font-size:.88rem; line-height:1.5}
+footer{text-align:center; color:var(--muted); font-size:.8rem; padding:0 20px 30px; max-width:640px; margin:0 auto; line-height:1.5}
+@media (prefers-reduced-motion:reduce){.tools a{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Suite D&amp;D 5E</h1>
+  <p>Gli strumenti del master per preparare e condurre la campagna.</p>
+</header>
+<main>
+  <ul class="tools">
+    <li><a href="characters/index.html"><span class="ico">⚔️</span><span><h2>Schede PG</h2><p>Crea e gestisci le schede dei personaggi, dal Player's Handbook ai supplementi.</p></span></a></li>
+    <li><a href="npcs/index.html"><span class="ico">🎭</span><span><h2>NPC</h2><p>Genera al volo PNG pronti da improvvisare al tavolo.</p></span></a></li>
+    <li><a href="encounters/index.html"><span class="ico">🐉</span><span><h2>Incontri</h2><p>Bilancia gli scontri con il bestiario e segui il combattimento con il tracker.</p></span></a></li>
+    <li><a href="world/index.html"><span class="ico">🌍</span><span><h2>Mondo</h2><p>Genera insediamenti, locande, rovine, viaggi, eventi e fazioni.</p></span></a></li>
+    <li><a href="journal/index.html"><span class="ico">📖</span><span><h2>Diario</h2><p>Tieni traccia di sessioni, PNG, luoghi e agganci della campagna.</p></span></a></li>
+    <li><a href="puzzles/index.html"><span class="ico">🔐</span><span><h2>Enigmi</h2><p>Crea cifrari, rune, indovinelli e rompicapi logici per i giocatori.</p></span></a></li>
+  </ul>
+</main>
+<footer>I dati restano salvati in questo browser. Usa “Backup suite” in qualsiasi tool per esportarli in un file JSON.</footer>
+</body>
+</html>
