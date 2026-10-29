@@ -425,6 +425,39 @@ label.fld span{display:block; font-size:.72rem; color:var(--muted); margin-botto
 
 <script>
 "use strict";
+/* ================= STORAGE DELLA SUITE =================
+   Unico punto di accesso a localStorage: ogni dato ha un nome logico e una sola chiave reale.
+   La versione dello schema è in dnd5e_schema; dbMigrate() applica le migrazioni mancanti all'apertura di qualunque tool. */
+const STORE={chars:"dnd5e_chars",draft:"dnd5e_draft",lang:"dnd5e_lang",homebrew:"dnd5e_homebrew",npcs:"dnd5e_npcs",
+  encSrc:"dnd5e_enc_src",encSaved:"dnd5e_enc_saved",encTrk:"dnd5e_enc_trk",encHb:"dnd5e_enc_hb",
+  diary:"dnd5e_diary",puzzles:"dnd5e_puzzles",profile:"dnd5e_profile",world:"dnd5e_world"};
+const STORE_RAW=["lang"];/* testo semplice, non JSON */
+const DB_SCHEMA=2,DB_SCHEMA_KEY="dnd5e_schema";
+/* chiavi delle versioni precedenti → chiave attuale (migrazione 1→2 e ripristino di backup vecchi) */
+const STORE_LEGACY={enc_src:"dnd5e_enc_src",enc_saved:"dnd5e_enc_saved",enc_trk:"dnd5e_enc_trk",enc_hb:"dnd5e_enc_hb"};
+function dbKey(n){const k=STORE[n];if(!k)throw new Error("Dato di storage sconosciuto: "+n);return k}
+function dbGet(n,d){try{const v=localStorage.getItem(dbKey(n));if(v==null)return d;return STORE_RAW.includes(n)?v:JSON.parse(v)}catch(e){return d}}
+let DB_WARNED=false;
+function dbSet(n,v){try{localStorage.setItem(dbKey(n),STORE_RAW.includes(n)?String(v):JSON.stringify(v));return true}
+  catch(e){if(!DB_WARNED){DB_WARNED=true;alert("⚠ Spazio di salvataggio del browser pieno: le ultime modifiche non sono state salvate.\n\nFai un 🗄 Backup suite e libera spazio, per esempio eliminando elementi salvati che non usi più.")}return false}}
+function dbDel(n){try{localStorage.removeItem(dbKey(n))}catch(e){}}
+function dbSchema(){const v=parseInt(localStorage.getItem(DB_SCHEMA_KEY),10);return v>0?v:1}
+const DB_MIGRATIONS={
+  /* 1→2: chiavi degli Incontri sotto il prefisso dnd5e_, con copia dei valori originali in dnd5e_migr_v2 */
+  2(){const snap={};for(const o in STORE_LEGACY){const v=localStorage.getItem(o);if(v!=null)snap[o]=v}
+    if(Object.keys(snap).length&&localStorage.getItem("dnd5e_migr_v2")==null)localStorage.setItem("dnd5e_migr_v2",JSON.stringify({date:new Date().toISOString(),store:snap}));
+    for(const o in snap){const n=STORE_LEGACY[o];if(localStorage.getItem(n)==null)localStorage.setItem(n,snap[o]);if(localStorage.getItem(n)!=null)localStorage.removeItem(o)}}
+};
+function dbMigrate(){try{
+  let v=dbSchema();
+  if(v>DB_SCHEMA){console.warn("Suite D&D 5E: dati creati da una versione più recente della suite (schema "+v+")");return}
+  for(let x=v+1;x<=DB_SCHEMA;x++){DB_MIGRATIONS[x]();localStorage.setItem(DB_SCHEMA_KEY,String(x));v=x}
+  /* chiavi vecchie ricomparse (es. una scheda rimasta aperta con il codice precedente): recuperate solo se la chiave nuova manca */
+  for(const o in STORE_LEGACY){const val=localStorage.getItem(o);if(val==null)continue;
+    if(localStorage.getItem(STORE_LEGACY[o])==null){localStorage.setItem(STORE_LEGACY[o],val);localStorage.removeItem(o)}
+    else console.warn("Suite D&D 5E: trovata la vecchia chiave "+o+" accanto a "+STORE_LEGACY[o]+": lasciata intatta.")}
+}catch(e){console.error("Suite D&D 5E: migrazione dello storage non riuscita",e)}}
+dbMigrate();
 /* ================= DATABASE ================= */
 // asi: bonus fissi; flex:[[quante,valore],...] = bonus a scelta; dv: scurovisione
 const RACES=[
@@ -1855,9 +1888,9 @@ const BOND_POOL=["Proteggo chi non può proteggersi da solo.","Un giorno torner�
 const FLAW_POOL=["Non so resistere a un bel viso.","Il denaro mi fa perdere ogni giudizio.","Sono terribilmente invidioso dei successi altrui.","Non mi fido di nessuno, nemmeno degli amici.","Preferisco mentire anche quando la verità sarebbe più semplice.","La mia arroganza prima o poi mi costerà cara."];
 /* ================= LINGUA TERMINI (nomi ufficiali edizione italiana) ================= */
 let LANG="it";
-function toggleLang(){LANG=LANG==="en"?"it":"en";try{localStorage.setItem("dnd5e_lang",LANG)}catch(e){}
+function toggleLang(){LANG=LANG==="en"?"it":"en";dbSet("lang",LANG);
   const b=document.getElementById("langBadge");if(b)b.textContent=LANG.toUpperCase();refreshView()}
-try{const sv=localStorage.getItem("dnd5e_lang");if(sv)LANG=sv}catch(e){}
+{const sv=dbGet("lang",null);if(sv)LANG=sv}
 // Dizionari EN → IT (nomi ufficiali dei manuali italiani; dove il nome ufficiale non è certo si mantiene l'inglese)
 const IT_RACE={"Human":"Umano","Variant Human":"Umano (Variante)","Dwarf":"Nano","Hill Dwarf":"Nano delle Colline","Mountain Dwarf":"Nano delle Montagne","Duergar":"Duergar (Nano Grigio)","Elf":"Elfo","High Elf":"Elfo Alto","Wood Elf":"Elfo dei Boschi","Drow (Dark Elf)":"Drow (Elfo Oscuro)","Eladrin":"Eladrin","Sea Elf":"Elfo Marino","Shadar-kai":"Shadar-kai","Pallid Elf":"Elfo Pallido","Halfling":"Halfling","Lightfoot":"Piedelesto","Stout":"Tozzo","Ghostwise":"Spiritocheto","Lotusden":"Halfling di Lotusden","Gnome":"Gnomo","Forest Gnome":"Gnomo delle Foreste","Rock Gnome":"Gnomo delle Rocce","Deep Gnome (Svirfneblin)":"Gnomo delle Profondità (Svirfneblin)","Half-Elf":"Mezzelfo","Half-Orc":"Mezzorco","Tiefling":"Tiefling","Dragonborn":"Dragonide","Chromatic":"Cromatico","Metallic":"Metallico","Gem":"Gemma","Draconblood":"Sanguedrago","Ravenite":"Ravenita","Aarakocra":"Aarakocra","Goliath":"Goliath","Aasimar":"Aasimar","Protector":"Protettore","Scourge":"Flagellatore","Fallen":"Caduto","Firbolg":"Firbolg","Kenku":"Kenku","Lizardfolk":"Lucertoloide","Tabaxi":"Tabaxi","Triton":"Tritone","Bugbear":"Bugbear","Goblin":"Goblin","Hobgoblin":"Hobgoblin","Kobold":"Coboldo","Orc":"Orco","Yuan-ti Pureblood":"Purosangue Yuan-ti","Githyanki":"Githyanki","Githzerai":"Githzerai","Centaur":"Centauro","Loxodon":"Loxodon","Minotaur":"Minotauro","Simic Hybrid":"Ibrido Simic","Vedalken":"Vedalken","Changeling":"Cangiante","Kalashtar":"Kalashtar","Warforged":"Forgiato","Leonin":"Leonin","Satyr":"Satiro","Dhampir":"Dhampir","Hexblood":"Hexblood","Reborn":"Rinato","Fairy":"Fata","Harengon":"Harengon","Owlin":"Owlin","Verdan":"Verdan","Locathah":"Locathah","Grung":"Grung","Custom Lineage":"Lignaggio Personalizzato","Genasi (Air)":"Genasi (Aria)","Genasi (Earth)":"Genasi (Terra)","Genasi (Fire)":"Genasi (Fuoco)","Genasi (Water)":"Genasi (Acqua)","Shifter (Beasthide)":"Shifter (Pellebestia)","Shifter (Longtooth)":"Shifter (Zannalunga)","Shifter (Swiftstride)":"Shifter (Passolesto)","Shifter (Wildhunt)":"Shifter (Cacciaselvaggia)","Asmodeus":"Asmodeus","Feral (Variant)":"Ferino (Variante)"};
 const IT_CLASS={"Barbarian":"Barbaro","Bard":"Bardo","Cleric":"Chierico","Druid":"Druido","Fighter":"Guerriero","Monk":"Monaco","Paladin":"Paladino","Ranger":"Ranger","Rogue":"Ladro","Sorcerer":"Stregone","Warlock":"Warlock","Wizard":"Mago","Artificer":"Artefice"};
@@ -1884,8 +1917,6 @@ const rN=en=>tN(en,IT_RACE), cN=en=>tN(en,IT_CLASS), scN=en=>tN(en,IT_SUBCL), bg
 const spN=en=>{const d=SPELL_DET[en];return LANG==="it"&&d&&d[0]?d[0]:en};
 /* ================= SALVATAGGIO ================= */
 const htmlEsc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
-function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 /* ================= DATI ESTERNI (file importati, link condivisi, backup) =================
    Tutto ciò che arriva da fuori viene ripulito prima di entrare nella suite:
    niente markup, virgolette o entità che possano "uscire" dagli attributi HTML;
@@ -1917,8 +1948,8 @@ function jsa(s){return JSON.stringify(String(s??"")).replace(/&/g,"&amp;").repla
 function newId(t){const a=new Uint8Array(8),c="0123456789abcdefghijklmnopqrstuvwxyz";
   if(window.crypto&&crypto.getRandomValues)crypto.getRandomValues(a);else for(let i=0;i<8;i++)a[i]=Math.floor(Math.random()*256);
   return(t?t+"_":"")+Date.now().toString(36)+"_"+Array.from(a,b=>c[b%36]).join("")}
-function roster(){return lsGet("dnd5e_chars",[])}
-function autosave(){if(C&&(C.race||C.cls))lsSet("dnd5e_draft",C)}
+function roster(){return dbGet("chars",[])}
+function autosave(){if(C&&(C.race||C.cls))dbSet("draft",C)}
 function saveChar(){
   if(!C||!C.race||!C.cls){alert("Crea prima un personaggio (almeno razza e classe).");return}
   if(!C.id)C.id=newId("pc");
@@ -1927,14 +1958,14 @@ function saveChar(){
   list.unshift({id:C.id,name:C.name||"Senza nome",info:`${rN(C.race)} · ${entries().map(e=>cN(e.n)+" "+e.lv).join(" / ")}`,ts:Date.now(),
     syncTs:Math.max(C._syncTs||0,(prevE&&prevE.syncTs)||0),data:C,st:partyStats(C)});
   if(LVUP&&LVUP.id===C.id&&totLevel()>LVUP.from)LVUP=null;
-  lsSet("dnd5e_chars",list.slice(0,60));
+  dbSet("chars",list.slice(0,60));
   const cm=document.getElementById("charModal");
   if(cm&&cm.style.display==="flex")renderCharModal();else alert("💾 Personaggio salvato: "+(C.name||"Senza nome"));
 }
 function loadChar(id){const it=roster().find(x=>x.id===id);if(!it)return;
   C=JSON.parse(JSON.stringify(it.data));C._syncTs=it.syncTs||0;sanitizeChar();closeCharModal();
   if(C.race&&C.cls)buildSheet();else startWizard(true)}
-function delChar(id){lsSet("dnd5e_chars",roster().filter(x=>x.id!==id));renderCharModal()}
+function delChar(id){dbSet("chars",roster().filter(x=>x.id!==id));renderCharModal()}
 function exportChar(id){
   let name,data;
   if(id){const it=roster().find(x=>x.id===id);if(!it)return;name=it.name;data=it.data}
@@ -1969,7 +2000,7 @@ function renderCharModal(){
 }
 function resumeDraft(){if(!C)return;if(C.race&&C.cls)buildSheet();else startWizard(true)}
 /* ---- homebrew ---- */
-let HB=lsGet("dnd5e_homebrew",{races:[],spells:[],feats:[],bgs:[],weapons:[],armors:[],shields:[]});
+let HB=dbGet("homebrew",{races:[],spells:[],feats:[],bgs:[],weapons:[],armors:[],shields:[]});
 ["races","spells","feats","bgs","weapons","armors","shields"].forEach(k=>{if(!Array.isArray(HB[k]))HB[k]=[]});
 /* scudi: [nome, nome IT, bonus CA, note, fonte] */
 const SHIELDS=[["Shield","Scudo",2,"",""]];
@@ -1991,7 +2022,7 @@ function applyHB(){
   for(let i=SHIELDS.length-1;i>=1;i--)if(SHIELDS[i][4]==="HB")SHIELDS.splice(i,1);
   (HB.shields||[]).forEach(s=>SHIELDS.push([s.n,s.it||s.n,+s.bonus||2,s.note||"","HB"]));
 }
-function hbSave(){lsSet("dnd5e_homebrew",HB);applyHB();renderHbList();srcBadge()}
+function hbSave(){dbSet("homebrew",HB);applyHB();renderHbList();srcBadge()}
 function openHbModal(){
   // popola i selettori dinamici
   const cls=document.getElementById("hbsCls");
@@ -3328,9 +3359,10 @@ function renderGrim(){
     ${open&&det?`<div class="sdesc">${det[1]}</div>`:""}
    </div>`}).join("")||'<p style="color:var(--muted)">Nessun incantesimo trovato con questi filtri.</p>';
 }
-const SUITE_KEYS=["dnd5e_chars","dnd5e_draft","dnd5e_lang","dnd5e_homebrew","dnd5e_npcs","enc_src","enc_saved","enc_trk","enc_hb","dnd5e_diary","dnd5e_puzzles","dnd5e_profile","dnd5e_world"];
+/* chiavi reali di tutti i dati della suite (dalla tabella STORE) */
+const SUITE_KEYS=Object.values(STORE);
 function backupSuite(){
-  const data={type:"dnd5e_suite_backup",ver:2,date:new Date().toISOString(),store:{}};
+  const data={type:"dnd5e_suite_backup",ver:3,schema:DB_SCHEMA,date:new Date().toISOString(),store:{}};
   let n=0;SUITE_KEYS.forEach(k=>{try{const v=localStorage.getItem(k);if(v!=null){data.store[k]=v;n++}}catch(e){}});
   if(!n){alert("Nulla da salvare.");return}
   const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
@@ -3342,11 +3374,19 @@ function restoreSuite(file){
   rd.onload=()=>{try{
     const d=JSON.parse(rd.result);
     if(d.type!=="dnd5e_suite_backup"||!d.store||typeof d.store!=="object")throw 0;
-    const keys=Object.keys(d.store).filter(k=>SUITE_KEYS.includes(k)&&typeof d.store[k]==="string");
-    if(!keys.length)throw 0;
+    const bs=parseInt(d.schema,10)>0?parseInt(d.schema,10):1;
+    if(bs>DB_SCHEMA){alert("Questo backup è stato creato da una versione più recente della suite e non può essere ripristinato qui.\n\nAggiorna la pagina (o la suite) e riprova.");return}
+    /* backup vecchi: le chiavi precedenti (es. enc_trk) vengono tradotte nei nomi attuali; se ci sono entrambe vale quella attuale */
+    const st={};Object.keys(d.store).forEach(k=>{const nk=STORE_LEGACY[k]||k;if(SUITE_KEYS.includes(nk)&&typeof d.store[k]==="string"&&(!(nk in st)||nk===k))st[nk]=d.store[k]});
+    const keys=Object.keys(st);if(!keys.length)throw 0;
     if(!confirm("Ripristinare il backup? Tutti i dati della suite in questo browser verranno sostituiti da quelli del file."))return;
     /* sostituzione completa: le chiavi della suite assenti nel backup vengono rimosse, così non restano dati misti */
-    SUITE_KEYS.forEach(k=>{try{if(keys.includes(k))localStorage.setItem(k,safeStoreVal(k,d.store[k]));else localStorage.removeItem(k)}catch(e){}});
+    let fail=0;
+    SUITE_KEYS.forEach(k=>{try{if(keys.includes(k))localStorage.setItem(k,safeStoreVal(k,st[k]));else localStorage.removeItem(k)}catch(e){fail++}});
+    Object.keys(STORE_LEGACY).forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+    try{localStorage.setItem(DB_SCHEMA_KEY,String(Math.max(bs,1)));}catch(e){}
+    dbMigrate();
+    if(fail){alert("⚠ Ripristino incompleto: "+fail+" dati non sono stati scritti, probabilmente per spazio del browser insufficiente.\nLibera spazio e riprova.");return}
     alert("✅ Backup ripristinato. La pagina verrà ricaricata.");location.reload();
   }catch(err){alert("File di backup non valido.")}};
   rd.readAsText(file);
@@ -3357,7 +3397,7 @@ srcBadge();
 /* statistiche pronte (CA, PF, livello…) salvate accanto a ogni PG: le leggono tracker e diario,
    che non contengono le regole di calcolo. Ricalcolate a ogni apertura del tool. */
 function refreshRosterStats(){const list=roster();if(!list.length)return;
-  list.forEach(it=>{if(it&&it.data)it.st=partyStats(it.data)});lsSet("dnd5e_chars",list)}
+  list.forEach(it=>{if(it&&it.data)it.st=partyStats(it.data)});dbSet("chars",list)}
 refreshRosterStats();
 /* il tracker può aggiornare PF, PF temporanei, condizioni e TS contro morte dei PG (con conferma del DM):
    se quel PG è aperto qui, lo stato di gioco viene allineato senza toccare le altre modifiche */
@@ -3366,7 +3406,7 @@ function pullPlaySync(){if(!C||!C.id)return false;
   if(!it||!it.syncTs||it.syncTs<=(C._syncTs||0)||!it.data||!it.data.play)return false;
   const p=play(),q=it.data.play;["hp","thp","cond","dsS","dsF"].forEach(k=>{if(q[k]!==undefined)p[k]=Array.isArray(q[k])?q[k].slice():q[k]});
   C._syncTs=it.syncTs;autosave();return true}
-window.addEventListener("storage",e=>{if(e.key!=="dnd5e_chars")return;
+window.addEventListener("storage",e=>{if(e.key!==dbKey("chars"))return;
   if(pullPlaySync()&&$("sheetWrap").style.display==="block"){buildSheet();dlog("🔄 Stato aggiornato dal tracker di combattimento")}});
 /* "Sali di livello" dal diario: #lvup=<id> apre il PG nel wizard, al passo classe/livello */
 let LVUP=null;
@@ -3379,7 +3419,7 @@ function checkLvupHash(){const m=/^#lvup=([\w-]+)(?:&to=(\d+))?/.exec(location.h
   loadChar(it.id);LVUP={id:it.id,from:totLevel(),to:parseInt(m[2],10)||totLevel()+1};
   startWizard(true);step=1;renderStep()}
 (function(){const b=$("langBadge");if(b)b.textContent=LANG.toUpperCase()})();
-(function(){const dr=lsGet("dnd5e_draft",null);
+(function(){const dr=dbGet("draft",null);
   if(dr&&typeof dr==="object"&&(dr.race||dr.cls)){C=dr;
     const rb=$("resumeBtn");if(rb){rb.style.display="";rb.textContent="▶ Riprendi: "+(dr.name||rN(dr.race||"")||"bozza")}
     pullPlaySync()}})();

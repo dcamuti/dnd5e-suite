@@ -135,9 +135,40 @@ textarea{width:100%; min-height:90px; resize:vertical; line-height:1.5}
 </main>
 <script>
 "use strict";
+/* ================= STORAGE DELLA SUITE =================
+   Unico punto di accesso a localStorage: ogni dato ha un nome logico e una sola chiave reale.
+   La versione dello schema è in dnd5e_schema; dbMigrate() applica le migrazioni mancanti all'apertura di qualunque tool. */
+const STORE={chars:"dnd5e_chars",draft:"dnd5e_draft",lang:"dnd5e_lang",homebrew:"dnd5e_homebrew",npcs:"dnd5e_npcs",
+  encSrc:"dnd5e_enc_src",encSaved:"dnd5e_enc_saved",encTrk:"dnd5e_enc_trk",encHb:"dnd5e_enc_hb",
+  diary:"dnd5e_diary",puzzles:"dnd5e_puzzles",profile:"dnd5e_profile",world:"dnd5e_world"};
+const STORE_RAW=["lang"];/* testo semplice, non JSON */
+const DB_SCHEMA=2,DB_SCHEMA_KEY="dnd5e_schema";
+/* chiavi delle versioni precedenti → chiave attuale (migrazione 1→2 e ripristino di backup vecchi) */
+const STORE_LEGACY={enc_src:"dnd5e_enc_src",enc_saved:"dnd5e_enc_saved",enc_trk:"dnd5e_enc_trk",enc_hb:"dnd5e_enc_hb"};
+function dbKey(n){const k=STORE[n];if(!k)throw new Error("Dato di storage sconosciuto: "+n);return k}
+function dbGet(n,d){try{const v=localStorage.getItem(dbKey(n));if(v==null)return d;return STORE_RAW.includes(n)?v:JSON.parse(v)}catch(e){return d}}
+let DB_WARNED=false;
+function dbSet(n,v){try{localStorage.setItem(dbKey(n),STORE_RAW.includes(n)?String(v):JSON.stringify(v));return true}
+  catch(e){if(!DB_WARNED){DB_WARNED=true;alert("⚠ Spazio di salvataggio del browser pieno: le ultime modifiche non sono state salvate.\n\nFai un 🗄 Backup suite e libera spazio, per esempio eliminando elementi salvati che non usi più.")}return false}}
+function dbDel(n){try{localStorage.removeItem(dbKey(n))}catch(e){}}
+function dbSchema(){const v=parseInt(localStorage.getItem(DB_SCHEMA_KEY),10);return v>0?v:1}
+const DB_MIGRATIONS={
+  /* 1→2: chiavi degli Incontri sotto il prefisso dnd5e_, con copia dei valori originali in dnd5e_migr_v2 */
+  2(){const snap={};for(const o in STORE_LEGACY){const v=localStorage.getItem(o);if(v!=null)snap[o]=v}
+    if(Object.keys(snap).length&&localStorage.getItem("dnd5e_migr_v2")==null)localStorage.setItem("dnd5e_migr_v2",JSON.stringify({date:new Date().toISOString(),store:snap}));
+    for(const o in snap){const n=STORE_LEGACY[o];if(localStorage.getItem(n)==null)localStorage.setItem(n,snap[o]);if(localStorage.getItem(n)!=null)localStorage.removeItem(o)}}
+};
+function dbMigrate(){try{
+  let v=dbSchema();
+  if(v>DB_SCHEMA){console.warn("Suite D&D 5E: dati creati da una versione più recente della suite (schema "+v+")");return}
+  for(let x=v+1;x<=DB_SCHEMA;x++){DB_MIGRATIONS[x]();localStorage.setItem(DB_SCHEMA_KEY,String(x));v=x}
+  /* chiavi vecchie ricomparse (es. una scheda rimasta aperta con il codice precedente): recuperate solo se la chiave nuova manca */
+  for(const o in STORE_LEGACY){const val=localStorage.getItem(o);if(val==null)continue;
+    if(localStorage.getItem(STORE_LEGACY[o])==null){localStorage.setItem(STORE_LEGACY[o],val);localStorage.removeItem(o)}
+    else console.warn("Suite D&D 5E: trovata la vecchia chiave "+o+" accanto a "+STORE_LEGACY[o]+": lasciata intatta.")}
+}catch(e){console.error("Suite D&D 5E: migrazione dello storage non riuscita",e)}}
+dbMigrate();
 const $=id=>document.getElementById(id);
-function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
-function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 /* ================= DATI ESTERNI (file importati, link condivisi, backup) =================
    Tutto ciò che arriva da fuori viene ripulito prima di entrare nella suite:
    niente markup, virgolette o entità che possano "uscire" dagli attributi HTML;
@@ -193,10 +224,10 @@ const PROF_OPTS={
   magia:[["bassa","Magia rara"],["media","Magia presente"],["alta","Magia ovunque"]]};
 const PROF_DEF={tono:"eroico",amb:"misto",magia:"media"};
 let PROF_OVR=null;/* modifica temporanea, solo per questa pagina */
-function profGet(){let p={};try{p=JSON.parse(localStorage.getItem("dnd5e_profile")||"{}")||{}}catch(e){}
+function profGet(){let p={};try{p=dbGet("profile",{})||{}}catch(e){}
   const o=Object.assign({},PROF_DEF,p,PROF_OVR||{});
   for(const k in PROF_OPTS)if(!PROF_OPTS[k].some(x=>x[0]===o[k]))o[k]=PROF_DEF[k];return o}
-function profSave(p){try{localStorage.setItem("dnd5e_profile",JSON.stringify(p))}catch(e){}}
+function profSave(p){try{dbSet("profile",p)}catch(e){}}
 function profLabel(k,v){const x=(PROF_OPTS[k]||[]).find(y=>y[0]===v);return x?x[1]:v}
 /* etichette attive: tono, ambiente, magia (es. ["cupo","costa","magia-bassa"]) */
 function profTags(extra){const p=profGet();return[p.tono,p.amb,"magia-"+p.magia].concat(extra||[]).filter(Boolean)}
@@ -243,9 +274,9 @@ function gExpand(G,tpl,ctx,depth){ctx=ctx||{};ctx.tags=ctx.tags||[];ctx.vars=ctx
     return out})}
 
 /* --- invio al Diario di Campagna --- */
-function diaryLoad(){let D={};try{D=JSON.parse(localStorage.getItem("dnd5e_diary")||"{}")||{}}catch(e){}
+function diaryLoad(){let D={};try{D=dbGet("diary",{})||{}}catch(e){}
   ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(D[k]))D[k]=[]});return D}
-function diarySave(D){try{localStorage.setItem("dnd5e_diary",JSON.stringify(D))}catch(e){}}
+function diarySave(D){try{dbSet("diary",D)}catch(e){}}
 /* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione
    src (facoltativo): {t,id} dell'elemento di origine nel tool che invia (es. {t:"npc",id:"npc_…"}), registrato sulla voce */
 function toDiary(kind,item,src){const D=diaryLoad();
@@ -260,10 +291,10 @@ function toDiary(kind,item,src){const D=diaryLoad();
 function ks(){const y=window.scrollY;requestAnimationFrame(()=>window.scrollTo(0,y))}
 const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
 
-let DIA=lsGet("dnd5e_diary",{sessions:[],npcs:[],places:[],hooks:[]});
+let DIA=dbGet("diary",{sessions:[],npcs:[],places:[],hooks:[]});
 ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(DIA[k]))DIA[k]=[]});
 if(!DIA.xp||typeof DIA.xp.total!=="number")DIA.xp={total:0,log:[]};
-function save(){lsSet("dnd5e_diary",DIA)}
+function save(){dbSet("diary",DIA)}
 const match=(q,...fields)=>!q||fields.some(f=>(f||"").toLowerCase().includes(q));
 
 function addSess(){DIA.sessions.unshift({id:newId("ses"),date:new Date().toISOString().slice(0,10),title:"Sessione "+(DIA.sessions.length+1),text:""});save();render()}
@@ -317,7 +348,7 @@ function render(){
 const LVL_XP=[0,300,900,2700,6500,14000,23000,34000,48000,64000,85000,100000,120000,140000,165000,195000,225000,265000,305000,355000];
 function xpLevel(xp){let l=1;for(let i=0;i<LVL_XP.length;i++)if(xp>=LVL_XP[i])l=i+1;return l}
 const XPSEL=new Set();let XPSEL_INIT=false;
-function chars(){return lsGet("dnd5e_chars",[]).filter(c=>c&&c.id)}
+function chars(){return dbGet("chars",[]).filter(c=>c&&c.id)}
 function xpInit(){
   const X=DIA.xp;if(!X.pcs||typeof X.pcs!=="object")X.pcs={};if(X.mode!=="milestone")X.mode="xp";
   let ch=false;
@@ -409,17 +440,17 @@ function delXp(id){
 }
 /* aggiorna se un altro tool (tracker, schede) modifica i dati nello stesso browser */
 window.addEventListener("storage",e=>{
-  if(e.key==="dnd5e_diary"){DIA=lsGet("dnd5e_diary",DIA);["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(DIA[k]))DIA[k]=[]});
+  if(e.key===dbKey("diary")){DIA=dbGet("diary",DIA);["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(DIA[k]))DIA[k]=[]});
     if(!DIA.xp||typeof DIA.xp.total!=="number")DIA.xp={total:0,log:[]};render();renderXp()}
-  if(["dnd5e_chars","dnd5e_npcs","enc_saved","enc_trk","dnd5e_puzzles","dnd5e_world"].includes(e.key)){overview();renderXp()}
-  if(e.key==="dnd5e_profile")renderProf();
+  if(["chars","npcs","encSaved","encTrk","encHb","puzzles","world"].map(dbKey).includes(e.key)){overview();renderXp()}
+  if(e.key===dbKey("profile"))renderProf();
 });
 /* panoramica campagna: legge i dati degli altri tool (stessa origine) */
 const T_URL={pg:"../characters/index.html",npc:"../npcs/index.html",enc:"../encounters/index.html",pz:"../puzzles/index.html",world:"../world/index.html"};
 /* percorsi relativi: funzionano sia su GitHub Pages sia aprendo in locale il repository dnd5e-suite */
 function toolUrl(k){return T_URL[k]}
 function overview(){
-  const chars=lsGet("dnd5e_chars",[]),npcs=lsGet("dnd5e_npcs",[]),encs=lsGet("enc_saved",[]),hb=lsGet("enc_hb",[]);
+  const chars=dbGet("chars",[]),npcs=dbGet("npcs",[]),encs=dbGet("encSaved",[]),hb=dbGet("encHb",[]);
   let h="";
   const box=(title,url,inner)=>`<div style="background:linear-gradient(160deg,#2a2013,#231a0e);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px">
     <div style="font-family:var(--font-display);color:var(--gold-l);font-size:.85rem;margin-bottom:6px">${title} <a href="${url}" style="color:var(--muted);font-size:.7rem;text-decoration:none">↗ apri il tool</a></div>${inner}</div>`;
@@ -434,13 +465,13 @@ function overview(){
   h+=box(`🐉 Incontri pronti (${encs.length}) · Homebrew (${hb.length})`,toolUrl("enc"),
     encs.length?encs.slice(-6).reverse().map(e=>`<div style="font-size:.88rem;padding:2px 0"><b style="color:var(--ink)">${esc(e.name)}</b> <span style="color:var(--muted)">— ${esc((e.enc||[]).map(x=>x.q+"× "+x.n).join(", "))}</span></div>`).join("")
     :`<span style="color:var(--muted);font-size:.85rem">Nessun incontro salvato nel generatore incontri.</span>`);
-  const trk=lsGet("enc_trk",{list:[]}),pz=lsGet("dnd5e_puzzles",[]);
+  const trk=dbGet("encTrk",{list:[]}),pz=dbGet("puzzles",[]);
   if(trk&&Array.isArray(trk.list)&&trk.list.length){
     const pcs=trk.list.filter(u=>u.pc),mons=trk.list.filter(u=>!u.pc),alive=mons.filter(u=>u.hp==null||u.hp>0);
     h+=box(`🗡 Combattimento in corso${trk.round?` · round ${trk.round}`:""}`,toolUrl("enc"),
       `<div style="font-size:.88rem;color:var(--muted)">${pcs.length} PG · ${alive.length}/${mons.length} nemici in piedi${pcs.length?" — "+pcs.map(u=>`<b style="color:${u.hp===0?"#e07a7a":"var(--ink)"}">${esc(u.name)}</b>${u.hp!=null?` ${u.hp}/${u.hpMax}`:""}`).join(", "):""}</div>`);
   }
-  const W=lsGet("dnd5e_world",{}),fz=Array.isArray(W.factions)?W.factions:[];
+  const W=dbGet("world",{}),fz=Array.isArray(W.factions)?W.factions:[];
   h+=box(`⚔ Fazioni (${fz.length})`,toolUrl("world"),
     fz.length?fz.slice(0,6).map(f=>{const n=(f.steps||[]).length,p=f.prog||0;
       return`<div style="font-size:.88rem;padding:2px 0"><b style="color:var(--ink)">${esc(f.name)}</b> <span style="color:var(--muted)">— vuole ${esc(f.goal||"")}</span>
@@ -473,9 +504,10 @@ function impDiary(inp){
   rd.readAsText(f);inp.value="";
 }
 /* backup suite completo */
-const SUITE_KEYS=["dnd5e_chars","dnd5e_draft","dnd5e_lang","dnd5e_homebrew","dnd5e_npcs","enc_src","enc_saved","enc_trk","enc_hb","dnd5e_diary","dnd5e_puzzles","dnd5e_profile","dnd5e_world"];
+/* chiavi reali di tutti i dati della suite (dalla tabella STORE) */
+const SUITE_KEYS=Object.values(STORE);
 function backupSuite(){
-  const data={type:"dnd5e_suite_backup",ver:2,date:new Date().toISOString(),store:{}};
+  const data={type:"dnd5e_suite_backup",ver:3,schema:DB_SCHEMA,date:new Date().toISOString(),store:{}};
   let n=0;SUITE_KEYS.forEach(k=>{try{const v=localStorage.getItem(k);if(v!=null){data.store[k]=v;n++}}catch(e){}});
   if(!n){alert("Nulla da salvare.");return}
   const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
@@ -487,11 +519,19 @@ function restoreSuite(file){
   rd.onload=()=>{try{
     const d=JSON.parse(rd.result);
     if(d.type!=="dnd5e_suite_backup"||!d.store||typeof d.store!=="object")throw 0;
-    const keys=Object.keys(d.store).filter(k=>SUITE_KEYS.includes(k)&&typeof d.store[k]==="string");
-    if(!keys.length)throw 0;
+    const bs=parseInt(d.schema,10)>0?parseInt(d.schema,10):1;
+    if(bs>DB_SCHEMA){alert("Questo backup è stato creato da una versione più recente della suite e non può essere ripristinato qui.\n\nAggiorna la pagina (o la suite) e riprova.");return}
+    /* backup vecchi: le chiavi precedenti (es. enc_trk) vengono tradotte nei nomi attuali; se ci sono entrambe vale quella attuale */
+    const st={};Object.keys(d.store).forEach(k=>{const nk=STORE_LEGACY[k]||k;if(SUITE_KEYS.includes(nk)&&typeof d.store[k]==="string"&&(!(nk in st)||nk===k))st[nk]=d.store[k]});
+    const keys=Object.keys(st);if(!keys.length)throw 0;
     if(!confirm("Ripristinare il backup? Tutti i dati della suite in questo browser verranno sostituiti da quelli del file."))return;
     /* sostituzione completa: le chiavi della suite assenti nel backup vengono rimosse, così non restano dati misti */
-    SUITE_KEYS.forEach(k=>{try{if(keys.includes(k))localStorage.setItem(k,safeStoreVal(k,d.store[k]));else localStorage.removeItem(k)}catch(e){}});
+    let fail=0;
+    SUITE_KEYS.forEach(k=>{try{if(keys.includes(k))localStorage.setItem(k,safeStoreVal(k,st[k]));else localStorage.removeItem(k)}catch(e){fail++}});
+    Object.keys(STORE_LEGACY).forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+    try{localStorage.setItem(DB_SCHEMA_KEY,String(Math.max(bs,1)));}catch(e){}
+    dbMigrate();
+    if(fail){alert("⚠ Ripristino incompleto: "+fail+" dati non sono stati scritti, probabilmente per spazio del browser insufficiente.\nLibera spazio e riprova.");return}
     alert("✅ Backup ripristinato. La pagina verrà ricaricata.");location.reload();
   }catch(err){alert("File di backup non valido.")}};
   rd.readAsText(file);
