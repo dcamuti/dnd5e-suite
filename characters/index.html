@@ -1910,6 +1910,8 @@ function safeParse(txt,allowPzHtml){
     return cleanStr(v)})}
 /* valore di una chiave del backup: è JSON (tranne la lingua, che è testo semplice) */
 function safeStoreVal(k,v){try{return JSON.stringify(safeParse(v,k==="dnd5e_puzzles"))}catch(e){return String(v).replace(/[^\w-]/g,"")}}
+/* stringa come argomento JS dentro un attributo HTML tra virgolette, es. onclick="f(${jsa(nome)})": regge apostrofi, virgolette, & e < */
+function jsa(s){return JSON.stringify(String(s??"")).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
 function roster(){return lsGet("dnd5e_chars",[])}
 function autosave(){if(C&&(C.race||C.cls))lsSet("dnd5e_draft",C)}
 function saveChar(){
@@ -1957,7 +1959,7 @@ function renderCharModal(){
      <span style="flex:none;display:flex;gap:5px">
       <button class="btn small" onclick="loadChar('${it.id}')">▶ Apri</button>
       <button class="btn small" onclick="exportChar('${it.id}')">⬇ JSON</button>
-      <button class="btn small" onclick="if(confirm('Eliminare ${(it.name||"").replace(/'/g,"\\'")}?'))delChar('${it.id}')">🗑</button>
+      <button class="btn small" onclick="if(confirm(${jsa("Eliminare "+(it.name||"")+"?")}))delChar('${it.id}')">🗑</button>
      </span></div>`).join(""):`<div class="hint">Nessun personaggio salvato.</div>`;
 }
 function resumeDraft(){if(!C)return;if(C.race&&C.cls)buildSheet();else startWizard(true)}
@@ -2099,7 +2101,7 @@ function hbDel(type,name){
 }
 function renderHbList(){
   const el=document.getElementById("hbList");if(!el)return;
-  const row=(label,type,items,info)=>items.length?`<div style="margin-bottom:6px"><b style="color:var(--gold);font-size:.8rem">${label}:</b> ${items.map(x=>`<span class="tag" title="${(info(x)||"").replace(/"/g,"&quot;")}">${x.n} <a style="cursor:pointer;color:#e07a7a" onclick="hbDel('${type}','${x.n.replace(/'/g,"\\'")}')">✕</a></span>`).join(" ")}</div>`:"";
+  const row=(label,type,items,info)=>items.length?`<div style="margin-bottom:6px"><b style="color:var(--gold);font-size:.8rem">${label}:</b> ${items.map(x=>`<span class="tag" title="${(info(x)||"").replace(/"/g,"&quot;")}">${htmlEsc(x.n)} <a style="cursor:pointer;color:#e07a7a" onclick="hbDel('${type}',${jsa(x.n)})">✕</a></span>`).join(" ")}</div>`:"";
   el.innerHTML=(row("Razze","races",HB.races,x=>(x.traits||[]).join("; "))+
     row("Armi","weapons",HB.weapons,x=>x.dmg+(x.props?" · "+x.props:""))+
     row("Armature","armors",HB.armors,x=>"CA "+x.ac+" ("+x.cat+")"+(x.note?" · "+x.note:""))+
@@ -2370,8 +2372,8 @@ function featOptGroups(){
 }
 function optGroupRow(g){const sel=optSel(g);
   let h=`<div class="asi-row" style="align-items:flex-start;flex-direction:column"><div><b style="font-family:var(--font-display);color:var(--gold-l);font-size:.85rem">${g.name}</b> <span style="color:var(--muted);font-size:.78rem">${g.who} · ${sel.length}/${g.count}</span></div>${g.note?`<div style="font-size:.75rem;color:var(--muted)">${g.note}</div>`:""}<div class="chipbar" style="margin:6px 0 0">`;
-  g.pool.forEach(p=>{const on=sel.includes(p[0]);const esc=p[0].replace(/'/g,"\\'");
-    h+=`<span class="chip ${on?"sel":""}" title="${(p[2]||"").replace(/"/g,"&quot;")}" onclick="toggleOpt('${g.id}','${esc}',${g.count})">${LANG==="it"?p[1]:p[0]}</span>`});
+  g.pool.forEach(p=>{const on=sel.includes(p[0]);
+    h+=`<span class="chip ${on?"sel":""}" title="${(p[2]||"").replace(/"/g,"&quot;")}" onclick="toggleOpt('${g.id}',${jsa(p[0])},${g.count})">${LANG==="it"?p[1]:p[0]}</span>`});
   h+=`</div>`;
   sel.forEach(n=>{const p=g.pool.find(x=>x[0]===n);if(p&&p[2])h+=`<div class="asi-desc" style="margin-top:4px"><b>${LANG==="it"?p[1]:p[0]}:</b> ${p[2]}</div>`});
   return h+`</div>`;
@@ -2550,14 +2552,14 @@ function stRace(){
   let h=`<h2>Scegli la razza</h2><div class="hint">${list.length} razze disponibili dai manuali attivi — <a style="color:var(--gold-l);cursor:pointer;text-decoration:underline dotted" onclick="openSrcModal()">📚 cambia manuali</a></div><div class="grid cols3">`;
   list.forEach(r=>{const asi=Object.entries(r.asi||{}).map(([a,v])=>`${ABIL_IT[a].slice(0,3)} +${v}`).join(", ")||( r.flex?"bonus a scelta":"");
     const ns=subsAvail(r);
-    h+=`<div class="card ${C.race===r.n?"sel":""}" onclick="pickRace('${r.n.replace(/'/g,"\\'")}')"><div class="csrc">${r.src}</div><div class="cname">${rN(r.n)}</div><div class="cinfo">${asi}${ns&&ns.length?` · ${ns.length} sottorazze`:""}</div></div>`});
+    h+=`<div class="card ${C.race===r.n?"sel":""}" onclick="pickRace(${jsa(r.n)})"><div class="csrc">${r.src}</div><div class="cname">${rN(r.n)}</div><div class="cinfo">${asi}${ns&&ns.length?` · ${ns.length} sottorazze`:""}</div></div>`});
   h+=`</div>`;
   const r=raceObj();
   if(r){h+=`<div style="margin-top:16px"><b style="color:var(--gold-l)">${rN(r.n)}</b> — Taglia ${r.size}, Velocità ${r.spd} ft${r.dv?", Scurovisione "+r.dv+" ft":""}<div class="chipbar">${r.traits.map(t=>`<span class="tag" title="${(traitDet(t)||"").replace(/"/g,"&quot;")}">${trN(t)}</span>`).join("")}</div>`;
     const subs=subsAvail(r);
     if(subs&&subs.length){h+=`<h3 style="margin-top:10px;color:var(--gold-l)">Sottorazza</h3><div class="grid cols3" style="margin-top:8px">`;
       subs.forEach(s=>{const asi=Object.entries(s.asi||{}).map(([a,v])=>`${ABIL_IT[a].slice(0,3)} +${v}`).join(", ")||(s.flex?"bonus a scelta":"");
-        h+=`<div class="card ${C.sub===s.n?"sel":""}" onclick="C.sub='${s.n.replace(/'/g,"\\'")}';renderStep()"><div class="csrc">${s.src}</div><div class="cname">${rN(s.n)}</div><div class="cinfo">${asi} · ${s.traits.map(trN).join("; ")}</div></div>`});
+        h+=`<div class="card ${C.sub===s.n?"sel":""}" onclick="C.sub=${jsa(s.n)};renderStep()"><div class="csrc">${s.src}</div><div class="cname">${rN(s.n)}</div><div class="cinfo">${asi} · ${s.traits.map(trN).join("; ")}</div></div>`});
       h+=`</div>`}
     h+=`</div>`}
   return h+footBtns(false);
@@ -2690,7 +2692,7 @@ function abilValid(){
 function stBg(){
   const c=clsObj(),bg=bgObj();
   let h=`<h2>Background e abilità</h2><div class="hint">Il background dà competenze fisse; poi scegli le abilità di classe.</div>
-  <label class="fld" style="max-width:340px"><span>Background</span><select onchange="C.bg=this.value;C.bgPick=[];renderStep()"><option value="">—</option>${bgAvail().map(b=>`<option ${C.bg===b.n?"selected":""} value="${b.n}">${bgN(b.n)} (${b.src})</option>`).join("")}</select></label>`;
+  <label class="fld" style="max-width:340px"><span>Background</span><select onchange="C.bg=this.value;C.bgPick=[];renderStep()"><option value="">—</option>${bgAvail().map(b=>`<option ${C.bg===b.n?"selected":""} value="${htmlEsc(b.n)}">${bgN(b.n)} (${b.src})</option>`).join("")}</select></label>`;
   if(bg){
     if(bg.pick){h+=`<div>Scegli ${bg.pick} abilità del background:</div><div class="chipbar">${bg.sk.map(s=>`<span class="chip ${C.bgPick.includes(s)?"sel":""}" onclick="togglePick('bgPick','${s}',${bg.pick})">${skN(s)}</span>`).join("")}</div>`}
     else h+=`<div>Competenze: ${bg.sk.map(s=>`<span class="tag">${SKILLS[s]?skN(s):s}</span>`).join(" ")}</div>`;
@@ -2763,10 +2765,9 @@ function filterSpellLists(q){q=(q||"").toLowerCase().trim();
   document.querySelectorAll(".spell-item").forEach(el=>{el.style.display=!q||(el.dataset.q||"").includes(q)?"":"none"})}
 function spellItem(clsName,s,field,max){const sel=magFor(clsName)[field].includes(s[0]);
   const det=SPELL_DET[s[0]],open=INFO_OPEN.has(s[0]);
-  const esc=s[0].replace(/'/g,"\\'"),cesc=clsName.replace(/'/g,"\\'");
   const dq=(s[0]+" "+((det&&det[0])||"")).toLowerCase().replace(/"/g,"");
-  return`<div class="spell-item ${sel?"sel":""}" data-q="${dq}" onclick="togglePickMag('${cesc}','${field}','${esc}',${max})">${sel?"✓ ":""}<b>${spN(s[0])}</b>${LANG==="it"&&det&&det[0]?` <span style="color:var(--muted);font-size:.72rem">(${s[0]})</span>`:""}
-  <span class="info-btn" onclick="event.stopPropagation();toggleInfo('${esc}')" title="Mostra dettagli">${open?"▲":"ⓘ"}</span>
+  return`<div class="spell-item ${sel?"sel":""}" data-q="${dq}" onclick="togglePickMag(${jsa(clsName)},'${field}',${jsa(s[0])},${max})">${sel?"✓ ":""}<b>${spN(s[0])}</b>${LANG==="it"&&det&&det[0]?` <span style="color:var(--muted);font-size:.72rem">(${s[0]})</span>`:""}
+  <span class="info-btn" onclick="event.stopPropagation();toggleInfo(${jsa(s[0])})" title="Mostra dettagli">${open?"▲":"ⓘ"}</span>
   <div class="sinfo">${s[1]===0?"Trucchetto":s[1]+"° liv"} · ${SCHOOL_IT[s[2]]}${s[4]?" · "+s[4]:""}</div>
   ${open&&det?`<div class="sdesc">${det[1]}</div>`:""}</div>`}
 function autoSpells(){
@@ -3210,8 +3211,8 @@ function buildSheet(){
   const gw=gear().weapons;
   if(gw.length)gw.forEach(wn=>{const w=WEAPONS.find(x=>x[0]===wn);if(!w)return;
     const ab=w[3]==="r"?"dex":(w[4]?(mod(f.dex)>=mod(f.str)?"dex":"str"):"str");
-    const m=mod(f[ab]);const wnm=(LANG==="it"?w[1]:w[0]).replace(/'/g,"\\'");
-    h+=`<div class="sh-line"><span class="${PLAY?"rollable":""}" ${PLAY?`onclick="doRoll('Attacco: ${wnm}',${m+pb})"`:""}>${LANG==="it"?w[1]:w[0]}${PLAY?" 🎲":""}${w[5]?` <i style="color:#999;font-size:.74rem">(${w[5]})</i>`:""}</span><b class="${PLAY?"rollable":""}" ${PLAY?`onclick="rollDmg('${wnm}','${w[2]}',${m})"`:""}>${fm(m+pb)} · ${w[2]} ${fm(m)}${PLAY?" 🎲":""}</b></div>`});
+    const m=mod(f[ab]);const wnm=LANG==="it"?w[1]:w[0];
+    h+=`<div class="sh-line"><span class="${PLAY?"rollable":""}" ${PLAY?`onclick="doRoll(${jsa("Attacco: "+wnm)},${m+pb})"`:""}>${LANG==="it"?w[1]:w[0]}${PLAY?" 🎲":""}${w[5]?` <i style="color:#999;font-size:.74rem">(${w[5]})</i>`:""}</span><b class="${PLAY?"rollable":""}" ${PLAY?`onclick="rollDmg(${jsa(wnm)},${jsa(w[2])},${m})"`:""}>${fm(m+pb)} · ${w[2]} ${fm(m)}${PLAY?" 🎲":""}</b></div>`});
   else entries().forEach(e=>{clsOf(e.n).atk.forEach(([n,dmg,ab])=>{
     const m=mod(f[ab]);h+=`<div class="sh-line"><span>${n}</span><b>${fm(m+pb)} · ${dmg} ${fm(m)}</b></div>`})});
   h+=`</div>`;

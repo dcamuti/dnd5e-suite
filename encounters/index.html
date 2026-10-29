@@ -438,6 +438,8 @@ function safeParse(txt,allowPzHtml){
     return cleanStr(v)})}
 /* valore di una chiave del backup: è JSON (tranne la lingua, che è testo semplice) */
 function safeStoreVal(k,v){try{return JSON.stringify(safeParse(v,k==="dnd5e_puzzles"))}catch(e){return String(v).replace(/[^\w-]/g,"")}}
+/* stringa come argomento JS dentro un attributo HTML tra virgolette, es. onclick="f(${jsa(nome)})": regge apostrofi, virgolette, & e < */
+function jsa(s){return JSON.stringify(String(s??"")).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
 /* ==== MOTORE SUITE v1 ==== */
 /* Base comune dei generatori: casualità con seme, modelli con etichette, profilo campagna, invio al diario.
    Questo blocco è identico in tutti i tool della suite: modificarlo ovunque insieme. */
@@ -1050,11 +1052,11 @@ function rollDmgX(label,expr){const m=expr.match(/(\d+)d(\d+)([+-]\d+)?/);if(!m)
 function dbarVis(){$("dbar").style.display=(TAB==="track"||$("sbModal").style.display==="flex")?"flex":"none"}
 /* pulsanti di tiro estratti dal testo di un'azione */
 function sbBtns(name,txt){
-  const lb=name.replace(/'/g,"\\'").replace(/"/g,"");let b="";
+  let b="";
   const a=txt.match(/([+-]\d+) al colpire/);
-  if(a)b+=`<span class="sbroll" onclick="rollAtk('${lb}',${parseInt(a[1],10)})" title="Tiro per colpire">🎲 ${a[1]}</span>`;
+  if(a)b+=`<span class="sbroll" onclick="rollAtk(${jsa(name)},${parseInt(a[1],10)})" title="Tiro per colpire">🎲 ${a[1]}</span>`;
   [...txt.matchAll(/\((\d+d\d+(?:[+-]\d+)?)\)/g)].slice(0,3).forEach(d=>{
-    b+=`<span class="sbroll" onclick="rollDmgX('${lb}','${d[1]}')" title="Tira ${d[1]}">🎲 ${d[1]}</span>`});
+    b+=`<span class="sbroll" onclick="rollDmgX(${jsa(name)},${jsa(d[1])})" title="Tira ${d[1]}">🎲 ${d[1]}</span>`});
   return b;
 }
 /* ================= RENDERING STATBLOCK ================= */

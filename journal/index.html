@@ -162,6 +162,8 @@ function safeParse(txt,allowPzHtml){
     return cleanStr(v)})}
 /* valore di una chiave del backup: è JSON (tranne la lingua, che è testo semplice) */
 function safeStoreVal(k,v){try{return JSON.stringify(safeParse(v,k==="dnd5e_puzzles"))}catch(e){return String(v).replace(/[^\w-]/g,"")}}
+/* stringa come argomento JS dentro un attributo HTML tra virgolette, es. onclick="f(${jsa(nome)})": regge apostrofi, virgolette, & e < */
+function jsa(s){return JSON.stringify(String(s??"")).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
 /* ==== MOTORE SUITE v1 ==== */
 /* Base comune dei generatori: casualità con seme, modelli con etichette, profilo campagna, invio al diario.
    Questo blocco è identico in tutti i tool della suite: modificarlo ovunque insieme. */
@@ -343,16 +345,16 @@ function renderXp(){
     const pct=ms?0:(next?Math.max(0,Math.min(100,Math.round((xp-base)/(next-base)*100))):100);
     const behind=!ms&&r.sheet&&xl<lv;
     return`<div class="row" style="padding:8px 12px">
-     <input type="checkbox" ${XPSEL.has(r.k)?"checked":""} onchange="xpSel('${r.k}',this.checked)" title="Selezionato per XP o milestone">
+     <input type="checkbox" ${XPSEL.has(r.k)?"checked":""} onchange="xpSel(${jsa(r.k)},this.checked)" title="Selezionato per XP o milestone">
      <span style="min-width:170px;flex:1"><b style="color:var(--ink)">${esc(r.name)}</b><br><span style="color:var(--muted);font-size:.75rem">${esc(r.info)}</span></span>
      <span style="font-family:var(--font-display);color:var(--gold-l);min-width:62px">Liv. ${lv}</span>
      ${ms?"":`<span style="min-width:180px;flex:1">
        <span style="font-size:.85rem"><b style="color:var(--gold-l)">${xp.toLocaleString("it-IT")}</b> XP <span style="color:var(--muted);font-size:.75rem">${next?"/ "+next.toLocaleString("it-IT"):"· massimo"}</span></span>
        <div style="height:8px;background:#1a130b;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-top:3px"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#8f6f1a,#d4ab35)"></div></div></span>`}
      ${up?`<a class="btn small gold" href="${lvupUrl(r.k,target)}" title="Apre la scheda nel generatore, al passo classe/livello">⬆ Sali al liv. ${target}</a>`
-        :behind?`<span style="font-size:.75rem;color:var(--muted)">XP sotto la soglia del liv. ${lv} <a style="color:var(--gold-l);cursor:pointer;text-decoration:underline" onclick="xpAlign('${r.k}',${lv})">allinea</a></span>`
+        :behind?`<span style="font-size:.75rem;color:var(--muted)">XP sotto la soglia del liv. ${lv} <a style="color:var(--gold-l);cursor:pointer;text-decoration:underline" onclick="xpAlign(${jsa(r.k)},${lv})">allinea</a></span>`
         :ms&&r.p.ms&&r.p.ms<=lv?`<span style="font-size:.75rem;color:var(--muted)">✓ milestone applicata</span>`:""}
-     ${r.sheet?"":`<span class="xbtn" title="Rimuovi dal registro" onclick="xpForget('${r.k}')">✕</span>`}
+     ${r.sheet?"":`<span class="xbtn" title="Rimuovi dal registro" onclick="xpForget(${jsa(r.k)})">✕</span>`}
     </div>`}).join("")
    :`<p style="color:var(--muted);font-size:.85rem">Nessun personaggio: salva i PG nel Generatore Schede (stesso browser) o concludi un combattimento nel tracker.</p>`;
   $("xpForm").innerHTML=!rows.length?"":ms

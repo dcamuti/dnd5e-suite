@@ -217,6 +217,8 @@ function safeParse(txt,allowPzHtml){
     return cleanStr(v)})}
 /* valore di una chiave del backup: è JSON (tranne la lingua, che è testo semplice) */
 function safeStoreVal(k,v){try{return JSON.stringify(safeParse(v,k==="dnd5e_puzzles"))}catch(e){return String(v).replace(/[^\w-]/g,"")}}
+/* stringa come argomento JS dentro un attributo HTML tra virgolette, es. onclick="f(${jsa(nome)})": regge apostrofi, virgolette, & e < */
+function jsa(s){return JSON.stringify(String(s??"")).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
 /* ==== MOTORE SUITE v1 ==== */
 /* Base comune dei generatori: casualità con seme, modelli con etichette, profilo campagna, invio al diario.
    Questo blocco è identico in tutti i tool della suite: modificarlo ovunque insieme. */
@@ -606,7 +608,7 @@ const GEN={set:[genSettlement,htmlSettlement,diarySettlement,"sSeed",S=>S.name],
   rov:[genRuin,htmlRuin,diaryRuin,"rSeed",V=>V.name+" ("+V.tipo+")"],tra:[genTravel,htmlTravel,diaryTravel,"tSeed",T=>"Viaggio di "+T.days.length+" giorni"],eve:[genEvent,htmlEvent,diaryEvent,"eSeed",E=>E.causa]};
 function run(k){const g=GEN[k];CUR[k]=g[0](seedFrom(g[3]));show(k)}
 function show(k){const g=GEN[k],o=CUR[k];if(!o)return;
-  $("out-"+k).innerHTML=g[1](o)+`<div class="toolbar"><button class="btn gold" onclick="toDiaryCur('${k}')">📖 Al diario</button><button class="btn" onclick="saveCur('${k}')">💾 Salva</button><button class="btn" onclick="$('${g[3]}').value='${o.seed}';run('${k}')" title="Rigenera identico dal seme">↻ Stesso seme</button></div>`}
+  $("out-"+k).innerHTML=g[1](o)+`<div class="toolbar"><button class="btn gold" onclick="toDiaryCur('${k}')">📖 Al diario</button><button class="btn" onclick="saveCur('${k}')">💾 Salva</button><button class="btn" onclick="$('${g[3]}').value=${jsa(o.seed)};run('${k}')" title="Rigenera identico dal seme">↻ Stesso seme</button></div>`}
 function toDiaryCur(k){const o=CUR[k];if(!o)return;const what=GEN[k][2](o);toast("📖 Nel diario: "+what)}
 function saveCur(k){const o=CUR[k];if(!o)return;const W=world();W.saved=W.saved||[];
   if(!W.saved.some(x=>x.type===o.type&&x.seed===o.seed))W.saved.unshift(Object.assign({id:diaryId(),title:GEN[k][4](o),date:new Date().toISOString().slice(0,10)},o));
