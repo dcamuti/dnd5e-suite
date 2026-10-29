@@ -93,6 +93,10 @@ table.lst tr.mrow:hover{background:#2c2216}
 .trk-row{display:grid; grid-template-columns:52px 1fr 70px 130px 1fr 34px; gap:8px; align-items:center; background:linear-gradient(160deg,#2a2013,#231a0e); border:1px solid var(--border); border-radius:9px; padding:8px 12px; margin-bottom:7px}
 .trk-row.active{border-color:var(--gold-l); box-shadow:0 0 0 1px var(--gold-l), 0 0 14px rgba(201,162,39,.15); background:linear-gradient(160deg,#3d2f1b,#2e2312)}
 .trk-row.dead{opacity:.45}
+.trk-row.hid{border-style:dashed}
+.trk-row.hid .tn{color:var(--muted)}
+.eye{display:inline-block;margin-right:6px;font-size:.85rem;cursor:pointer;opacity:.9}
+.eye.off{opacity:.45;filter:grayscale(1)}
 .trk-row .ti{font-family:var(--font-display); font-size:1.05rem; color:var(--gold-l); text-align:center; background:#171008; border:1px solid var(--border); border-radius:8px; padding:4px 0}
 .trk-row .tn{font-family:var(--font-display); font-size:.92rem; cursor:pointer}
 .trk-row .tn:hover{color:var(--gold-l)}
@@ -476,6 +480,22 @@ function jsa(s){return JSON.stringify(String(s??"")).replace(/&/g,"&amp;").repla
 function newId(t){const a=new Uint8Array(8),c="0123456789abcdefghijklmnopqrstuvwxyz";
   if(window.crypto&&crypto.getRandomValues)crypto.getRandomValues(a);else for(let i=0;i<8;i++)a[i]=Math.floor(Math.random()*256);
   return(t?t+"_":"")+Date.now().toString(36)+"_"+Array.from(a,b=>c[b%36]).join("")}
+/* ================= VISIBILITÀ E PROPRIETÀ =================
+   vis: "dm" (solo il master) o "all" (anche i giocatori) · own: "dm" o "pc:<id della scheda>".
+   Campi facoltativi: se mancano vale il predefinito del tipo, quindi i dati esistenti sono già validi. */
+const VIS_DEF={pc:"all",trk:"all",npc:"dm",hb:"dm",enc:"dm",dnpc:"dm",plc:"dm",hok:"dm",ses:"dm",wld:"dm",fz:"dm",pz:"dm"};
+/* campi che restano riservati al master anche quando l'entità è visibile ("lista[].campo" per gli elenchi) */
+const DM_FIELDS={npc:["segreto","fazione.ruolo"],wld:["segreto","voci[].v","tesoro","colpi"],pz:["dm"],
+  hb:["ac","hp","ab","sv","sk","vul","res","imm","cim","tr","act","rea","leg"],trk:["sub","ac","hp","hpMax","thp","dsS","dsF"]};
+function visOf(t,o){return o&&(o.vis==="dm"||o.vis==="all")?o.vis:(VIS_DEF[t]||"dm")}
+function ownerOf(t,o){if(o&&typeof o.own==="string"&&(o.own==="dm"||/^pc:[\w-]+$/.test(o.own)))return o.own;
+  if(t==="pc"&&o&&o.id)return"pc:"+o.id;if(t==="trk"&&o&&o.pc&&o.charId)return"pc:"+o.charId;return"dm"}
+/* versione "per i giocatori" di un'entità: null se nascosta, altrimenti una copia senza i campi riservati */
+function forPlayers(t,o){if(!o||visOf(t,o)!=="all")return null;const c=JSON.parse(JSON.stringify(o));
+  (DM_FIELDS[t]||[]).forEach(path=>{const del=(obj,parts)=>{if(!obj||typeof obj!=="object")return;const [h,...r]=parts;
+      if(h.endsWith("[]")){const a=obj[h.slice(0,-2)];if(Array.isArray(a))a.forEach(x=>del(x,r));return}
+      if(!r.length)delete obj[h];else del(obj[h],r)};del(c,path.split("."))});
+  return c}
 /* ==== MOTORE SUITE v1 ==== */
 /* Base comune dei generatori: casualità con seme, modelli con etichette, profilo campagna, invio al diario.
    Questo blocco è identico in tutti i tool della suite: modificarlo ovunque insieme. */
@@ -1621,6 +1641,10 @@ function areaApply(){
 /* vista giocatore (popup proiettabile) */
 let PV=null;
 const pvEsc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;");
+/* nasconde o rivela un combattente nella Vista giocatore (il campo vis si scrive solo se diverso dal predefinito) */
+function trkVis(id){const u=TRK.list.find(x=>x.id===id);if(!u)return;
+  const next=visOf("trk",u)==="all"?"dm":"all";if(next===VIS_DEF.trk)delete u.vis;else u.vis=next;
+  trkSave();renderTrk();dlog(next==="all"?`👁 ${esc(u.name)} ora è visibile ai giocatori`:`🙈 ${esc(u.name)} nascosto ai giocatori`)}
 function openPV(){
   PV=window.open("","dnd5epv","width=920,height=640");
   if(!PV){alert("Popup bloccato dal browser: consenti i popup per questa pagina.");return}
@@ -1628,7 +1652,8 @@ function openPV(){
 }
 function pvRender(){
   if(!PV||PV.closed)return;
-  const rows=TRK.list.map((u,i)=>{
+  /* solo i combattenti visibili ai giocatori; il turno di uno nascosto non viene mostrato */
+  const rows=TRK.list.map((u,i)=>({u,i})).filter(x=>visOf("trk",x.u)==="all").map(({u,i})=>{
     const dead=!u.pc&&u.hp<=0;
     return`<div class="r ${i===TRK.turn?"on":""} ${dead?"dead":""}">
       <span class="ini">${u.init??"—"}</span>
@@ -1913,9 +1938,11 @@ function renderTrk(){
     const dead=!u.pc&&u.hp<=0;
     const areaBox=AREA.on&&u.hp!==null?`<span style="white-space:nowrap" onclick="event.stopPropagation()"><input type="checkbox" ${AREA.sel[u.id]?"checked":""} onchange="areaSel('${u.id}')" title="Coinvolto nell'area"> <span class="chip tiny ${AREA.half[u.id]?"sel":""}" onclick="areaHalf('${u.id}')" title="TS superato: metà danni">½</span></span> `:"";
     const laPips=(!u.pc&&u.mi>=0&&MONSTERS[u.mi]&&MONSTERS[u.mi].leg)?`<span style="white-space:nowrap;font-size:.68rem;color:var(--gold)" title="Azioni leggendarie usate nel round" onclick="event.stopPropagation()">AL ${[0,1,2].map(k=>`<span style="display:inline-block;width:11px;height:11px;border:1px solid var(--gold);border-radius:50%;cursor:pointer;background:${(u.la||0)>k?"var(--gold)":"transparent"}" onclick="laSet('${u.id}',${k})"></span>`).join("")}</span>`:"";
-    return`<div class="trk-row ${i===TRK.turn?"active":""} ${dead?"dead":""}">
+    const hid=visOf("trk",u)!=="all";
+    const eye=`<span class="eye ${hid?"off":""}" onclick="event.stopPropagation();trkVis('${u.id}')" title="${hid?"Nascosto ai giocatori: clicca per rivelarlo nella Vista giocatore":"Visibile ai giocatori: clicca per nasconderlo nella Vista giocatore"}">${hid?"🙈":"👁"}</span>`;
+    return`<div class="trk-row ${i===TRK.turn?"active":""} ${dead?"dead":""} ${hid?"hid":""}">
      <input class="ti" value="${u.init??""}" placeholder="—" onchange="setInit('${u.id}',this.value)">
-     <span class="tn" ${u.mi>=0?`onclick="openSb(${u.mi})"`:""}>${areaBox}${dead?"☠ ":""}${esc(u.name)} ${laPips}<small>${esc(u.sub)}</small></span>
+     <span class="tn" ${u.mi>=0?`onclick="openSb(${u.mi})"`:""}>${eye}${areaBox}${dead?"☠ ":""}${esc(u.name)} ${laPips}<small>${esc(u.sub)}</small></span>
      <span class="tac">${u.ac?("CA "+u.ac):""}</span>
      <span class="hpbar">${u.hp!==null?`<span class="hpbtn" onclick="dmg('${u.id}',-5)">-5</span><span class="hpbtn" onclick="dmg('${u.id}',-1)">-1</span>
        <input value="${u.hp}" onchange="setHp('${u.id}',this.value)"><span class="hx">/${u.hpMax}</span>
