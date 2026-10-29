@@ -1161,7 +1161,7 @@ function addToTrk(idx,v){
    name:m.it+(count?" "+(count+1):""),sub:MONSTERS[idx].n+" · GS "+m.cr,mi:idx,pc:false,
    init:null,ac:parseInt(m.ac,10)||10,hpMax:hpm,hp:hpm,
    dex:Math.floor((m.ab[1]-10)/2),cond:[]});
-  trkSave();if(TAB==="track")renderTrk();
+  delete TRK.ended;trkSave();if(TAB==="track")renderTrk();
   toast(`🗡 ${m.it} aggiunto al tracker (${TRK.list.filter(u=>!u.pc).length} nemici)`);
 }
 function renderMList(){
@@ -1610,6 +1610,8 @@ ${rows||'<div class="empty">Il combattimento sta per iniziare…</div>'}
 /* concludi combattimento → riepilogo nel diario di campagna */
 function endCombat(){
   if(!TRK.list.length){alert("Il tracker è vuoto.");return}
+  /* già concluso: niente XP doppi finché non si aggiungono combattenti, inizia un nuovo round o si svuota il tracker */
+  if(TRK.ended){const E=TRK.ended;alert(`Questo combattimento è già stato concluso: ${E.xp&&E.sum?"XP e riepilogo sono già stati registrati":E.xp?"gli XP sono già stati assegnati":"il riepilogo è già nel diario"}.\n\nPer un nuovo scontro svuota il tracker, aggiungi nuovi combattenti o passa al round successivo.`);return}
   const mons=TRK.list.filter(u=>!u.pc);
   const vMult=n=>n.includes("(élite)")?1.5:n.includes("(indebolita)")?0.5:1;
   const xpOf=u=>u.mi>=0&&MONSTERS[u.mi]?Math.round(XP[MONSTERS[u.mi].cr]*vMult(u.name)):0;
@@ -1624,17 +1626,15 @@ function endCombat(){
   if(alive.length)txt+=`\nSopravvissuti/fuggiti: ${grp(alive)}`;
   if(down.length)txt+=`\nPG a terra: ${down.join(", ")}`;
   const nSync=syncPcsToSheets();if(nSync)dlog(`🔄 Schede aggiornate: ${nSync} PG`);
-  if(!confirm("Aggiungere questo riepilogo al Diario di Campagna?\n\n"+txt))return;
   const DIA=lsGet("dnd5e_diary",{sessions:[],npcs:[],places:[],hooks:[]});
   ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(DIA[k]))DIA[k]=[]});
-  if(DIA.sessions.length)DIA.sessions[0].text=(DIA.sessions[0].text?DIA.sessions[0].text+"\n\n":"")+txt;
-  else DIA.sessions.unshift({id:Date.now().toString(36),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:txt});
-  /* registro XP del diario: quota a testa */
-  /* XP divisi solo tra i PG presenti nel tracker: ognuno ha il suo totale nel diario */
-  const per=pcs.length?Math.floor(xp/pcs.length):0;
   if(!DIA.xp||typeof DIA.xp.total!=="number")DIA.xp={total:0,log:[]};
   if(!DIA.xp.pcs||typeof DIA.xp.pcs!=="object")DIA.xp.pcs={};
-  if(per>0&&DIA.xp.mode!=="milestone"){
+  if(!Array.isArray(DIA.xp.log))DIA.xp.log=[];
+  /* 1) XP: divisi solo tra i PG presenti nel tracker, ognuno ha il suo totale nel diario (indipendente dal riepilogo) */
+  const per=pcs.length?Math.floor(xp/pcs.length):0;
+  let xpDone=false,sumDone=false;
+  if(per>0&&DIA.xp.mode!=="milestone"&&confirm(`Assegnare ${per.toLocaleString("it-IT")} XP a testa a ${pcs.length} PG?\n\n${pcs.map(u=>"• "+u.name).join("\n")}`)){
     const ros=lsGet("dnd5e_chars",[]);
     const who=pcs.map(u=>{const k=u.charId||("n:"+u.name.toLowerCase());
       const it=u.charId&&ros.find(x=>x.id===u.charId);
@@ -1642,10 +1642,19 @@ function endCombat(){
       DIA.xp.pcs[k].name=u.name;DIA.xp.pcs[k].xp+=per;return k});
     DIA.xp.log.unshift({id:Date.now().toString(36),date:new Date().toISOString().slice(0,10),amount:per,who,note:"Combattimento: "+(dead.length?grp(dead):"—")});
     DIA.xp.log=DIA.xp.log.slice(0,50);
+    xpDone=true;
   }
+  /* 2) riepilogo nella sessione più recente del diario (scelta separata) */
+  if(confirm("Aggiungere questo riepilogo al Diario di Campagna?\n\n"+txt)){
+    if(DIA.sessions.length)DIA.sessions[0].text=(DIA.sessions[0].text?DIA.sessions[0].text+"\n\n":"")+txt;
+    else DIA.sessions.unshift({id:Date.now().toString(36),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:txt});
+    sumDone=true;
+  }
+  if(!xpDone&&!sumDone)return;
   lsSet("dnd5e_diary",DIA);
-  dlog("🏁 Riepilogo salvato nel diario");
-  if(confirm("Riepilogo salvato nel diario. Svuotare il tracker?")){snap();TRK={list:[],turn:-1,round:0,fx:[]};trkSave();renderTrk()}
+  TRK.ended={xp:xpDone,sum:sumDone};trkSave();
+  dlog(xpDone&&sumDone?`🏁 ${per} XP a testa assegnati e riepilogo salvato nel diario`:xpDone?`🏁 ${per} XP a testa assegnati`:"🏁 Riepilogo salvato nel diario");
+  if(confirm("Combattimento concluso. Svuotare il tracker?")){snap();TRK={list:[],turn:-1,round:0,fx:[]};trkSave();renderTrk()}
 }
 /* stampa statblock dell'incontro */
 function printEnc(){
@@ -1672,12 +1681,12 @@ function encToTracker(){
        init:null,ac:parseInt(m.ac,10)||10,hpMax:hpm,hp:hpm,
        dex:Math.floor((m.ab[1]-10)/2),cond:[]});
     }});
-  trkSave();showTab("track");renderTrk();
+  delete TRK.ended;trkSave();showTab("track");renderTrk();
 }
 function addPc(){
   const name=prompt("Nome del personaggio:");if(!name)return;
   const init=parseInt(prompt("Iniziativa tirata:","10"),10)||10;
-  TRK.list.push({id:"t"+Date.now(),name,sub:"Personaggio giocante",mi:-1,pc:true,init,ac:null,hpMax:null,hp:null,dex:0,cond:[]});
+  TRK.list.push({id:"t"+Date.now(),name,sub:"Personaggio giocante",mi:-1,pc:true,init,ac:null,hpMax:null,hp:null,dex:0,cond:[]});delete TRK.ended;
   sortInit();
 }
 /* ---- PG salvati nel generatore schede (stessa origine) ---- */
@@ -1705,7 +1714,7 @@ function rosterAdd(){
   if(!ids.length){closeRoster();return}
   snap();
   charRoster().filter(it=>ids.includes(it.id)&&it.st).forEach(it=>addPcRow({...it.st,name:it.name,charId:it.id,hpC:it.st.hpC!=null?it.st.hpC:it.st.hpM}));
-  trkSave();closeRoster();sortInit();showTab("track");renderTrk();toast(`👥 ${ids.length} PG nel tracker: tira l'iniziativa e inseriscila`);
+  delete TRK.ended;trkSave();closeRoster();sortInit();showTab("track");renderTrk();toast(`👥 ${ids.length} PG nel tracker: tira l'iniziativa e inseriscila`);
 }
 /* fine combattimento: riporta sulle schede PF, PF temporanei, condizioni e TS contro morte (con conferma) */
 function syncPcsToSheets(){
@@ -1788,6 +1797,7 @@ function nextTurn(){
     if(pos===alive.length-1||pos<0)TRK.round++;
     TRK.turn=nx.i;
   }
+  if(TRK.round!==prevRound)delete TRK.ended;
   if(TRK.round>prevRound){
     tickFx();
     if(LAIR)dlog(`🏰 Round ${TRK.round}: ricorda l'azione di tana (iniziativa 20)`);
