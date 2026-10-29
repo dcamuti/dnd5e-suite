@@ -103,7 +103,7 @@ table.lst tr.mrow:hover{background:#2c2216}
 .trk-row .tn small{display:block; color:var(--muted); font-size:.68rem; font-family:Georgia,serif}
 .trk-row .tac{font-size:.85rem; color:var(--muted); text-align:center}
 .hpbar{display:flex; align-items:center; gap:5px}
-.hpbar input{width:52px; text-align:center; padding:4px 4px}
+.hpbar input{width:52px; text-align:center; padding:4px 4px; background:#1a130b; color:var(--ink); border:1px solid var(--border-field,#7d6648); border-radius:6px; font-family:inherit}
 .hpbar .hx{color:var(--muted); font-size:.78rem}
 .hpbtn{cursor:pointer; border:1px solid var(--border); border-radius:6px; padding:2px 7px; font-size:.8rem; background:#241b10; user-select:none}
 .hpbtn:hover{border-color:var(--gold)}
@@ -149,7 +149,27 @@ table.lst tr.mrow:hover{background:#2c2216}
 .fx-chip .fx-x:hover{color:#e07a7a}
 #toastBox{position:fixed; left:50%; transform:translateX(-50%); bottom:58px; z-index:90; background:linear-gradient(180deg,#3d2f1b,#2e2312); border:1px solid var(--gold); color:var(--gold-l); padding:9px 22px; border-radius:24px; font-family:var(--font-display); font-size:.85rem; opacity:0; pointer-events:none; transition:opacity .25s; box-shadow:0 6px 20px rgba(0,0,0,.5)}
 #toastBox.show{opacity:1}
-@media(max-width:760px){.trk-row{grid-template-columns:44px 1fr 60px; grid-auto-rows:auto}.thresholds{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.trk-row{grid-template-columns:44px 1fr auto 36px; grid-auto-rows:auto; row-gap:6px}
+  /* su schermi stretti: nome e CA in alto, PF e condizioni su righe intere */
+  .trk-row>.ti{grid-column:1; grid-row:1}.trk-row>.tn{grid-column:2; grid-row:1}.trk-row>.tac{grid-column:3; grid-row:1}.trk-row>.xbtn{grid-column:4; grid-row:1}
+  .trk-row>.hpbar{grid-column:1/-1; flex-wrap:wrap}.trk-row>:nth-child(5){grid-column:1/-1}.thresholds{grid-template-columns:repeat(2,1fr)}}
+/* ==== BASE UX COMUNE: focus visibile, bordi dei campi, controlli touch (uguale in tutti i tool) ==== */
+:root{--border-field:#7d6648}
+input[type=text],input[type=number],input[type=date],input[type=search],select,textarea{border-color:var(--border-field)}
+select,input,textarea,.fld{max-width:100%}
+.btn:focus-visible,button:focus-visible,a:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid #eccb62; outline-offset:2px}
+.suite-nav a.sn-lbl{background:none; border:none; padding:5px 2px; color:var(--muted); font-size:.68rem; letter-spacing:2px}
+.suite-nav a.sn-lbl:hover{color:var(--gold-l)}
+@media (pointer:coarse){
+  .btn,button,select,input[type=text],input[type=number],input[type=date],input[type=search]{min-height:40px}
+  .btn.small,.btn.sm{min-height:36px}
+  .xbtn{min-width:36px; min-height:36px; display:inline-flex; align-items:center; justify-content:center}
+  .hpbtn{min-width:36px; min-height:36px; display:inline-flex; align-items:center; justify-content:center}
+  .suite-nav a{min-height:36px; display:inline-flex; align-items:center}
+  input[type=checkbox],input[type=radio]{width:20px; height:20px}
+  /* le intestazioni verranno ridisegnate: qui restano come sono */
+  .app-header .btn,.app-header button,.app-header select,.app-header input{min-height:0}
+}
 </style>
 </head>
 <body>
@@ -163,7 +183,7 @@ table.lst tr.mrow:hover{background:#2c2216}
   </div>
 </header>
 <nav class="suite-nav">
-  <span class="sn-lbl">SUITE D&amp;D 5E</span>
+  <a class="sn-lbl" href="../index.html" title="Home della suite">SUITE D&amp;D 5E</a>
   <a href="../characters/index.html">⚔️ Schede PG</a>
   <a href="../npcs/index.html">🎭 NPC</a>
   <a class="on" href="../encounters/index.html">🐉 Incontri</a>

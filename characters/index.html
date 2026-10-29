@@ -203,6 +203,22 @@ label.fld span{display:block; font-size:.72rem; color:var(--muted); margin-botto
   .sh-cols{grid-template-columns:170px 1fr 1fr}
   .spell-cols{max-height:none}
 }
+/* ==== BASE UX COMUNE: focus visibile, bordi dei campi, controlli touch (uguale in tutti i tool) ==== */
+:root{--border-field:#7d6648}
+input[type=text],input[type=number],input[type=date],input[type=search],select,textarea{border-color:var(--border-field)}
+select,input,textarea,.fld{max-width:100%}
+.btn:focus-visible,button:focus-visible,a:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid #eccb62; outline-offset:2px}
+.suite-nav a.sn-lbl{background:none; border:none; padding:5px 2px; color:var(--muted); font-size:.68rem; letter-spacing:2px}
+.suite-nav a.sn-lbl:hover{color:var(--gold-l)}
+@media (pointer:coarse){
+  .btn,button,select,input[type=text],input[type=number],input[type=date],input[type=search]{min-height:40px}
+  .btn.small,.btn.sm{min-height:36px}
+  .xbtn{min-width:36px; min-height:36px; display:inline-flex; align-items:center; justify-content:center}
+  .suite-nav a{min-height:36px; display:inline-flex; align-items:center}
+  input[type=checkbox],input[type=radio]{width:20px; height:20px}
+  /* le intestazioni verranno ridisegnate: qui restano come sono */
+  .app-header .btn,.app-header button,.app-header select,.app-header input{min-height:0}
+}
 </style>
 </head>
 <body>
@@ -224,7 +240,7 @@ label.fld span{display:block; font-size:.72rem; color:var(--muted); margin-botto
   </div>
 </header>
 <nav class="suite-nav">
-  <span class="sn-lbl">SUITE D&amp;D 5E</span>
+  <a class="sn-lbl" href="../index.html" title="Home della suite">SUITE D&amp;D 5E</a>
   <a class="on" href="../characters/index.html">⚔️ Schede PG</a>
   <a href="../npcs/index.html">🎭 NPC</a>
   <a href="../encounters/index.html">🐉 Incontri</a>
