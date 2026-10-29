@@ -1554,6 +1554,11 @@ function checkHash(){
         showTab("gen");renderEnc();toast("🔗 Incontro caricato dal link");
       }
       history.replaceState(null,"",location.pathname+location.search);
+    }else if(h.indexOf("#sb=")===0){
+      /* aperto da un collegamento ↗ (es. un token sulla mappa): blocco statistiche di un mostro, per nome o per ID homebrew */
+      const v=decodeURIComponent(h.slice(4));history.replaceState(null,"",location.pathname+location.search);
+      const i=MONSTERS.findIndex(m=>m&&(/^hb_/.test(v)?m.id===v:m.n===v));
+      if(i>=0){showTab("best");openSb(i)}else alert("Mostro non trovato nel bestiario: potrebbe essere stato eliminato.");
     }else if(h.indexOf("#hb=")===0){
       const o=b64d(h.slice(4));
       if(o&&o.t==="hb")o.m=hbNormalize(o.m);

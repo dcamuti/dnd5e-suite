@@ -3440,7 +3440,10 @@ function checkLvupHash(){const m=/^#lvup=([\w-]+)(?:&to=(\d+))?/.exec(location.h
   if(dr&&typeof dr==="object"&&(dr.race||dr.cls)){C=dr;
     const rb=$("resumeBtn");if(rb){rb.style.display="";rb.textContent="▶ Riprendi: "+(dr.name||rN(dr.race||"")||"bozza")}
     pullPlaySync()}})();
-checkLvupHash();
+/* aperto da un collegamento ↗ (es. un token sulla mappa): mostra la scheda del PG */
+function checkOpenHash(){const m=/^#open=([\w-]+)/.exec(location.hash);if(!m)return;history.replaceState(null,"",location.pathname+location.search);
+  const it=roster().find(x=>x.id===m[1]);if(!it){alert("Personaggio non trovato tra quelli salvati in questo browser.");return}loadChar(it.id)}
+checkLvupHash();checkOpenHash();
 
 </script>
 </body>
