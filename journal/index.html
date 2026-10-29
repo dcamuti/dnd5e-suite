@@ -153,7 +153,8 @@ function cleanHtml(html){
       const urlAttr=["href","src","xlink:href","action","formaction","background","poster"].includes(n);
       if(n.startsWith("on")||n==="srcdoc"||(urlAttr&&(v.startsWith("javascript:")||v.startsWith("vbscript:")||(v.startsWith("data:")&&!v.startsWith("data:image/")))))el.removeAttribute(a.name)}));
     return doc.body.innerHTML}catch(e){return String(html||"").replace(/[<>]/g,"")}}
-function cleanStr(v){return v.replace(/[<>]/g,"").replace(/"/g,"”").replace(/&(?=[#A-Za-z0-9])/g,"＆")}
+/* testo importato (file, backup, link): si tolgono solo < e > (niente tag); virgolette e & restano come scritti */
+function cleanStr(v){return v.replace(/[<>]/g,"")}
 function safeParse(txt,allowPzHtml){
   return JSON.parse(txt,(k,v)=>{
     if(typeof v!=="string")return v;
@@ -278,7 +279,7 @@ function render(){
   $("sessList").innerHTML=DIA.sessions.filter(s=>match(q,s.title,s.text,s.date)).map(s=>`
    <div class="sess">
     <div class="shead">
-      <input type="date" value="${s.date}" onchange="upd('sessions','${s.id}','date',this.value)">
+      <input type="date" value="${esc(s.date)}" onchange="upd('sessions','${s.id}','date',this.value)">
       <input type="text" value="${esc(s.title)}" placeholder="Titolo…" oninput="upd('sessions','${s.id}','title',this.value)">
       <span class="xbtn" onclick="del('sessions','${s.id}')">✕</span>
     </div>

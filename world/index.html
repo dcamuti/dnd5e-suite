@@ -208,7 +208,8 @@ function cleanHtml(html){
       const urlAttr=["href","src","xlink:href","action","formaction","background","poster"].includes(n);
       if(n.startsWith("on")||n==="srcdoc"||(urlAttr&&(v.startsWith("javascript:")||v.startsWith("vbscript:")||(v.startsWith("data:")&&!v.startsWith("data:image/")))))el.removeAttribute(a.name)}));
     return doc.body.innerHTML}catch(e){return String(html||"").replace(/[<>]/g,"")}}
-function cleanStr(v){return v.replace(/[<>]/g,"").replace(/"/g,"”").replace(/&(?=[#A-Za-z0-9])/g,"＆")}
+/* testo importato (file, backup, link): si tolgono solo < e > (niente tag); virgolette e & restano come scritti */
+function cleanStr(v){return v.replace(/[<>]/g,"")}
 function safeParse(txt,allowPzHtml){
   return JSON.parse(txt,(k,v)=>{
     if(typeof v!=="string")return v;
@@ -532,16 +533,16 @@ function genSettlement(seed){const envSel=$("sEnv").value;const sz=$("sSize").va
       atmosfera:X("atmosfera",C),segreto:X("segreto_luogo",C),luoghi,voci}})}
 function htmlSettlement(S){
   const vt={vera:"v",falsa:"f",parziale:"p"};
-  return`<div class="card"><h3>${esc(S.name)}</h3><div class="sub">${S.size} · circa ${S.pop.toLocaleString("it-IT")} abitanti · ${envName(S.env)}</div>
-   <div class="sec"><h4>Prima impressione</h4><p>${cap(S.atmosfera)}.</p></div>
-   <div class="sec"><h4>Chi comanda · di cosa si vive</h4><p>Governa ${S.governo}. L'economia si regge su ${S.economia}.</p></div>
-   <div class="sec"><h4>Il problema del momento (aggancio)</h4><p>${cap(S.problema)}.</p></div>
-   <div class="sec"><h4>Luoghi notevoli</h4><ul>${S.luoghi.map(l=>`<li><b>${esc(l.nome)}</b> — ${l.det}. ${cap(l.ruolo)}: <b>${esc(l.gestore.nome)}</b>, che ${l.gestore.tratto}.</li>`).join("")}</ul></div>
-   <div class="sec"><h4>Voci di paese</h4><ul>${S.voci.map(v=>`<li>${esc(v.t)} <span class="dmonly tag ${vt[v.v]}">${v.v}</span></li>`).join("")}</ul></div>
-   <div class="sec"><h4>Segreto (solo DM)</h4><p class="dm">${cap(S.segreto)}.</p></div>
+  return`<div class="card"><h3>${esc(S.name)}</h3><div class="sub">${esc(S.size)} · circa ${S.pop.toLocaleString("it-IT")} abitanti · ${esc(envName(S.env))}</div>
+   <div class="sec"><h4>Prima impressione</h4><p>${esc(cap(S.atmosfera))}.</p></div>
+   <div class="sec"><h4>Chi comanda · di cosa si vive</h4><p>Governa ${esc(S.governo)}. L'economia si regge su ${esc(S.economia)}.</p></div>
+   <div class="sec"><h4>Il problema del momento (aggancio)</h4><p>${esc(cap(S.problema))}.</p></div>
+   <div class="sec"><h4>Luoghi notevoli</h4><ul>${S.luoghi.map(l=>`<li><b>${esc(l.nome)}</b> — ${esc(l.det)}. ${esc(cap(l.ruolo))}: <b>${esc(l.gestore.nome)}</b>, che ${esc(l.gestore.tratto)}.</li>`).join("")}</ul></div>
+   <div class="sec"><h4>Voci di paese</h4><ul>${S.voci.map(v=>`<li>${esc(v.t)} <span class="dmonly tag ${vt[v.v]}">${esc(v.v)}</span></li>`).join("")}</ul></div>
+   <div class="sec"><h4>Segreto (solo DM)</h4><p class="dm">${esc(cap(S.segreto))}.</p></div>
    <div class="seed">seme ${S.seed}</div></div>`}
 function diarySettlement(S){
-  toDiary("places",{name:S.name,note:`${S.size}, ${S.pop} ab. · ${envName(S.env)} · Governo: ${S.governo} · Economia: ${S.economia} · Luoghi: ${S.luoghi.map(l=>l.nome+" ("+l.gestore.nome+")").join(", ")} · Segreto: ${S.segreto}`});
+  toDiary("places",{name:S.name,note:`${S.size}, ${S.pop} ab. · ${esc(envName(S.env))} · Governo: ${S.governo} · Economia: ${S.economia} · Luoghi: ${S.luoghi.map(l=>l.nome+" ("+l.gestore.nome+")").join(", ")} · Segreto: ${S.segreto}`});
   toDiary("hooks",{text:`${S.name}: ${S.problema}`});
   S.luoghi.forEach(l=>toDiary("npcs",{name:l.gestore.nome,where:S.name+" — "+l.nome,att:"Neutrale",note:`${cap(l.ruolo)}; ${l.gestore.tratto}`}));
   return`${S.name}: luogo, aggancio e ${S.luoghi.length} PNG`}
@@ -555,13 +556,13 @@ function genInn(seed){const envSel=$("iEnv").value;
     return{type:"inn",seed,env,name:innName(),atm:X("inn_atm",C),oste,piatti:pick("piatto"),bevande:pick("bevanda"),
       avventori:Xn("avventore_fa",C,3).map(fa=>({p:persona(),fa})),scena:X("scena",C),voce:X("voce",C),
       stanza:R(["5 ma la notte (pagliericcio in comune)","8 ma la notte","1 mo la notte, colazione compresa","2 mo per la stanza migliore, con camino"])}})}
-function htmlInn(I){return`<div class="card"><h3>Locanda «${esc(I.name)}»</h3><div class="sub">${cap(I.atm)}</div>
-   <div class="sec"><h4>L'oste</h4><p><b>${esc(I.oste.nome)}</b>, che ${I.oste.tratto}.</p></div>
-   <div class="sec"><h4>Menu</h4><table>${I.piatti.map(p=>`<tr><td>${cap(p.t)}</td><td style="text-align:right;white-space:nowrap">${p.p}</td></tr>`).join("")}${I.bevande.map(p=>`<tr><td>${cap(p.t)}</td><td style="text-align:right;white-space:nowrap">${p.p}</td></tr>`).join("")}<tr><td><i>Stanza</i></td><td style="text-align:right">${I.stanza}</td></tr></table></div>
-   <div class="sec"><h4>Avventori</h4><ul>${I.avventori.map(a=>`<li><b>${esc(a.p.nome)}</b> ${a.fa} (${a.p.tratto}).</li>`).join("")}</ul></div>
-   <div class="sec"><h4>Quando entrate…</h4><p>${I.scena}</p></div>
+function htmlInn(I){return`<div class="card"><h3>Locanda «${esc(I.name)}»</h3><div class="sub">${esc(cap(I.atm))}</div>
+   <div class="sec"><h4>L'oste</h4><p><b>${esc(I.oste.nome)}</b>, che ${esc(I.oste.tratto)}.</p></div>
+   <div class="sec"><h4>Menu</h4><table>${I.piatti.map(p=>`<tr><td>${esc(cap(p.t))}</td><td style="text-align:right;white-space:nowrap">${esc(p.p)}</td></tr>`).join("")}${I.bevande.map(p=>`<tr><td>${esc(cap(p.t))}</td><td style="text-align:right;white-space:nowrap">${esc(p.p)}</td></tr>`).join("")}<tr><td><i>Stanza</i></td><td style="text-align:right">${esc(I.stanza)}</td></tr></table></div>
+   <div class="sec"><h4>Avventori</h4><ul>${I.avventori.map(a=>`<li><b>${esc(a.p.nome)}</b> ${esc(a.fa)} (${esc(a.p.tratto)}).</li>`).join("")}</ul></div>
+   <div class="sec"><h4>Quando entrate…</h4><p>${esc(I.scena)}</p></div>
    <div class="sec"><h4>Si sente dire</h4><p>${esc(I.voce)}</p></div>
-   <div class="seed">seme ${I.seed}</div></div>`}
+   <div class="seed">seme ${esc(I.seed)}</div></div>`}
 function diaryInn(I){toDiary("places",{name:"Locanda «"+I.name+"»",note:`${I.atm} · Oste: ${I.oste.nome} · Avventori: ${I.avventori.map(a=>a.p.nome).join(", ")}`});
   toDiary("npcs",{name:I.oste.nome,where:"Locanda «"+I.name+"»",att:"Neutrale",note:"Oste; "+I.oste.tratto});return"la locanda e l'oste"}
 
@@ -570,13 +571,13 @@ function genRuin(seed){const envSel=$("rEnv").value;
   return withSeed(seed,()=>{const env=envOfV(envSel);const C=mkCtx(env);
     return{type:"rov",seed,env,tipo:X("rov_tipo",C),name:placeName(C),chi:X("rov_chi",C),per:X("rov_per",C),fine:X("rov_fine",C),ora:X("rov_ora",C),
       anni:R([60,150,300,800,2000]),pericolo:R(GW.rov_pericolo),tesoro:R(GW.rov_tesoro),aggancio:X("rov_aggancio",C)}})}
-function htmlRuin(V){return`<div class="card"><h3>${esc(V.name)}</h3><div class="sub">${cap(V.tipo)} · ${envName(V.env)} · in rovina da circa ${V.anni} anni</div>
-   <div class="sec"><h4>Storia</h4><p>Il luogo fu costruito da <b>${V.chi}</b> per ${V.per}, e fu abbandonato dopo ${V.fine}.</p></div>
-   <div class="sec"><h4>Chi ci vive ora</h4><p>${cap(V.ora)}.</p></div>
-   <div class="sec"><h4>Pericolo</h4><p>${cap(V.pericolo)}.</p></div>
-   <div class="sec"><h4>Tesoro (solo DM)</h4><p class="dm">${cap(V.tesoro)}.</p></div>
+function htmlRuin(V){return`<div class="card"><h3>${esc(V.name)}</h3><div class="sub">${esc(cap(V.tipo))} · ${esc(envName(V.env))} · in rovina da circa ${esc(V.anni)} anni</div>
+   <div class="sec"><h4>Storia</h4><p>Il luogo fu costruito da <b>${esc(V.chi)}</b> per ${esc(V.per)}, e fu abbandonato dopo ${esc(V.fine)}.</p></div>
+   <div class="sec"><h4>Chi ci vive ora</h4><p>${esc(cap(V.ora))}.</p></div>
+   <div class="sec"><h4>Pericolo</h4><p>${esc(cap(V.pericolo))}.</p></div>
+   <div class="sec"><h4>Tesoro (solo DM)</h4><p class="dm">${esc(cap(V.tesoro))}.</p></div>
    <div class="sec"><h4>Come ci arrivano i PG</h4><p>${esc(V.aggancio)}</p></div>
-   <div class="seed">seme ${V.seed}</div></div>`}
+   <div class="seed">seme ${esc(V.seed)}</div></div>`}
 function diaryRuin(V){toDiary("places",{name:V.name+" ("+V.tipo+")",note:`Costruita da ${V.chi} per ${V.per}; caduta per ${V.fine}. Ora: ${V.ora}. Pericolo: ${V.pericolo}. Tesoro: ${V.tesoro}`});
   toDiary("hooks",{text:V.name+": "+V.aggancio});return"la rovina e un aggancio"}
 
@@ -587,20 +588,20 @@ function genTravel(seed){const envSel=$("tEnv").value,days=parseInt($("tDays").v
       if(r<.35)ev="";else if(r<.8){for(let k=0;k<8;k++){ev=X("viaggio_ev",C);if(!used.has(ev))break}used.add(ev)}else ev="Incontro: "+X("incontro_nc",C);
       return{meteo:X("meteo",C),ev,campo:rnd()<.45?X("campo",C):""}});
     return{type:"tra",seed,env,days:dd}})}
-function htmlTravel(T){return`<div class="card"><h3>Viaggio di ${T.days.length} giorni</h3><div class="sub">${envName(T.env)}</div>
-   <table>${T.days.map((d,i)=>`<tr><td style="white-space:nowrap"><b>Giorno ${i+1}</b></td><td><i>${cap(d.meteo)}.</i> ${d.ev?esc(d.ev):"<span style='color:#8a744c'>Nessun evento: il cammino procede.</span>"}${d.campo?`<br><span style="font-size:.85rem">🔥 ${esc(d.campo)}</span>`:""}</td></tr>`).join("")}</table>
-   <div class="seed">seme ${T.seed}</div></div>`}
-function diaryTravel(T){toDiary("session",`— 🧭 Viaggio (${T.days.length} giorni, ${envName(T.env)}) —\n`+T.days.map((d,i)=>`G${i+1}: ${d.meteo}. ${d.ev||"—"}`).join("\n"));return"il resoconto del viaggio (nella sessione)"}
+function htmlTravel(T){return`<div class="card"><h3>Viaggio di ${esc(T.days.length)} giorni</h3><div class="sub">${esc(envName(T.env))}</div>
+   <table>${T.days.map((d,i)=>`<tr><td style="white-space:nowrap"><b>Giorno ${i+1}</b></td><td><i>${esc(cap(d.meteo))}.</i> ${d.ev?esc(d.ev):"<span style='color:#8a744c'>Nessun evento: il cammino procede.</span>"}${d.campo?`<br><span style="font-size:.85rem">🔥 ${esc(d.campo)}</span>`:""}</td></tr>`).join("")}</table>
+   <div class="seed">seme ${esc(T.seed)}</div></div>`}
+function diaryTravel(T){toDiary("session",`— 🧭 Viaggio (${T.days.length} giorni, ${esc(envName(T.env))}) —\n`+T.days.map((d,i)=>`G${i+1}: ${d.meteo}. ${d.ev||"—"}`).join("\n"));return"il resoconto del viaggio (nella sessione)"}
 
 /* ================= EVENTI ================= */
 function genEvent(seed){const envSel=$("eEnv").value;
   return withSeed(seed,()=>{const env=envOfV(envSel);const C=mkCtx(env);let c1=X("colpo",C),c2;for(let k=0;k<8;k++){c2=X("colpo",C);if(c2!==c1)break}
     return{type:"eve",seed,env,causa:X("ev_causa",C),effetto:X("ev_effetto",C),conseg:X("ev_conseg",C),colpi:[c1,c2],nc:X("incontro_nc",C)}})}
-function htmlEvent(E){return`<div class="card"><h3>${esc(E.causa)}</h3><div class="sub">${envName(E.env)}</div>
-   <div class="sec"><h4>Causa → effetto → conseguenza</h4><p><b>${esc(E.causa)}</b>: ${E.effetto}. E ${E.conseg}</p></div>
+function htmlEvent(E){return`<div class="card"><h3>${esc(E.causa)}</h3><div class="sub">${esc(envName(E.env))}</div>
+   <div class="sec"><h4>Causa → effetto → conseguenza</h4><p><b>${esc(E.causa)}</b>: ${esc(E.effetto)}. E ${esc(E.conseg)}</p></div>
    <div class="sec"><h4>Colpi di scena (solo DM)</h4><ul class="dm" style="margin-left:0;padding-left:26px">${E.colpi.map(c=>`<li>${esc(c)}</li>`).join("")}</ul></div>
    <div class="sec"><h4>Incontro senza spade</h4><p>${esc(E.nc)}</p></div>
-   <div class="seed">seme ${E.seed}</div></div>`}
+   <div class="seed">seme ${esc(E.seed)}</div></div>`}
 function diaryEvent(E){toDiary("hooks",{text:`${E.causa}: ${E.effetto}`});return"l'evento tra gli agganci"}
 
 /* ================= DISPATCH ================= */

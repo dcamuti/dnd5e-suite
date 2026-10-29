@@ -386,7 +386,8 @@ function cleanHtml(html){
       const urlAttr=["href","src","xlink:href","action","formaction","background","poster"].includes(n);
       if(n.startsWith("on")||n==="srcdoc"||(urlAttr&&(v.startsWith("javascript:")||v.startsWith("vbscript:")||(v.startsWith("data:")&&!v.startsWith("data:image/")))))el.removeAttribute(a.name)}));
     return doc.body.innerHTML}catch(e){return String(html||"").replace(/[<>]/g,"")}}
-function cleanStr(v){return v.replace(/[<>]/g,"").replace(/"/g,"”").replace(/&(?=[#A-Za-z0-9])/g,"＆")}
+/* testo importato (file, backup, link): si tolgono solo < e > (niente tag); virgolette e & restano come scritti */
+function cleanStr(v){return v.replace(/[<>]/g,"")}
 function safeParse(txt,allowPzHtml){
   return JSON.parse(txt,(k,v)=>{
     if(typeof v!=="string")return v;
@@ -933,7 +934,7 @@ function savePz(){
 function openSaved(){
   const l=pzAll();
   $("savedList").innerHTML=l.length?l.map(p=>`<div class="row">
-    <span style="flex:1"><b style="color:var(--gold-l)">${esc(p.name)}</b><br><span style="color:var(--muted);font-size:.75rem">${p.tipo} · ${p.date}</span></span>
+    <span style="flex:1"><b style="color:var(--gold-l)">${esc(p.name)}</b><br><span style="color:var(--muted);font-size:.75rem">${esc(p.tipo)} · ${esc(p.date)}</span></span>
     <button class="btn small" onclick="loadPz('${p.id}')">📜 Apri</button>
     <span class="xbtn" onclick="delPz('${p.id}')">✕</span></div>`).join("")
    :'<p style="color:var(--muted)">Nessun enigma salvato.</p>';

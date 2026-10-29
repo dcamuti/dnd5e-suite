@@ -1901,7 +1901,8 @@ function cleanHtml(html){
       const urlAttr=["href","src","xlink:href","action","formaction","background","poster"].includes(n);
       if(n.startsWith("on")||n==="srcdoc"||(urlAttr&&(v.startsWith("javascript:")||v.startsWith("vbscript:")||(v.startsWith("data:")&&!v.startsWith("data:image/")))))el.removeAttribute(a.name)}));
     return doc.body.innerHTML}catch(e){return String(html||"").replace(/[<>]/g,"")}}
-function cleanStr(v){return v.replace(/[<>]/g,"").replace(/"/g,"”").replace(/&(?=[#A-Za-z0-9])/g,"＆")}
+/* testo importato (file, backup, link): si tolgono solo < e > (niente tag); virgolette e & restano come scritti */
+function cleanStr(v){return v.replace(/[<>]/g,"")}
 function safeParse(txt,allowPzHtml){
   return JSON.parse(txt,(k,v)=>{
     if(typeof v!=="string")return v;
@@ -1955,7 +1956,7 @@ function renderCharModal(){
   const list=roster();
   document.getElementById("charList").innerHTML=list.length?list.map(it=>
     `<div class="src-item" style="justify-content:space-between;cursor:default;margin-bottom:6px">
-     <span><b style="color:var(--gold-l)">${it.name}</b><br><span style="font-size:.74rem;color:var(--muted)">${it.info||""} · ${new Date(it.ts).toLocaleDateString()}</span></span>
+     <span><b style="color:var(--gold-l)">${htmlEsc(it.name)}</b><br><span style="font-size:.74rem;color:var(--muted)">${htmlEsc(it.info||"")} · ${new Date(it.ts).toLocaleDateString()}</span></span>
      <span style="flex:none;display:flex;gap:5px">
       <button class="btn small" onclick="loadChar('${it.id}')">▶ Apri</button>
       <button class="btn small" onclick="exportChar('${it.id}')">⬇ JSON</button>
@@ -2146,7 +2147,7 @@ function openParty(){
   let rows="";
   list.forEach(it=>{const s2=partyStats(it.data);
     rows+=`<tr>
-     <td><b style="color:var(--gold-l)">${s2.name}</b><br><span style="font-size:.72rem;color:var(--muted)">${s2.race} · ${s2.cls}</span></td>
+     <td><b style="color:var(--gold-l)">${htmlEsc(s2.name)}</b><br><span style="font-size:.72rem;color:var(--muted)">${htmlEsc(s2.race)} · ${htmlEsc(s2.cls)}</span></td>
      <td style="text-align:center"><b>${s2.ac}</b></td>
      <td style="text-align:center">${s2.hpC!=null?`<b>${s2.hpC}</b>/${s2.hpM}`:`<b>${s2.hpM}</b>`}</td>
      <td style="text-align:center">${s2.pp}</td><td style="text-align:center">${s2.pins}</td><td style="text-align:center">${s2.pinv}</td>
@@ -2655,7 +2656,7 @@ function stAbil(){
         if(sl.type==="asi11")h+=asiAbilSel(i,"b",sl.b);
       }else if(sl.type==="feat"){
         const others=chosenFeats().filter(f=>f!==sl.feat);
-        h+=`<select onchange="setAsiFeat(${i},this.value)"><option value="">— talento —</option>${featsAvail().filter(f=>!others.includes(f[0])).map(f=>`<option value="${f[0]}" ${sl.feat===f[0]?"selected":""}>${LANG==="it"?f[1]:f[0]} (${f[2]})</option>`).join("")}</select>`;
+        h+=`<select onchange="setAsiFeat(${i},this.value)"><option value="">— talento —</option>${featsAvail().filter(f=>!others.includes(f[0])).map(f=>`<option value="${htmlEsc(f[0])}" ${sl.feat===f[0]?"selected":""}>${htmlEsc(LANG==="it"?f[1]:f[0])} (${f[2]})</option>`).join("")}</select>`;
         if(sl.feat&&FEAT_ASI[sl.feat]){const opts=FEAT_ASI[sl.feat];
           h+=`<select onchange="C.asi[${i}].featAbil=this.value;renderStep()" title="Caratteristica aumentata dal talento">${opts.map(a=>`<option value="${a}" ${sl.featAbil===a?"selected":""}>+1 ${ABIL_IT[a]}</option>`).join("")}</select>`;}
       }
@@ -2746,7 +2747,7 @@ function stSpells(){
       [[6,11],[7,13],[8,15],[9,17]].forEach(([slv,th])=>{if(e.lv<th)return;
         const pool=SPELLS.filter(s=>s[1]===slv&&s[3].includes("k")&&okSrc(s[4]||"PHB"));
         const cur=(m.arc||{})[slv]||"";
-        h+=`<label class="fld"><span>${slv}° livello</span><select onchange="const mm=magFor('${e.n}');mm.arc=mm.arc||{};mm.arc[${slv}]=this.value||null;renderStep()"><option value="">—</option>${pool.map(s=>`<option value="${s[0].replace(/'/g,"&#39;")}" ${cur===s[0]?"selected":""}>${spN(s[0])}</option>`).join("")}</select></label>`});
+        h+=`<label class="fld"><span>${slv}° livello</span><select onchange="const mm=magFor('${e.n}');mm.arc=mm.arc||{};mm.arc[${slv}]=this.value||null;renderStep()"><option value="">—</option>${pool.map(s=>`<option value="${htmlEsc(s[0])}" ${cur===s[0]?"selected":""}>${spN(s[0])}</option>`).join("")}</select></label>`});
       h+=`</div>`;
     }
     const sn=secretsCount(e);
@@ -2793,34 +2794,34 @@ function stDetails(){
     const fo=featObj();
     const abilSel=(C.feat&&FEAT_ASI[C.feat])?`<label class="fld"><span>+1 a</span><select onchange="C.featAbil=this.value;renderStep()">${FEAT_ASI[C.feat].map(a=>`<option value="${a}" ${C.featAbil===a?"selected":""}>${ABIL_IT[a]}</option>`).join("")}</select></label>`:"";
     featSec=`<h3 style="color:var(--gold-l);margin-top:4px">Talento (dalla razza)</h3>
-    <div class="flexrow"><label class="fld" style="max-width:340px"><span>Feat</span><select onchange="setRaceFeat(this.value)"><option value="">—</option>${featsAvail().map(f=>`<option value="${f[0]}" ${C.feat===f[0]?"selected":""}>${LANG==="it"?f[1]:f[0]} (${f[2]})</option>`).join("")}</select></label>${abilSel}</div>
+    <div class="flexrow"><label class="fld" style="max-width:340px"><span>Feat</span><select onchange="setRaceFeat(this.value)"><option value="">—</option>${featsAvail().map(f=>`<option value="${htmlEsc(f[0])}" ${C.feat===f[0]?"selected":""}>${htmlEsc(LANG==="it"?f[1]:f[0])} (${f[2]})</option>`).join("")}</select></label>${abilSel}</div>
     ${fo?`<div class="hint" style="margin-top:-4px">${fo[3]}${FEAT_ASI[C.feat]?` <b style="color:var(--gold-l)">Il +1 viene applicato automaticamente ai punteggi.</b>`:""}</div>`:""}`;
     classOptGroups().filter(g=>g.ft).forEach(g=>{featSec+=optGroupRow(g)});
   }
   return`<h2>Dettagli finali</h2><div class="hint">Nome, allineamento e tratti del personaggio.</div>
   ${featSec}
   <div class="flexrow">
-  <label class="fld"><span>Nome</span><input type="text" id="fName" value="${C.name.replace(/"/g,"&quot;")}" oninput="C.name=this.value"> <button class="btn small" onclick="C.name=randName();renderStep()">🎲</button></label>
+  <label class="fld"><span>Nome</span><input type="text" id="fName" value="${htmlEsc(C.name)}" oninput="C.name=this.value"> <button class="btn small" onclick="C.name=randName();renderStep()">🎲</button></label>
   <label class="fld"><span>Genere del nome</span><select onchange="C.gender=this.value"><option value="m" ${C.gender==="m"?"selected":""}>Maschile</option><option value="f" ${C.gender==="f"?"selected":""}>Femminile</option></select></label>
   <label class="fld"><span>Allineamento</span><select onchange="C.align=this.value">${ALIGNMENTS.map(a=>`<option ${C.align===a?"selected":""}>${a}</option>`).join("")}</select></label>
-  <label class="fld"><span>Nome del giocatore</span><input type="text" value="${C.player}" oninput="C.player=this.value"></label>
+  <label class="fld"><span>Nome del giocatore</span><input type="text" value="${htmlEsc(C.player)}" oninput="C.player=this.value"></label>
   </div>
   <h3 style="color:var(--gold-l)">Equipaggiamento</h3>
   <div class="flexrow" style="margin-top:8px">
-  <label class="fld"><span>Armatura</span><select onchange="gear().armor=this.value;renderStep()">${ARMORS.filter(a=>a[7]!=="HB"||ENABLED.has("HB")).map(a=>`<option value="${a[0]}" ${gear().armor===a[0]?"selected":""}>${LANG==="it"?a[1]:a[0]}${a[7]==="HB"?" ✦":""} — CA ${a[3]}${a[2]==="light"||a[2]==="none"?"+Des":a[2]==="med"?"+Des (max "+a[4]+")":""}${a[6]?" · svant. Furtività":""}${a[5]?" · For "+a[5]:""}</option>`).join("")}</select></label>
-  <label class="fld"><span>Scudo</span><select onchange="gear().shield=this.value||false;renderStep()"><option value="" ${!gear().shield?"selected":""}>Nessuno</option>${SHIELDS.filter(s=>s[4]!=="HB"||ENABLED.has("HB")).map(s=>`<option value="${s[0]}" ${(gear().shield===s[0]||(gear().shield===true&&s[0]==="Shield"))?"selected":""}>${LANG==="it"?s[1]:s[0]}${s[4]==="HB"?" ✦":""} (+${s[2]} CA)</option>`).join("")}</select></label>
+  <label class="fld"><span>Armatura</span><select onchange="gear().armor=this.value;renderStep()">${ARMORS.filter(a=>a[7]!=="HB"||ENABLED.has("HB")).map(a=>`<option value="${htmlEsc(a[0])}" ${gear().armor===a[0]?"selected":""}>${htmlEsc(LANG==="it"?a[1]:a[0])}${a[7]==="HB"?" ✦":""} — CA ${a[3]}${a[2]==="light"||a[2]==="none"?"+Des":a[2]==="med"?"+Des (max "+a[4]+")":""}${a[6]?" · svant. Furtività":""}${a[5]?" · For "+a[5]:""}</option>`).join("")}</select></label>
+  <label class="fld"><span>Scudo</span><select onchange="gear().shield=this.value||false;renderStep()"><option value="" ${!gear().shield?"selected":""}>Nessuno</option>${SHIELDS.filter(s=>s[4]!=="HB"||ENABLED.has("HB")).map(s=>`<option value="${htmlEsc(s[0])}" ${(gear().shield===s[0]||(gear().shield===true&&s[0]==="Shield"))?"selected":""}>${htmlEsc(LANG==="it"?s[1]:s[0])}${s[4]==="HB"?" ✦":""} (+${s[2]} CA)</option>`).join("")}</select></label>
   <div style="align-self:center;font-size:.9rem;color:var(--gold-l)">CA risultante: <b style="font-size:1.2rem">${acOf(finalScores())}</b></div>
   </div>
   <div class="hint" style="margin-bottom:2px">Armi equipaggiate (max 4) — passa il mouse per danno e proprietà:</div>
-  <div class="chipbar">${WEAPONS.filter(w=>w[6]!=="HB"||ENABLED.has("HB")).map(w=>`<span class="chip ${gear().weapons.includes(w[0])?"sel":""}" title="${w[2]} · ${(w[5]||"").replace(/"/g,"&quot;")}" onclick="toggleWeapon('${w[0].replace(/'/g,"\\'")}')">${LANG==="it"?w[1]:w[0]}${w[6]==="HB"?" ✦":""}</span>`).join("")}</div>
-  <label class="fld" style="width:100%"><span>Inventario / altro equipaggiamento</span><input type="text" style="width:100%" value="${(gear().inv||"").replace(/"/g,"&quot;")}" oninput="gear().inv=this.value" placeholder="Es. zaino da esploratore, corda, 15 mo…"></label>
+  <div class="chipbar">${WEAPONS.filter(w=>w[6]!=="HB"||ENABLED.has("HB")).map(w=>`<span class="chip ${gear().weapons.includes(w[0])?"sel":""}" title="${htmlEsc(w[2])} · ${htmlEsc(w[5]||"")}" onclick="toggleWeapon(${jsa(w[0])})">${htmlEsc(LANG==="it"?w[1]:w[0])}${w[6]==="HB"?" ✦":""}</span>`).join("")}</div>
+  <label class="fld" style="width:100%"><span>Inventario / altro equipaggiamento</span><input type="text" style="width:100%" value="${htmlEsc(gear().inv)}" oninput="gear().inv=this.value" placeholder="Es. zaino da esploratore, corda, 15 mo…"></label>
   <button class="btn small gold" onclick="C.trait=rnd(TRAIT_POOL);C.ideal=rnd(IDEAL_POOL);C.bond=rnd(BOND_POOL);C.flaw=rnd(FLAW_POOL);renderStep()">🎲 Tratti casuali</button>
   <div class="flexrow" style="margin-top:10px">
-  <label class="fld" style="flex:1;min-width:260px"><span>Tratto della personalità</span><input type="text" style="width:100%" value="${(C.trait||"").replace(/"/g,"&quot;")}" oninput="C.trait=this.value"></label>
-  <label class="fld" style="flex:1;min-width:260px"><span>Ideale</span><input type="text" style="width:100%" value="${(C.ideal||"").replace(/"/g,"&quot;")}" oninput="C.ideal=this.value"></label>
+  <label class="fld" style="flex:1;min-width:260px"><span>Tratto della personalità</span><input type="text" style="width:100%" value="${htmlEsc(C.trait)}" oninput="C.trait=this.value"></label>
+  <label class="fld" style="flex:1;min-width:260px"><span>Ideale</span><input type="text" style="width:100%" value="${htmlEsc(C.ideal)}" oninput="C.ideal=this.value"></label>
   </div><div class="flexrow">
-  <label class="fld" style="flex:1;min-width:260px"><span>Legame</span><input type="text" style="width:100%" value="${(C.bond||"").replace(/"/g,"&quot;")}" oninput="C.bond=this.value"></label>
-  <label class="fld" style="flex:1;min-width:260px"><span>Difetto</span><input type="text" style="width:100%" value="${(C.flaw||"").replace(/"/g,"&quot;")}" oninput="C.flaw=this.value"></label>
+  <label class="fld" style="flex:1;min-width:260px"><span>Legame</span><input type="text" style="width:100%" value="${htmlEsc(C.bond)}" oninput="C.bond=this.value"></label>
+  <label class="fld" style="flex:1;min-width:260px"><span>Difetto</span><input type="text" style="width:100%" value="${htmlEsc(C.flaw)}" oninput="C.flaw=this.value"></label>
   </div>`+footBtns(true,"✅ Crea la scheda");
 }
 function toggleWeapon(n){const w=gear().weapons;const i=w.indexOf(n);
@@ -3168,7 +3169,7 @@ function buildSheet(){
   const skProf=new Set([...bgSkillList(),...C.skills]);
   const clsTxt=entries().map(e=>`${cN(e.n)} ${e.lv}${e.sub?" ("+scN(e.sub)+")":""}`).join(" / ");
   let h=`<div class="sh-head"><div><div class="pname">${htmlEsc(C.name)||"—"}</div><div>${rN(C.race)}${C.sub?" ("+rN(C.sub)+")":""} · ${clsTxt} · Livello ${totLevel()}</div></div>
-  <div class="pmeta">Background: <b>${C.bg?bgN(C.bg):"—"}</b><br>Allineamento: <b>${C.align}</b><br>Giocatore: ${htmlEsc(C.player)||"—"} · Bonus competenza: <b>${fm(pb)}</b></div></div>`;
+  <div class="pmeta">Background: <b>${C.bg?bgN(C.bg):"—"}</b><br>Allineamento: <b>${htmlEsc(C.align)}</b><br>Giocatore: ${htmlEsc(C.player)||"—"} · Bonus competenza: <b>${fm(pb)}</b></div></div>`;
   h+=`<div class="sh-cols"><div class="sh-abil">`;
   ABILS.forEach(a=>{h+=`<div class="box"><div class="nm">${ABIL_IT[a]}</div><div class="md">${fm(mod(f[a]))}</div><div class="sc">${f[a]}</div></div>`});
   h+=`</div><div>`;
@@ -3242,8 +3243,8 @@ function buildSheet(){
   ${gear().inv?`<div class="sh-trait"><b>Inventario:</b> ${htmlEsc(gear().inv)}</div>`:""}
   <div class="sh-trait"><b>Dotazione di classe suggerita:</b> ${eqN(c.equip)}</div>${isMulti()?`<div class="sh-trait"><b>Multiclasse:</b> TS e abilità dalla classe primaria (${cN(C.cls)}); dalla classe aggiuntiva si ottengono solo le competenze previste dal PHB (cap. 6, "Multiclassing").</div>`:""}</div>`;
   h+=`<div class="sh-box"><h3>Personalità</h3>
-   <div class="sh-trait"><b>Tratto:</b> ${C.trait||"—"}</div><div class="sh-trait"><b>Ideale:</b> ${C.ideal||"—"}</div>
-   <div class="sh-trait"><b>Legame:</b> ${C.bond||"—"}</div><div class="sh-trait"><b>Difetto:</b> ${C.flaw||"—"}</div></div>`;
+   <div class="sh-trait"><b>Tratto:</b> ${htmlEsc(C.trait)||"—"}</div><div class="sh-trait"><b>Ideale:</b> ${htmlEsc(C.ideal)||"—"}</div>
+   <div class="sh-trait"><b>Legame:</b> ${htmlEsc(C.bond)||"—"}</div><div class="sh-trait"><b>Difetto:</b> ${htmlEsc(C.flaw)||"—"}</div></div>`;
   // compagni (costrutti, draghetti, bestie, famigli)
   const comps=[];
   entries().forEach(e=>{

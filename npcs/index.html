@@ -214,7 +214,8 @@ function cleanHtml(html){
       const urlAttr=["href","src","xlink:href","action","formaction","background","poster"].includes(n);
       if(n.startsWith("on")||n==="srcdoc"||(urlAttr&&(v.startsWith("javascript:")||v.startsWith("vbscript:")||(v.startsWith("data:")&&!v.startsWith("data:image/")))))el.removeAttribute(a.name)}));
     return doc.body.innerHTML}catch(e){return String(html||"").replace(/[<>]/g,"")}}
-function cleanStr(v){return v.replace(/[<>]/g,"").replace(/"/g,"”").replace(/&(?=[#A-Za-z0-9])/g,"＆")}
+/* testo importato (file, backup, link): si tolgono solo < e > (niente tag); virgolette e & restano come scritti */
+function cleanStr(v){return v.replace(/[<>]/g,"")}
 function safeParse(txt,allowPzHtml){
   return JSON.parse(txt,(k,v)=>{
     if(typeof v!=="string")return v;
@@ -730,17 +731,17 @@ function render(){
   const d=$("dossier");
   const rr=f=>`<span class="rr" onclick="reroll('${f}')" title="Rigenera questa sezione">🎲</span>`;
   d.innerHTML=`
-   <div class="nname">${N.name} ${rr("nome")}</div>
-   <div class="nsub">${N.race} ${N.sex==="f"?"♀":"♂"} · ${N.age} · ${N.align} · <b>${N.occ}</b> (${N.cat})${N.where?" · 📍 "+esc(N.where):""}</div>
-   <div class="sec"><h4>Aspetto ${rr("aspetto")}</h4><p>Ha ${N.aspetto[0]} e ${N.aspetto[1]}.</p></div>
-   <div class="sec"><h4>Personalità e voce ${rr("tratto")}</h4><p>Questo personaggio ${N.tratto}. Voce: ${N.voce}.</p></div>
-   ${N.vuole?`<div class="sec"><h4>Desideri, paure, bisogni ${rr("vts")}</h4><p><b>Vuole:</b> ${N.vuole}.<br><b>Teme:</b> ${N.teme}.<br><b>Bisogno:</b> ${N.serve}.</p></div>`:""}
-   ${N.contra?`<div class="sec"><h4>Contraddizione e modi ${rr("contra")}</h4><p>È ${N.contra}. ${cap(N.modo||"")}.</p></div>`:""}
-   ${N.vuole?`<div class="sec"><h4>Fazione ${rr("faz")}</h4><p>${N.fazione?`<b>${esc(N.fazione.nome)}</b>${N.fazione.scopo?" — vuole "+esc(N.fazione.scopo):""}. Ruolo: ${N.fazione.ruolo}.${N.fazione.world?" <i>(dal tool Mondo)</i>":""}`:"Nessuna affiliazione nota."}</p></div>`:""}
-   <div class="sec"><h4>Ideale, legame, difetto ${rr("motiv")}</h4><p><b>Ideale.</b> ${N.ideale}<br><b>Legame.</b> ${cap(N.legame)}.<br><b>Difetto.</b> ${cap(N.difetto)}.</p></div>
-   <div class="sec secret"><h4>Segreto (solo per il DM) ${rr("segreto")}</h4><p>${cap(N.segreto)}.</p></div>
-   <div class="sec"><h4>Gancio di trama ${rr("gancio")}</h4><p>${cap(N.gancio)}.</p></div>
-   <div class="sec"><h4>Atteggiamento verso il party ${rr("att")}</h4><p>${N.atteggiamento}</p></div>
+   <div class="nname">${esc(N.name)} ${rr("nome")}</div>
+   <div class="nsub">${esc(N.race)} ${N.sex==="f"?"♀":"♂"} · ${esc(N.age)} · ${esc(N.align)} · <b>${esc(N.occ)}</b> (${esc(N.cat)})${N.where?" · 📍 "+esc(N.where):""}</div>
+   <div class="sec"><h4>Aspetto ${rr("aspetto")}</h4><p>Ha ${esc(N.aspetto[0])} e ${esc(N.aspetto[1])}.</p></div>
+   <div class="sec"><h4>Personalità e voce ${rr("tratto")}</h4><p>Questo personaggio ${esc(N.tratto)}. Voce: ${esc(N.voce)}.</p></div>
+   ${N.vuole?`<div class="sec"><h4>Desideri, paure, bisogni ${rr("vts")}</h4><p><b>Vuole:</b> ${esc(N.vuole)}.<br><b>Teme:</b> ${esc(N.teme)}.<br><b>Bisogno:</b> ${esc(N.serve)}.</p></div>`:""}
+   ${N.contra?`<div class="sec"><h4>Contraddizione e modi ${rr("contra")}</h4><p>È ${esc(N.contra)}. ${esc(cap(N.modo||""))}.</p></div>`:""}
+   ${N.vuole?`<div class="sec"><h4>Fazione ${rr("faz")}</h4><p>${N.fazione?`<b>${esc(N.fazione.nome)}</b>${N.fazione.scopo?" — vuole "+esc(N.fazione.scopo):""}. Ruolo: ${esc(N.fazione.ruolo)}.${N.fazione.world?" <i>(dal tool Mondo)</i>":""}`:"Nessuna affiliazione nota."}</p></div>`:""}
+   <div class="sec"><h4>Ideale, legame, difetto ${rr("motiv")}</h4><p><b>Ideale.</b> ${esc(N.ideale)}<br><b>Legame.</b> ${esc(cap(N.legame))}.<br><b>Difetto.</b> ${esc(cap(N.difetto))}.</p></div>
+   <div class="sec secret"><h4>Segreto (solo per il DM) ${rr("segreto")}</h4><p>${esc(cap(N.segreto))}.</p></div>
+   <div class="sec"><h4>Gancio di trama ${rr("gancio")}</h4><p>${esc(cap(N.gancio))}.</p></div>
+   <div class="sec"><h4>Atteggiamento verso il party ${rr("att")}</h4><p>${esc(N.atteggiamento)}</p></div>
    ${N.seed?`<div style="font-size:.7rem;color:#8a744c;margin-top:8px;text-align:right">seme ${N.seed}</div>`:""}`;
   renderSb();
 }
@@ -750,8 +751,8 @@ function renderSb(){
   const m=SB[N.sb];const p=$("sbPane");if(!m){p.innerHTML="";return}
   const AB=["FOR","DES","COS","INT","SAG","CAR"];
   const mod=v=>{const x=Math.floor((v-10)/2);return(x>=0?"+":"")+x};
-  let h=`<div class="mm"><div class="mname">${m.it} <span style="font-size:.72rem;color:#8a744c">(${N.sb})</span></div>
-   <div class="mtype">Umanoide di taglia ${m.size} (${N.race}), ${N.align.toLowerCase()}</div><div class="rule"></div>
+  let h=`<div class="mm"><div class="mname">${m.it} <span style="font-size:.72rem;color:#8a744c">(${esc(N.sb)})</span></div>
+   <div class="mtype">Umanoide di taglia ${m.size} (${esc(N.race)}), ${esc(N.align.toLowerCase())}</div><div class="rule"></div>
    <div class="stat"><b>Classe Armatura</b> ${m.ac}</div>
    <div class="stat"><b>Punti Ferita</b> ${m.hp}</div>
    <div class="stat"><b>Velocità</b> ${m.spd}</div><div class="rule"></div>
@@ -765,7 +766,7 @@ function renderSb(){
   (m.tr||[]).forEach(t=>h+=`<div class="tr"><b><i>${t[0]}.</i></b> ${t[1]}</div>`);
   h+=`<h5>Azioni</h5>`;(m.act||[]).forEach(t=>h+=`<div class="tr"><b><i>${t[0]}.</i></b> ${t[1]}</div>`);
   if(m.rea&&m.rea.length){h+=`<h5>Reazioni</h5>`;m.rea.forEach(t=>h+=`<div class="tr"><b><i>${t[0]}.</i></b> ${t[1]}</div>`)}
-  h+=`<div class="rnote"><b>Tratti razziali (${N.race}):</b> ${N.raceNote}</div></div>`;
+  h+=`<div class="rnote"><b>Tratti razziali (${esc(N.race)}):</b> ${esc(N.raceNote)}</div></div>`;
   p.innerHTML=h;
 }
 
@@ -781,7 +782,7 @@ function saveNpc(){
 function openSaved(){
   const r=roster();
   $("savedList").innerHTML="<tr><th>Nome</th><th>Razza</th><th>Ruolo</th><th></th></tr>"+
-   (r.length?r.map(n=>`<tr><td><b style="color:var(--gold-l)">${n.name}</b></td><td>${n.race}</td><td>${n.occ}</td>
+   (r.length?r.map(n=>`<tr><td><b style="color:var(--gold-l)">${esc(n.name)}</b></td><td>${esc(n.race)}</td><td>${esc(n.occ)}</td>
     <td style="text-align:right;white-space:nowrap">
      <button class="btn small" onclick='loadNpc("${n.id}")'>🔍 Apri</button>
      <button class="btn small" onclick='exportNpc("${n.id}")'>⬇</button>
