@@ -111,6 +111,9 @@ label.f{display:block; font-size:.74rem; color:var(--muted); margin:8px 0 3px; l
 .refbox{border-top:1px solid var(--border); margin-top:10px; padding-top:8px; font-size:.8rem}
 .refbox a{color:var(--gold-l)}
 #cvFog{pointer-events:none}
+#bgImg{position:absolute; pointer-events:none; max-width:none; display:none}
+.obj .ic img{width:100%; height:100%; border-radius:50%; object-fit:cover; display:block}
+.obj.t-token .ic.has-img{padding:0}
 .fogtools{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px}
 .fogtools .btn{padding:6px 4px; font-size:.72rem}
 .chk{display:flex; gap:6px; align-items:center; font-size:.78rem; color:var(--ink); margin-top:8px; cursor:pointer}
@@ -137,6 +140,7 @@ body.pv .obj{cursor:none}
   <div class="toolbar" style="margin:0">
     <button class="btn gold" onclick="openNew()">➕ Nuova mappa</button>
     <button class="btn" onclick="openList()">📂 Le mie mappe</button>
+    <button class="btn" onclick="openLib()" title="Texture, ritratti dei token e sfondi caricati">🖼 Immagini</button>
     <span class="sep"></span>
     <button class="btn" id="bUndo" onclick="undo()" title="Annulla (Ctrl+Z)">↶</button>
     <button class="btn" id="bRedo" onclick="redo()" title="Ripeti (Ctrl+Y)">↷</button>
@@ -188,6 +192,7 @@ body.pv .obj{cursor:none}
     <h2>Terreno</h2>
     <div class="terr" id="terrBtns"></div>
     <div class="empty" id="terrName" style="margin-top:6px"></div>
+    <div class="toolbar" style="margin-top:6px"><button class="btn small" onclick="openTerr()">⚙ Texture e terreni</button></div>
     <h2>Dalla suite</h2>
     <div class="hintbox" style="margin-top:0">PG, NPC e mostri restano collegati all'originale: nome, CA e PF si leggono dal loro tool.</div>
     <div class="stabs" id="sTabs" style="margin-top:6px"></div>
@@ -201,6 +206,7 @@ body.pv .obj{cursor:none}
   <section class="vpwrap">
     <div class="vp" id="vp" tabindex="0">
       <div class="stage" id="stage">
+        <img id="bgImg" alt="">
         <canvas id="cv"></canvas>
         <canvas id="cvGrid"></canvas>
         <canvas id="cvFog"></canvas>
@@ -231,6 +237,7 @@ body.pv .obj{cursor:none}
       <div><label class="f">&nbsp;</label><div style="padding:8px 0;color:var(--muted);font-size:.85rem">piedi (ft)</div></div>
     </div>
     <div class="toolbar"><button class="btn small" onclick="applySize()">↔ Applica dimensioni</button></div>
+    <label class="f">Sfondo (immagine sotto la griglia)</label><div id="bgBox"></div>
     <label class="f">Note del master</label><textarea id="mNotes" oninput="setMapNotes(this.value)" placeholder="Ambientazione, cosa succede qui, cosa c'è da scoprire…"></textarea>
     <div class="hintbox">
       <span class="kbd">V</span> seleziona · <span class="kbd">B</span> pennello · <span class="kbd">R</span> rettangolo · <span class="kbd">F</span> riempi · <span class="kbd">E</span> gomma · <span class="kbd">M</span> righello<br>
@@ -255,6 +262,17 @@ body.pv .obj{cursor:none}
   <h3>📂 Le mie mappe</h3>
   <div class="mlist" id="listBody"></div>
   <div class="toolbar"><button class="btn" onclick="closeMd('mdList')">Chiudi</button></div>
+</div></div>
+<div class="modal" id="mdLib"><div class="box">
+  <h3>🖼 Libreria immagini</h3>
+  <div class="mlist" id="libBody"></div>
+  <div class="toolbar"><button class="btn" onclick="closeMd('mdLib')">Chiudi</button></div>
+</div></div>
+<div class="modal" id="mdTerr"><div class="box">
+  <h3>⚙ Texture e terreni della mappa</h3>
+  <p class="empty" style="margin-bottom:8px">Per ogni terreno puoi usare una texture della libreria (ripetuta ogni 1, 2 o 4 caselle) al posto del pattern interno, e aggiungere terreni tuoi.</p>
+  <div class="mlist" id="terrBody"></div>
+  <div class="toolbar"><button class="btn" onclick="closeMd('mdTerr')">Chiudi</button></div>
 </div></div>
 <div id="toast"></div>
 <script>
@@ -453,19 +471,58 @@ const ICONS={"position-marker":{"d":"M256 17.108c-75.73 0-137.122 61.392-137.122
 /* MONSTER_INDEX_START (generato da tools/build-monster-index.js: non modificare a mano) */
 const MON_INDEX=[["Commoner","Popolano","0","Media","umanoide",10,4],["Rat","Ratto","0","Minuscola","bestia",10,1],["Bat","Pipistrello","0","Minuscola","bestia",12,1],["Cat","Gatto","0","Minuscola","bestia",12,2],["Crab","Granchio","0","Minuscola","bestia",11,2],["Frog","Rana","0","Minuscola","bestia",11,1],["Hawk","Falco","0","Minuscola","bestia",13,1],["Owl","Gufo","0","Minuscola","bestia",11,1],["Raven","Corvo","0","Minuscola","bestia",12,1],["Scorpion","Scorpione","0","Minuscola","bestia",11,1],["Spider","Ragno","0","Minuscola","bestia",12,1],["Jackal","Sciacallo","0","Piccola","bestia",12,3],["Vulture","Avvoltoio","0","Media","bestia",10,5],["Eagle","Aquila","0","Piccola","bestia",12,3],["Giant Fire Beetle","Scarabeo di Fuoco Gigante","0","Piccola","bestia",13,4],["Awakened Shrub","Arbusto Risvegliato","0","Piccola","vegetale",9,10],["Crawling Claw","Mano Strisciante","0","Minuscola","non morto",12,2],["Homunculus","Homunculus","0","Minuscola","costrutto",13,5],["Bandit","Bandito","1/8","Media","umanoide",12,11],["Cultist","Cultista","1/8","Media","umanoide",12,9],["Guard","Guardia","1/8","Media","umanoide",16,11],["Noble","Nobile","1/8","Media","umanoide",15,9],["Tribal Warrior","Guerriero Tribale","1/8","Media","umanoide",12,11],["Kobold","Coboldo","1/8","Piccola","umanoide (coboldo)",12,5],["Winged Kobold","Coboldo Alato","1/4","Piccola","umanoide (coboldo)",13,7],["Giant Rat","Ratto Gigante","1/8","Piccola","bestia",12,7],["Stirge","Stirge","1/8","Minuscola","bestia",14,2],["Twig Blight","Vegetale Deforme dei Rametti","1/8","Piccola","vegetale",13,4],["Manes","Manes","1/8","Piccola","immondo (demone)",9,9],["Blood Hawk","Falco Sanguinario","1/8","Piccola","bestia",12,7],["Flying Snake","Serpente Volante","1/8","Minuscola","bestia",14,5],["Mastiff","Mastino","1/8","Media","bestia",12,5],["Merfolk","Merfolk","1/8","Media","umanoide (merfolk)",11,11],["Poisonous Snake","Serpente Velenoso","1/8","Minuscola","bestia",13,2],["Mule","Mulo","1/8","Media","bestia",10,11],["Acolyte","Accolito","1/4","Media","umanoide",10,9],["Goblin","Goblin","1/4","Piccola","umanoide (goblinoide)",15,7],["Skeleton","Scheletro","1/4","Media","non morto",13,13],["Zombie","Zombi","1/4","Media","non morto",8,22],["Wolf","Lupo","1/4","Media","bestia",13,11],["Boar","Cinghiale","1/4","Media","bestia",11,11],["Panther","Pantera","1/4","Media","bestia",12,13],["Elk","Alce","1/4","Grande","bestia",10,13],["Riding Horse","Cavallo da Sella","1/4","Grande","bestia",10,13],["Giant Bat","Pipistrello Gigante","1/4","Grande","bestia",13,22],["Giant Frog","Rana Gigante","1/4","Media","bestia",11,18],["Giant Centipede","Centopiedi Gigante","1/4","Piccola","bestia",13,4],["Giant Poisonous Snake","Serpente Velenoso Gigante","1/4","Media","bestia",14,11],["Giant Wolf Spider","Ragno Lupo Gigante","1/4","Media","bestia",13,11],["Axe Beak","Becco d'Ascia","1/4","Grande","bestia",11,19],["Blink Dog","Cane Intermittente","1/4","Media","fata",13,22],["Dretch","Dretch","1/4","Piccola","immondo (demone)",11,18],["Drow","Drow","1/4","Media","umanoide (elfo)",15,13],["Flying Sword","Spada Volante","1/4","Piccola","costrutto",17,17],["Grimlock","Grimlock","1/4","Media","umanoide (grimlock)",11,11],["Kenku","Kenku","1/4","Media","umanoide (kenku)",13,13],["Kuo-toa","Kuo-toa","1/4","Media","umanoide (kuo-toa)",13,18],["Needle Blight","Vegetale Deforme degli Aghi","1/4","Media","vegetale",12,11],["Pixie","Pixie","1/4","Minuscola","fata",15,1],["Pseudodragon","Pseudodrago","1/4","Minuscola","drago",13,7],["Sprite","Sprite","1/4","Minuscola","fata",15,2],["Swarm of Rats","Sciame di Ratti","1/4","Media","sciame di bestie Minuscole",10,24],["Violet Fungus","Fungo Violetto","1/4","Media","vegetale",5,18],["Bullywug","Bullywug","1/4","Media","umanoide (bullywug)",15,11],["Troglodyte","Troglodita","1/4","Media","umanoide (troglodita)",11,13],["Mud Mephit","Mephit del Fango","1/4","Piccola","elementale",11,27],["Black Bear","Orso Nero","1/2","Media","bestia",11,19],["Cockatrice","Cockatrice","1/2","Piccola","mostruosità",11,27],["Crocodile","Coccodrillo","1/2","Grande","bestia",12,19],["Gnoll","Gnoll","1/2","Media","umanoide (gnoll)",15,22],["Hobgoblin","Hobgoblin","1/2","Media","umanoide (goblinoide)",18,11],["Lizardfolk","Lucertoloide","1/2","Media","umanoide (lucertoloide)",15,22],["Orc","Orco","1/2","Media","umanoide (orco)",13,15],["Rust Monster","Mostro della Ruggine","1/2","Media","mostruosità",14,27],["Sahuagin","Sahuagin","1/2","Media","umanoide (sahuagin)",12,22],["Scout","Esploratore","1/2","Media","umanoide",13,16],["Shadow","Ombra","1/2","Media","non morto",12,16],["Thug","Scagnozzo","1/2","Media","umanoide",11,32],["Warhorse","Cavallo da Guerra","1/2","Grande","bestia",11,19],["Worg","Worg","1/2","Grande","mostruosità",13,26],["Ape","Scimmione","1/2","Media","bestia",12,19],["Darkmantle","Mantello Oscuro","1/2","Piccola","mostruosità",11,22],["Gray Ooze","Melma Grigia","1/2","Media","melma",8,22],["Magma Mephit","Mephit del Magma","1/2","Piccola","elementale",11,22],["Magmin","Magmin","1/2","Piccola","elementale",14,9],["Satyr","Satiro","1/2","Media","fata",14,31],["Swarm of Insects","Sciame di Insetti","1/2","Media","sciame di bestie Minuscole",12,19],["Vine Blight","Vegetale Deforme dei Rampicanti","1/2","Media","vegetale",12,26],["Ice Mephit","Mephit del Ghiaccio","1/2","Piccola","elementale",11,21],["Piercer","Perforatore","1/2","Media","mostruosità",15,22],["Brown Bear","Orso Bruno","1","Grande","bestia",11,34],["Bugbear","Bugbear","1","Media","umanoide (goblinoide)",16,27],["Dire Wolf","Lupo Crudele","1","Grande","bestia",14,37],["Dryad","Driade","1","Media","fata",11,22],["Duergar","Duergar","1","Media","umanoide (nano)",16,26],["Ghoul","Ghoul","1","Media","non morto",12,22],["Giant Eagle","Aquila Gigante","1","Grande","bestia",13,26],["Giant Hyena","Iena Gigante","1","Grande","bestia",12,45],["Giant Spider","Ragno Gigante","1","Grande","bestia",14,26],["Giant Toad","Rospo Gigante","1","Grande","bestia",11,39],["Goblin Boss","Capo Goblin","1","Piccola","umanoide (goblinoide)",17,21],["Harpy","Arpia","1","Media","mostruosità",11,38],["Hippogriff","Ippogrifo","1","Grande","mostruosità",11,19],["Imp","Imp","1","Minuscola","immondo (diavolo)",13,10],["Quasit","Quasit","1","Minuscola","immondo (demone)",13,7],["Specter","Spettro","1","Media","non morto",12,22],["Spy","Spia","1","Media","umanoide",12,27],["Animated Armor","Armatura Animata","1","Media","costrutto",18,33],["Brass Dragon Wyrmling","Cucciolo di Drago d'Ottone","1","Media","drago",16,16],["Death Dog","Cane della Morte","1","Media","mostruosità",12,39],["Lion","Leone","1","Grande","bestia",12,26],["Scarecrow","Spaventapasseri","1","Media","costrutto",11,36],["Tiger","Tigre","1","Grande","bestia",12,37],["Yuan-ti Pureblood","Purosangue Yuan-ti","1","Media","umanoide (yuan-ti)",11,40],["Half-Ogre","Mezzogre","1","Grande","gigante",12,30],["Ankheg","Ankheg","2","Grande","mostruosità",14,39],["Azer","Azer","2","Media","elementale",17,39],["Bandit Captain","Capitano dei Banditi","2","Media","umanoide",15,65],["Berserker","Berserker","2","Media","umanoide",13,67],["Black Dragon Wyrmling","Cucciolo di Drago Nero","2","Media","drago",17,33],["Cult Fanatic","Fanatico del Culto","2","Media","umanoide",13,33],["Druid","Druido","2","Media","umanoide",11,27],["Ettercap","Ettercap","2","Media","mostruosità",13,44],["Gargoyle","Gargolla","2","Media","elementale",15,52],["Gelatinous Cube","Cubo Gelatinoso","2","Grande","melma",6,84],["Ghast","Ghast","2","Media","non morto",13,36],["Giant Constrictor Snake","Serpente Costrittore Gigante","2","Enorme","bestia",12,60],["Gibbering Mouther","Blaterante","2","Media","aberrazione",9,67],["Gnoll Pack Lord","Signore del Branco Gnoll","2","Media","umanoide (gnoll)",15,49],["Grick","Grick","2","Media","mostruosità",14,27],["Griffon","Grifone","2","Grande","mostruosità",12,59],["Intellect Devourer","Divoratore di Intelletto","2","Minuscola","aberrazione",12,21],["Merrow","Merrow","2","Grande","mostruosità",13,45],["Mimic","Mimic","2","Media","mostruosità (mutaforma)",12,58],["Ochre Jelly","Gelatina Ocra","2","Grande","melma",8,45],["Ogre","Ogre","2","Grande","gigante",11,59],["Ogre Zombie","Zombi Ogre","2","Grande","non morto",8,85],["Orog","Orog","2","Media","umanoide (orco)",18,42],["Peryton","Peryton","2","Media","mostruosità",13,33],["Polar Bear","Orso Polare","2","Grande","bestia",12,42],["Priest","Sacerdote","2","Media","umanoide",13,27],["Quaggoth","Quaggoth","2","Media","umanoide (quaggoth)",13,45],["Rug of Smothering","Tappeto Soffocante","2","Grande","costrutto",12,33],["Saber-Toothed Tiger","Tigre dai Denti a Sciabola","2","Grande","bestia",12,52],["Sea Hag","Megera Marina","2","Media","fata",14,52],["Spined Devil","Diavolo Spinoso","2","Piccola","immondo (diavolo)",13,22],["Wererat","Ratto Mannaro","2","Media","umanoide (umano, mutaforma)",12,33],["White Dragon Wyrmling","Cucciolo di Drago Bianco","2","Media","drago",16,32],["Will-o'-Wisp","Fuoco Fatuo","2","Minuscola","non morto",19,22],["Basilisk","Basilisco","3","Media","mostruosità",15,52],["Bearded Devil","Diavolo Barbuto","3","Media","immondo (diavolo)",13,52],["Blue Dragon Wyrmling","Cucciolo di Drago Blu","3","Media","drago",17,52],["Bugbear Chief","Capo Bugbear","3","Media","umanoide (goblinoide)",17,65],["Displacer Beast","Bestia Distorcente","3","Grande","mostruosità",13,85],["Doppelganger","Doppelganger","3","Media","mostruosità (mutaforma)",14,52],["Giant Scorpion","Scorpione Gigante","3","Grande","bestia",15,52],["Green Hag","Megera Verde","3","Media","fata",17,82],["Hell Hound","Segugio Infernale","3","Media","immondo",15,45],["Hobgoblin Captain","Capitano Hobgoblin","3","Media","umanoide (goblinoide)",17,39],["Hook Horror","Orrore Uncinato","3","Grande","mostruosità",15,75],["Knight","Cavaliere","3","Media","umanoide",18,52],["Manticore","Manticora","3","Grande","mostruosità",14,68],["Minotaur","Minotauro","3","Grande","mostruosità",14,76],["Mummy","Mummia","3","Media","non morto",11,58],["Nightmare","Incubo","3","Grande","immondo",13,68],["Owlbear","Gufo Orso","3","Grande","mostruosità",13,59],["Phase Spider","Ragno delle Fasi","3","Grande","mostruosità",13,32],["Spectator","Osservatore","3","Media","aberrazione",14,39],["Veteran","Veterano","3","Media","umanoide",17,58],["Werewolf","Lupo Mannaro","3","Media","umanoide (umano, mutaforma)",11,58],["Wight","Wight","3","Media","non morto",14,45],["Winter Wolf","Lupo Invernale","3","Grande","mostruosità",13,75],["Yeti","Yeti","3","Grande","mostruosità",12,51],["Banshee","Banshee","4","Media","non morto",12,58],["Black Pudding","Budino Nero","4","Grande","melma",7,85],["Chuul","Chuul","4","Grande","aberrazione",16,93],["Couatl","Couatl","4","Media","celestiale",19,97],["Elephant","Elefante","4","Enorme","bestia",12,76],["Ettin","Ettin","4","Grande","gigante",12,85],["Flameskull","Teschio Fiammeggiante","4","Minuscola","non morto",13,40],["Ghost","Fantasma","4","Media","non morto",11,45],["Helmed Horror","Orrore Corazzato","4","Media","costrutto",20,60],["Incubus/Succubus","Incubo/Succube","4","Media","immondo (mutaforma)",15,66],["Lamia","Lamia","4","Grande","mostruosità",13,97],["Red Dragon Wyrmling","Cucciolo di Drago Rosso","4","Media","drago",17,75],["Shadow Demon","Demone d'Ombra","4","Media","immondo (demone)",13,66],["Wereboar","Cinghiale Mannaro","4","Media","umanoide (umano, mutaforma)",10,78],["Air Elemental","Elementale dell'Aria","5","Grande","elementale",15,90],["Earth Elemental","Elementale della Terra","5","Grande","elementale",17,126],["Fire Elemental","Elementale del Fuoco","5","Grande","elementale",13,102],["Water Elemental","Elementale dell'Acqua","5","Grande","elementale",14,114],["Barbed Devil","Diavolo Spinato","5","Media","immondo (diavolo)",15,110],["Bulette","Bulette","5","Grande","mostruosità",17,94],["Cambion","Cambion","5","Media","immondo",19,82],["Flesh Golem","Golem di Carne","5","Media","costrutto",9,93],["Giant Crocodile","Coccodrillo Gigante","5","Enorme","bestia",14,85],["Gladiator","Gladiatore","5","Media","umanoide",16,112],["Gorgon","Gorgone","5","Grande","mostruosità",19,114],["Hill Giant","Gigante delle Colline","5","Enorme","gigante",13,105],["Night Hag","Megera Notturna","5","Media","immondo",17,112],["Otyugh","Otyugh","5","Grande","aberrazione",14,114],["Roper","Roper","5","Grande","mostruosità",20,93],["Salamander","Salamandra","5","Grande","elementale",15,90],["Shambling Mound","Cumulo Strisciante","5","Grande","vegetale",15,136],["Troll","Troll","5","Grande","gigante",15,84],["Umber Hulk","Umber Hulk","5","Grande","mostruosità",18,93],["Unicorn","Unicorno","5","Grande","celestiale",12,67],["Vampire Spawn","Vampiro Discendente","5","Media","non morto",15,82],["Werebear","Orso Mannaro","5","Media","umanoide (umano, mutaforma)",10,135],["Wraith","Wraith","5","Media","non morto",13,67],["Xorn","Xorn","5","Media","elementale",19,73],["Chimera","Chimera","6","Grande","mostruosità",14,114],["Cyclops","Ciclope","6","Enorme","gigante",14,138],["Drider","Drider","6","Grande","mostruosità",19,123],["Invisible Stalker","Inseguitore Invisibile","6","Media","elementale",14,104],["Mage","Mago","6","Media","umanoide",12,40],["Mammoth","Mammut","6","Enorme","bestia",13,126],["Medusa","Medusa","6","Media","mostruosità",15,127],["Vrock","Vrock","6","Grande","immondo (demone)",15,104],["Wyvern","Viverna","6","Grande","drago",13,110],["Young White Dragon","Drago Bianco Giovane","6","Grande","drago",17,133],["Hobgoblin Warlord","Signore della Guerra Hobgoblin","6","Media","umanoide (goblinoide)",20,97],["Giant Ape","Scimmione Gigante","7","Enorme","bestia",12,157],["Mind Flayer","Mind Flayer (Illithid)","7","Media","aberrazione",15,71],["Oni","Oni","7","Grande","gigante",16,110],["Shield Guardian","Guardiano dello Scudo","7","Grande","costrutto",17,142],["Stone Giant","Gigante delle Pietre","7","Enorme","gigante",17,126],["Young Black Dragon","Drago Nero Giovane","7","Grande","drago",18,127],["Assassin","Assassino","8","Media","umanoide",15,78],["Chain Devil","Diavolo delle Catene","8","Media","immondo (diavolo)",16,85],["Frost Giant","Gigante del Gelo","8","Enorme","gigante",15,138],["Hezrou","Hezrou","8","Grande","immondo (demone)",16,136],["Hydra","Idra","8","Enorme","mostruosità",15,172],["Spirit Naga","Naga degli Spiriti","8","Grande","mostruosità",15,75],["Tyrannosaurus Rex","Tirannosauro Rex","8","Enorme","bestia",13,136],["Young Green Dragon","Drago Verde Giovane","8","Grande","drago",18,136],["Bone Devil","Diavolo Ossuto","9","Grande","immondo (diavolo)",19,142],["Clay Golem","Golem d'Argilla","9","Grande","costrutto",14,133],["Fire Giant","Gigante del Fuoco","9","Enorme","gigante",18,162],["Glabrezu","Glabrezu","9","Grande","immondo (demone)",17,157],["Treant","Treant","9","Enorme","vegetale",16,138],["Young Blue Dragon","Drago Blu Giovane","9","Grande","drago",18,152],["Aboleth","Aboleth","10","Grande","aberrazione",17,135],["Deva","Deva","10","Media","celestiale",17,136],["Guardian Naga","Naga Guardiana","10","Grande","mostruosità",18,127],["Stone Golem","Golem di Pietra","10","Grande","costrutto",17,178],["Young Red Dragon","Drago Rosso Giovane","10","Grande","drago",18,178],["Behir","Behir","11","Enorme","mostruosità",17,168],["Djinni","Djinn","11","Grande","elementale",17,161],["Efreeti","Efreet","11","Grande","elementale",17,200],["Horned Devil","Diavolo Cornuto","11","Grande","immondo (diavolo)",18,178],["Remorhaz","Remorhaz","11","Enorme","mostruosità",17,195],["Roc","Roc","11","Mastodontica","mostruosità",15,248],["Archmage","Arcimago","12","Media","umanoide",12,99],["Erinyes","Erinni","12","Media","immondo (diavolo)",18,153],["Adult White Dragon","Drago Bianco Adulto","13","Enorme","drago",18,200],["Beholder","Beholder","13","Grande","aberrazione",18,180],["Rakshasa","Rakshasa","13","Media","immondo",16,110],["Storm Giant","Gigante delle Tempeste","13","Enorme","gigante",16,230],["Vampire","Vampiro","13","Media","non morto (mutaforma)",16,144],["Adult Black Dragon","Drago Nero Adulto","14","Enorme","drago",19,195],["Ice Devil","Diavolo del Ghiaccio","14","Grande","immondo (diavolo)",18,180],["Adult Green Dragon","Drago Verde Adulto","15","Enorme","drago",19,207],["Mummy Lord","Signore delle Mummie","15","Media","non morto",17,97],["Purple Worm","Verme Purpureo","15","Mastodontica","mostruosità",18,247],["Adult Blue Dragon","Drago Blu Adulto","16","Enorme","drago",19,225],["Iron Golem","Golem di Ferro","16","Grande","costrutto",20,210],["Marilith","Marilith","16","Grande","immondo (demone)",18,189],["Planetar","Planetar","16","Grande","celestiale",19,200],["Adult Red Dragon","Drago Rosso Adulto","17","Enorme","drago",19,256],["Death Knight","Cavaliere della Morte","17","Media","non morto",20,180],["Dragon Turtle","Tartaruga Dragona","17","Mastodontica","drago",20,341],["Demilich","Demilich","18","Minuscola","non morto",20,80],["Balor","Balor","19","Enorme","immondo (demone)",19,262],["Ancient White Dragon","Drago Bianco Antico","20","Mastodontica","drago",20,333],["Pit Fiend","Diavolo della Fossa","20","Grande","immondo (diavolo)",19,300],["Lich","Lich","21","Media","non morto",17,135],["Solar","Solar","21","Grande","celestiale",21,243],["Ancient Black Dragon","Drago Nero Antico","21","Mastodontica","drago",22,367],["Kraken","Kraken","23","Mastodontica","mostruosità (titano)",18,472],["Ancient Blue Dragon","Drago Blu Antico","23","Mastodontica","drago",22,481],["Ancient Red Dragon","Drago Rosso Antico","24","Mastodontica","drago",22,546],["Tarrasque","Tarrasque","30","Mastodontica","mostruosità (titano)",25,676],["Star Spawn Grue","Grue Progenie Stellare","1/4","Piccola","aberrazione",11,17],["Darkling","Darkling","1/2","Piccola","fata",14,13],["Quickling","Quickling","1","Minuscola","fata",16,10],["Vargouille","Vargouille","1","Minuscola","immondo",12,13],["Maw Demon","Demone Fauce","1","Media","immondo (demone)",13,33],["Sea Spawn","Progenie Marina","1","Media","umanoide",11,32],["Shadow Mastiff","Mastino d'Ombra","2","Media","mostruosità",12,33],["Redcap","Redcap","3","Piccola","fata",13,45],["Leucrotta","Leucrotta","3","Grande","mostruosità",14,67],["Sword Wraith Warrior","Guerriero Spettro di Spada","3","Media","non morto",16,45],["Barghest","Barghest","4","Grande","immondo",17,90],["Yeth Hound","Segugio Yeth","4","Grande","immondo",14,51],["Banderhobb","Banderhobb","5","Grande","mostruosità",15,84],["Wood Woad","Guardiano di Legno","5","Media","vegetale",18,75],["Spawn of Kyuss","Progenie di Kyuss","5","Media","non morto",10,76],["Bodak","Bodak","6","Media","non morto",15,58],["Flind","Flind","9","Media","umanoide (gnoll)",16,127],["Alhoon","Alhoon","10","Media","non morto",15,120],["Boneclaw","Boneclaw","12","Grande","non morto",16,127]];
 /* MONSTER_INDEX_END */
+/* ================= LIBRERIA IMMAGINI (IndexedDB "dnd5e_assets") =================
+   Texture, ritratti dei token e sfondi caricati dall'utente: restano nel browser e nei backup, non nel repository.
+   Record: {id:"tex_…", name, kind:"texture"|"token"|"bg", mime, w, h, hash, size, blob, created} */
+const ASSET_DB="dnd5e_assets",ASSET_OS="assets",ASSET_MIME=["image/png","image/jpeg","image/webp","image/gif"];
+let ASSET_DBP=null;
+function assetDb(){if(!ASSET_DBP)ASSET_DBP=new Promise((res,rej)=>{if(!window.indexedDB)return rej(new Error("IndexedDB non disponibile"));
+  const r=indexedDB.open(ASSET_DB,1);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(ASSET_OS))db.createObjectStore(ASSET_OS,{keyPath:"id"})};
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});return ASSET_DBP}
+function assetTx(mode,fn){return assetDb().then(db=>new Promise((res,rej)=>{const tx=db.transaction(ASSET_OS,mode),st=tx.objectStore(ASSET_OS);let out;
+  const q=fn(st);if(q)q.onsuccess=()=>{out=q.result};tx.oncomplete=()=>res(out);tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)}))}
+const assetAll=()=>assetTx("readonly",st=>st.getAll()).then(a=>a||[]);
+const assetGet=id=>assetTx("readonly",st=>st.get(id));
+const assetPut=a=>assetTx("readwrite",st=>st.put(a));
+const assetDel=id=>assetTx("readwrite",st=>st.delete(id));
+function blobToDataUrl(b){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(b)})}
+function dataUrlToBlob(u){const m=/^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(u||"");if(!m)return null;
+  const bin=atob(m[2]),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return new Blob([a],{type:m[1]})}
+async function assetsForExport(ids){const all=await assetAll().catch(()=>[]);const sel=ids?all.filter(a=>ids.includes(a.id)):all;
+  return Promise.all(sel.map(async a=>({id:a.id,name:a.name,kind:a.kind,mime:a.mime,w:a.w,h:a.h,hash:a.hash||"",data:await blobToDataUrl(a.blob)})))}
+/* aggiunge immagini (da backup o da una mappa importata) senza cancellare nulla: quelle già presenti, per ID o per impronta,
+   vengono riconosciute. Restituisce la mappa ID del file → ID nella libreria, per aggiornare i riferimenti. */
+async function mergeAssets(list){const map={};if(!Array.isArray(list)||!list.length)return map;
+  const all=await assetAll().catch(()=>[]);const byId=new Map(all.map(a=>[a.id,a])),byHash=new Map(all.filter(a=>a.hash).map(a=>[a.hash,a]));
+  for(const x of list){try{if(!x||!/^[\w-]+$/.test(x.id||""))continue;const blob=dataUrlToBlob(x.data);if(!blob||!ASSET_MIME.includes(blob.type))continue;
+    const hash=typeof x.hash==="string"&&/^[0-9a-f]{64}$/.test(x.hash)?x.hash:"";
+    if(hash&&byHash.has(hash)){map[x.id]=byHash.get(hash).id;continue}
+    if(byId.has(x.id)&&(!hash||byId.get(x.id).hash===hash)){map[x.id]=x.id;continue}
+    const id=byId.has(x.id)?newId(/^(tex|tok|bg)_/.test(x.id)?x.id.split("_")[0]:"tex"):x.id;
+    const rec={id,name:String(x.name||"immagine").replace(/[<>]/g,"").slice(0,80),kind:["texture","token","bg"].includes(x.kind)?x.kind:"texture",
+      mime:blob.type,w:parseInt(x.w,10)||0,h:parseInt(x.h,10)||0,hash,size:blob.size,blob,created:new Date().toISOString()};
+    await assetPut(rec);byId.set(id,rec);if(hash)byHash.set(hash,rec);map[x.id]=id}catch(e){}}
+  return map}
+/* sostituisce gli ID delle immagini in un testo JSON (gli ID sono token univoci, es. tex_mvto…_k3f9q2ab) */
+function remapAssetIds(txt,map){let out=txt;Object.keys(map).forEach(o=>{if(map[o]!==o)out=out.split('"'+o+'"').join('"'+map[o]+'"')});return out}
 /* chiavi reali di tutti i dati della suite (dalla tabella STORE) */
 const SUITE_KEYS=Object.values(STORE);
-function backupSuite(){
+async function backupSuite(){
   const data={type:"dnd5e_suite_backup",ver:3,schema:DB_SCHEMA,date:new Date().toISOString(),store:{}};
   let n=0;SUITE_KEYS.forEach(k=>{try{const v=localStorage.getItem(k);if(v!=null){data.store[k]=v;n++}}catch(e){}});
-  if(!n){alert("Nulla da salvare.");return}
+  /* immagini della libreria: facoltative, perché possono pesare molto */
+  let imgs=[];try{imgs=await assetAll()}catch(e){}
+  if(!n&&!imgs.length){alert("Nulla da salvare.");return}
+  if(imgs.length){const mb=imgs.reduce((s,a)=>s+(a.size||(a.blob&&a.blob.size)||0),0)/1048576;
+    if(confirm(`Includere nel backup anche le immagini caricate? (${imgs.length} ${imgs.length===1?"immagine":"immagini"}, ${mb.toFixed(1).replace(".",",")} MB)\n\nOK = backup completo · Annulla = solo i dati, file più leggero`))
+      data.assets=await assetsForExport()}
   const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
-  a.download="dnd5e_suite_backup_"+new Date().toISOString().slice(0,10)+".json";a.click();
+  a.download="dnd5e_suite_backup_"+new Date().toISOString().slice(0,10)+(data.assets?"_con_immagini":"")+".json";a.click();
 }
 function restoreSuite(file){
   const rd=new FileReader();
-  rd.onload=()=>{try{
+  rd.onload=async()=>{try{
     const d=JSON.parse(rd.result);
     if(d.type!=="dnd5e_suite_backup"||!d.store||typeof d.store!=="object")throw 0;
     const bs=parseInt(d.schema,10)>0?parseInt(d.schema,10):1;
@@ -473,7 +530,11 @@ function restoreSuite(file){
     /* backup vecchi: le chiavi precedenti (es. enc_trk) vengono tradotte nei nomi attuali; se ci sono entrambe vale quella attuale */
     const st={};Object.keys(d.store).forEach(k=>{const nk=STORE_LEGACY[k]||k;if(SUITE_KEYS.includes(nk)&&typeof d.store[k]==="string"&&(!(nk in st)||nk===k))st[nk]=d.store[k]});
     const keys=Object.keys(st);if(!keys.length)throw 0;
-    if(!confirm("Ripristinare il backup? Tutti i dati della suite in questo browser verranno sostituiti da quelli del file."))return;
+    const nImg=Array.isArray(d.assets)?d.assets.length:0;
+    if(!confirm("Ripristinare il backup? Tutti i dati della suite in questo browser verranno sostituiti da quelli del file."+(nImg?`\n\nLe ${nImg} immagini del backup verranno aggiunte alla libreria (quelle già presenti restano).`:"")))return;
+    /* immagini: aggiunte, mai cancellate; i riferimenti delle mappe seguono gli ID nella libreria */
+    let imgMap={},imgFail=false;if(nImg){try{imgMap=await mergeAssets(d.assets)}catch(e){imgFail=true}}
+    if(st[STORE.maps])st[STORE.maps]=remapAssetIds(st[STORE.maps],imgMap);
     /* sostituzione completa: le chiavi della suite assenti nel backup vengono rimosse, così non restano dati misti */
     let fail=0;
     SUITE_KEYS.forEach(k=>{try{if(keys.includes(k))localStorage.setItem(k,safeStoreVal(k,st[k]));else localStorage.removeItem(k)}catch(e){fail++}});
@@ -481,7 +542,7 @@ function restoreSuite(file){
     try{localStorage.setItem(DB_SCHEMA_KEY,String(Math.max(bs,1)));}catch(e){}
     dbMigrate();
     if(fail){alert("⚠ Ripristino incompleto: "+fail+" dati non sono stati scritti, probabilmente per spazio del browser insufficiente.\nLibera spazio e riprova.");return}
-    alert("✅ Backup ripristinato. La pagina verrà ricaricata.");location.reload();
+    alert("✅ Backup ripristinato."+(imgFail?"\n⚠ Le immagini non sono state ripristinate (libreria immagini non disponibile in questo browser).":"")+" La pagina verrà ricaricata.");location.reload();
   }catch(err){alert("File di backup non valido.")}};
   rd.readAsText(file);
 }
@@ -532,7 +593,8 @@ function normalizeMap(m){
   let pal=Array.isArray(m.palette)&&m.palette.length?m.palette.filter(p=>p&&typeof p.k==="string").slice(0,CH.length):[];
   if(!pal.length)pal=DEF_PALETTE();
   pal=pal.map(p=>{const t=TERR_BY_K[p.k];const o={k:p.k,pattern:typeof p.pattern==="string"?p.pattern:(t?t.pattern:"stone"),color:/^#[0-9a-f]{3,8}$/i.test(p.color||"")?p.color:(t?t.color:"#6b5a45")};
-    ["tex","scale"].forEach(f=>{if(p[f]!=null)o[f]=p[f]});return o});
+    if(/^[\w-]+$/.test(p.tex||""))o.tex=p.tex;if(p.scale===2||p.scale===4)o.scale=p.scale;
+    if(!t){o.n=typeof p.n==="string"&&p.n.trim()?p.n.replace(/[<>]/g,"").slice(0,40):"Terreno";if(p.wall)o.wall=true}return o});
   const terrain=[];for(let y=0;y<h;y++){let r=Array.isArray(m.terrain)&&typeof m.terrain[y]==="string"?m.terrain[y]:"";
     r=r.slice(0,w).split("").map(c=>{const i=CH.indexOf(c);return i>=0&&i<pal.length?c:"0"}).join("");terrain.push(r.padEnd(w,"0"))}
   const objects=(Array.isArray(m.objects)?m.objects:[]).filter(o=>o&&OBJ_TYPES[o.type]).map(o=>{
@@ -540,13 +602,13 @@ function normalizeMap(m){
       icon:ICONS[o.icon]?o.icon:DEF_ICON[o.type],label:typeof o.label==="string"?o.label.slice(0,80):"",note:typeof o.note==="string"?o.note.slice(0,2000):""};
     if(o.vis==="dm"||o.vis==="all")r.vis=o.vis;if(typeof o.own==="string")r.own=o.own;if(o.secret)r.secret=true;
     if(o.ref&&typeof o.ref==="object"&&/^(pc|npc|mon|hb|trk|pz|wld)$/.test(o.ref.t)){const rf={t:o.ref.t};if(/^[\w-]+$/.test(o.ref.id||""))rf.id=o.ref.id;if(typeof o.ref.n==="string")rf.n=o.ref.n.slice(0,80);if(rf.id||rf.n)r.ref=rf}
-    if(typeof o.alias==="string"&&o.alias.trim())r.alias=o.alias.slice(0,80);if(typeof o.img==="string")r.img=o.img;return r});
+    if(typeof o.alias==="string"&&o.alias.trim())r.alias=o.alias.slice(0,80);if(/^[\w-]+$/.test(o.img||""))r.img=o.img;return r});
   const fog=m.fog&&typeof m.fog==="object"?{on:!!m.fog.on,shown:Array.isArray(m.fog.shown)?m.fog.shown.filter(x=>typeof x==="string").slice(0,h):[]}:{on:false,shown:[]};
   const out={id:/^[\w-]+$/.test(m.id||"")?m.id:newId("map"),v:MAP_V,name:typeof m.name==="string"&&m.name.trim()?m.name.slice(0,80):"Mappa senza nome",
     grid:{type:"square",w,h,cell:clampInt(g.cell,1,100,5),unit:"ft"},palette:pal,terrain,objects,fog,
     notes:typeof m.notes==="string"?m.notes:"",created:m.created||new Date().toISOString(),updated:m.updated||new Date().toISOString()};
   if(m.src&&typeof m.src==="object"&&m.src.t&&m.src.id)out.src={t:String(m.src.t),id:String(m.src.id)};
-  if(m.bg&&typeof m.bg==="object")out.bg=m.bg;
+  if(m.bg&&typeof m.bg==="object"&&/^[\w-]+$/.test(m.bg.img||""))out.bg={img:m.bg.img,x:Math.max(-200,Math.min(200,+m.bg.x||0)),y:Math.max(-200,Math.min(200,+m.bg.y||0)),wc:Math.max(1,Math.min(200,+m.bg.wc||w)),op:Math.max(.1,Math.min(1,+m.bg.op||1))};
   out.players={pcHp:!(m.players&&m.players.pcHp===false)};
   return fogNorm(out)}
 function blankMap(name,w,h,start){
@@ -568,10 +630,10 @@ window.addEventListener("beforeunload",()=>{if(DIRTY)saveNow()});
 
 /* ---- annulla / ripeti ---- */
 let UNDO=[],REDO=[];
-function snap(){if(!M)return;UNDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog}));if(UNDO.length>60)UNDO.shift();REDO=[];updUndo()}
-function restoreSnap(s){const o=JSON.parse(s);M.terrain=o.terrain;M.objects=o.objects;M.grid=o.grid;if(o.fog)M.fog=o.fog;fogNorm(M);renderFogUI();SEL=null;buildStage();renderObjs();renderSel();renderMapForm();saveSoon()}
-function undo(){if(!UNDO.length)return;REDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog}));restoreSnap(UNDO.pop());updUndo()}
-function redo(){if(!REDO.length)return;UNDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog}));restoreSnap(REDO.pop());updUndo()}
+function snap(){if(!M)return;UNDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog,palette:M.palette,bg:M.bg||null}));if(UNDO.length>60)UNDO.shift();REDO=[];updUndo()}
+function restoreSnap(s){const o=JSON.parse(s);M.terrain=o.terrain;M.objects=o.objects;M.grid=o.grid;if(o.fog)M.fog=o.fog;if(o.palette)M.palette=o.palette;if(o.bg)M.bg=o.bg;else delete M.bg;renderToolUI();renderBgForm();fogNorm(M);renderFogUI();SEL=null;buildStage();renderObjs();renderSel();renderMapForm();saveSoon()}
+function undo(){if(!UNDO.length)return;REDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog,palette:M.palette,bg:M.bg||null}));restoreSnap(UNDO.pop());updUndo()}
+function redo(){if(!REDO.length)return;UNDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog,palette:M.palette,bg:M.bg||null}));restoreSnap(REDO.pop());updUndo()}
 function updUndo(){$("bUndo").disabled=!UNDO.length;$("bRedo").disabled=!REDO.length}
 /* ================= DISEGNO DEL TERRENO =================
    pattern interni generati in canvas, con variazioni deterministiche per casella (stessa mappa = stesso aspetto) */
@@ -606,8 +668,10 @@ function drawPattern(ctx,p,x,y,s,r){
   ctx.restore()}
 function codeAt(x,y){if(!M||x<0||y<0||x>=M.grid.w||y>=M.grid.h)return-1;return CH.indexOf(M.terrain[y][x])}
 function palAt(x,y){const c=codeAt(x,y);return c>=0?M.palette[c]:null}
-const isWall=p=>p&&p.k==="wall";
-function drawCell(ctx,x,y){const p=palAt(x,y);if(!p)return;drawPattern(ctx,p,x*C,y*C,C,cellRng(x,y,CH.indexOf(M.terrain[y][x])));
+const isWall=p=>!!p&&(p.k==="wall"||!!p.wall);
+function drawCell(ctx,x,y){const p=palAt(x,y);if(!p)return;
+  if(p.tex&&imgOk(p.tex)){const im=IMG.get(p.tex).el,sc=p.scale||1,sw=im.naturalWidth/sc,sh=im.naturalHeight/sc;ctx.clearRect(x*C,y*C,C,C);ctx.drawImage(im,(x%sc)*sw,(y%sc)*sh,sw,sh,x*C,y*C,C,C)}
+  else drawPattern(ctx,p,x*C,y*C,C,cellRng(x,y,CH.indexOf(M.terrain[y][x])));
   /* ombra dei muri sulle caselle vicine e bordo illuminato dei muri */
   if(!isWall(p)&&p.pattern!=="none"){ctx.save();
     [[0,-1,0,0,C,7,0,1],[-1,0,0,0,7,C,1,0],[1,0,C-7,0,7,C,-1,0],[0,1,0,C-7,C,7,0,-1]].forEach(([dx,dy,ox,oy,w,h,gx,gy])=>{if(!isWall(palAt(x+dx,y+dy)))return;
@@ -625,18 +689,19 @@ function buildStage(){const w=M.grid.w,h=M.grid.h,W=w*C,H=h*C;
   ["cv","cvGrid"].forEach(id=>{const c=$(id);c.width=W;c.height=H;c.style.width=W+"px";c.style.height=H+"px"});
   $("stage").style.width=W+"px";$("stage").style.height=H+"px";$("objs").style.width=W+"px";$("objs").style.height=H+"px";
   const ctx=$("cv").getContext("2d");ctx.clearRect(0,0,W,H);for(let y=0;y<h;y++)for(let x=0;x<w;x++)drawCell(ctx,x,y);
-  const g=$("cvGrid").getContext("2d");g.clearRect(0,0,W,H);drawGrid(g,w,h,.16);drawFog();applyView()}
+  const g=$("cvGrid").getContext("2d");g.clearRect(0,0,W,H);drawGrid(g,w,h,.16);drawFog();renderBg();applyView()}
 
 /* ================= ELEMENTI ================= */
 let SEL=null;
 const objVis=o=>o.vis||(o.secret?"dm":OBJ_TYPES[o.type].vis);
+function objIcon(o,t){return o.img&&imgOk(o.img)?`<div class="ic has-img"><img src="${IMG.get(o.img).url}" alt=""></div>`:`<div class="ic">${iconSvg(o.icon,t.col)}</div>`}
 function hpBar(i){if(!i||!i.live||!i.hpM)return"";const p=Math.max(0,Math.min(100,Math.round(i.hp/i.hpM*100)));return`<span class="hpb"><i class="${p<=25?"low":p<=50?"mid":""}" style="width:${p}%"></i></span>`}
 function renderObjs(){REFC=null;const list=PVMODE?M.objects.filter(pvVisible):M.objects;$("objs").innerHTML=list.map(o=>{const s=o.size*C,t=OBJ_TYPES[o.type],hid=!PVMODE&&objVis(o)!=="all",info=refInfo(o),nm=dispName(o);
-  if(PVMODE)return`<div class="obj t-${o.type}" style="left:${o.x*C}px;top:${o.y*C}px;width:${s}px;height:${s}px"><div class="ic">${iconSvg(o.icon,t.col)}</div>${M.players.pcHp!==false?hpBar(info):""}${nm&&o.type!=="note"?`<span class="lbl">${esc(nm)}</span>`:""}</div>`;
+  if(PVMODE)return`<div class="obj t-${o.type}" style="left:${o.x*C}px;top:${o.y*C}px;width:${s}px;height:${s}px">${objIcon(o,t)}${M.players.pcHp!==false?hpBar(info):""}${nm&&o.type!=="note"?`<span class="lbl">${esc(nm)}</span>`:""}</div>`;
   const tip=[nm||t.n,info&&!info.missing?[info.sub,info.ac?"CA "+info.ac:"",info.hp!==""&&info.hp!=null?("PF "+(info.live?info.hp+"/"+info.hpM:info.hp)):""].filter(Boolean).join(" · "):"",
     info&&info.missing?"⚠ elemento originale non più presente":"",hid?"nascosto ai giocatori":""].filter(Boolean).join(" — ");
   return`<div class="obj t-${o.type} vis-${objVis(o)} ${hid?"hid":""} ${SEL===o.id?"sel":""}" data-id="${o.id}" style="left:${o.x*C}px;top:${o.y*C}px;width:${s}px;height:${s}px"
-    title="${esc(tip)}"><div class="ic">${iconSvg(o.icon,t.col)}</div>${hpBar(info)}${info&&info.missing?'<span class="warn">⚠</span>':""}${nm?`<span class="lbl">${esc(nm)}</span>`:""}</div>`}).join("")}
+    title="${esc(tip)}">${objIcon(o,t)}${hpBar(info)}${(info&&info.missing)||imgMissing(o.img)?'<span class="warn">⚠</span>':""}${nm?`<span class="lbl">${esc(nm)}</span>`:""}</div>`}).join("")}
 function addObject(def,x,y){if(!M)return;const [type,icon,label,extra]=def;const sz=type==="token"&&/dragon/.test(icon)?2:1;
   x=Math.max(0,Math.min(M.grid.w-sz,x));y=Math.max(0,Math.min(M.grid.h-sz,y));snap();
   const o={id:newId("obj"),type,x,y,size:sz,icon,label,note:""};if(extra&&extra.secret){o.secret=true}
@@ -647,6 +712,7 @@ function renderSel(){const o=selObj(),b=$("selBox");
   const t=OBJ_TYPES[o.type],v=objVis(o);
   b.innerHTML=`<div class="selcard"><div class="head"><div class="sw">${iconSvg(o.icon,t.col)}</div><div><b style="color:var(--gold-l);font-family:var(--font-display)">${esc(t.n)}${o.secret?" segreta":""}</b><br><span class="empty">Casella ${o.x+1}, ${o.y+1}</span></div></div>
    ${o.ref?refPanel(o):`<label class="f">Etichetta</label><input type="text" id="sLabel" value="${esc(o.label)}" oninput="setObj('label',this.value)">`}
+   ${o.type==="token"?`<label class="f">Ritratto</label>${imgSelect("token",o.img||"","setObjImg(this.value)","— usa l'icona —")}<div class="toolbar" style="margin-top:4px"><button class="btn small" onclick="uploadObjImg()">⬆ Carica ritratto</button></div>${imgMissing(o.img)?'<div class="empty" style="color:#e0a35a">⚠ ritratto non presente nella libreria: si usa l\'icona</div>':""}`:""}
    ${o.type==="token"?`<label class="f">Icona</label><select onchange="setIcon(this.value)">${TOKEN_ICONS.map(([k,l])=>`<option value="${k}" ${o.icon===k?"selected":""}>${l}</option>`).join("")}${TOKEN_ICONS.some(x=>x[0]===o.icon)?"":`<option value="${esc(o.icon)}" selected>${esc(o.icon)}</option>`}</select>`:""}
    <label class="f">Note del master</label><textarea id="sNote" oninput="setObj('note',this.value)" placeholder="CD, effetti, contenuto, cosa succede…">${esc(o.note)}</textarea>
    ${o.type==="token"||o.type==="prop"?`<label class="f">Taglia</label><select onchange="setSize(this.value)">${[[1,"Media o inferiore (1×1)"],[2,"Grande (2×2)"],[3,"Enorme (3×3)"],[4,"Mastodontica (4×4)"]].map(([n,l])=>`<option value="${n}" ${o.size===n?"selected":""}>${l}</option>`).join("")}</select>`:""}
@@ -685,16 +751,16 @@ function setMode(m){MODE=m;ARMED=null;ARMED_S=null;document.querySelectorAll(".p
   $("vp").className="vp m-"+m;$("sizeRow").style.opacity=(m==="paint"||m==="erase"||m==="reveal"||m==="cover")?1:.45;$("vp").classList.toggle("m-paint",m==="reveal"||m==="cover"||m==="revrect"||m==="revroom");if(m!=="ruler")$("ruler").innerHTML=""}
 function setBrush(n){BRUSH=n;document.querySelectorAll("#sizeRow .btn").forEach(b=>b.classList.toggle("on",+b.dataset.sz===n))}
 function setTerr(i){TERR=i;document.querySelectorAll("#terrBtns button").forEach((b,j)=>b.classList.toggle("on",j===i));
-  const p=M&&M.palette[i];$("terrName").textContent=p?(TERR_BY_K[p.k]?TERR_BY_K[p.k].n:p.k):"";if(MODE!=="paint"&&MODE!=="rect"&&MODE!=="fill")setMode("paint")}
+  const p=M&&M.palette[i];$("terrName").textContent=p?palName(p):"";if(MODE!=="paint"&&MODE!=="rect"&&MODE!=="fill")setMode("paint")}
 function renderToolUI(){
   $("toolBtns").innerHTML=TOOLS.map(([m,l,k])=>`<button class="btn" data-m="${m}" onclick="setMode('${m}')" title="${l} (${k})">${l}</button>`).join("");
-  $("terrBtns").innerHTML=(M?M.palette:DEF_PALETTE()).map((p,i)=>`<button title="${esc(TERR_BY_K[p.k]?TERR_BY_K[p.k].n:p.k)}" onclick="setTerr(${i})"><canvas width="32" height="32" data-i="${i}"></canvas></button>`).join("");
+  $("terrBtns").innerHTML=(M?M.palette:DEF_PALETTE()).map((p,i)=>`<button title="${esc(palName(p))}" onclick="setTerr(${i})"><canvas width="32" height="32" data-i="${i}"></canvas></button>`).join("");
   document.querySelectorAll("#terrBtns canvas").forEach(cv=>{const p=(M?M.palette:DEF_PALETTE())[+cv.dataset.i];const ctx=cv.getContext("2d");
-    if(p.pattern==="none"){ctx.fillStyle="#0b0805";ctx.fillRect(0,0,32,32);ctx.strokeStyle="#6a521f";ctx.beginPath();ctx.moveTo(4,28);ctx.lineTo(28,4);ctx.stroke()}else drawPattern(ctx,p,0,0,32,cellRng(3,5,+cv.dataset.i))});
+    drawSwatch(ctx,p,32,+cv.dataset.i)});
   $("palette").innerHTML=PALETTE_ITEMS.map(([g,items],gi)=>`<h3>${g}</h3><div class="pal">${items.map((it,ii)=>`<div class="it" draggable="true" data-g="${gi}" data-i="${ii}" title="${esc(it[2])}"
      ondragstart="palDrag(event,${gi},${ii})" onclick="palArm(this,${gi},${ii})">${iconSvg(it[1],OBJ_TYPES[it[0]].col)}</div>`).join("")}</div>`).join("");
   setMode(MODE);setBrush(BRUSH);setTerrQuiet(TERR);renderSuiteList()}
-function setTerrQuiet(i){TERR=i;document.querySelectorAll("#terrBtns button").forEach((b,j)=>b.classList.toggle("on",j===i));const p=M&&M.palette[i];$("terrName").textContent=p?(TERR_BY_K[p.k]?TERR_BY_K[p.k].n:p.k):""}
+function setTerrQuiet(i){TERR=i;document.querySelectorAll("#terrBtns button").forEach((b,j)=>b.classList.toggle("on",j===i));const p=M&&M.palette[i];$("terrName").textContent=p?palName(p):""}
 function palDrag(e,g,i){e.dataTransfer.setData("text/plain","pal:"+g+":"+i);e.dataTransfer.effectAllowed="copy"}
 function palArm(el,g,i){const was=el.classList.contains("armed");setMode("select");if(was)return;ARMED=PALETTE_ITEMS[g][1][i];el.classList.add("armed");$("vp").className="vp m-place";
   toast("Clicca sulla mappa per posizionare: "+ARMED[2]+" (Esc per annullare)")}
@@ -741,7 +807,7 @@ function onDown(e){if(!M)return;$("vp").focus({preventScroll:true});const c=cell
   if(MODE==="revrect"){PTR={kind:"fogrect",a:c};showRect(c,c);$("vp").setPointerCapture(e.pointerId);return}
   if(MODE==="revroom"){snap();const n=fogRoom(c);drawFog();renderObjs();saveSoon();$("status").textContent=`🚪 Rivelate ${n} caselle`;return}}
 function onMove(e){if(!M)return;const c=cellOf(e);
-  if(!PTR){$("status").textContent=inMap(c)?`Casella ${c.x+1}, ${c.y+1} · ${(TERR_BY_K[(palAt(c.x,c.y)||{}).k]||{n:"—"}).n}`:`${M.grid.w}×${M.grid.h} caselle · 1 casella = ${M.grid.cell} ft`;return}
+  if(!PTR){$("status").textContent=inMap(c)?`Casella ${c.x+1}, ${c.y+1} · ${palAt(c.x,c.y)?palName(palAt(c.x,c.y)):"—"}`:`${M.grid.w}×${M.grid.h} caselle · 1 casella = ${M.grid.cell} ft`;return}
   if(PTR.kind==="pan"){VIEW.x=PTR.vx+e.clientX-PTR.sx;VIEW.y=PTR.vy+e.clientY-PTR.sy;applyView();return}
   if(PTR.kind==="paint"){const cc={x:Math.max(0,Math.min(M.grid.w-1,c.x)),y:Math.max(0,Math.min(M.grid.h-1,c.y))};if(cc.x!==PTR.last.x||cc.y!==PTR.last.y){paintLine(PTR.last,cc,PTR.ch);PTR.last=cc}return}
   if(PTR.kind==="rect"||PTR.kind==="fogrect"){showRect(PTR.a,c);return}
@@ -774,7 +840,7 @@ function applySize(){if(!M)return;const w=clampInt($("mW").value,GRID_MIN,GRID_M
   snap();M.terrain=Array.from({length:h},(_,y)=>(M.terrain[y]||"").slice(0,w).padEnd(w,"0"));M.grid.w=w;M.grid.h=h;
   M.objects=M.objects.filter(o=>o.x+o.size<=w&&o.y+o.size<=h);if(SEL&&!selObj())SEL=null;fogNorm(M);
   buildStage();renderObjs();renderSel();renderMapForm();fitView();saveSoon()}
-function openMap(m){if(DIRTY)saveNow();M=normalizeMap(m);SEL=null;UNDO=[];REDO=[];updUndo();renderToolUI();buildStage();renderObjs();renderSel();renderMapForm();renderFogUI();pvSend();
+function openMap(m){if(DIRTY)saveNow();M=normalizeMap(m);SEL=null;UNDO=[];REDO=[];updUndo();renderToolUI();buildStage();renderObjs();renderSel();renderMapForm();renderFogUI();renderBgForm();pvSend();
   document.title="🗺 "+M.name+" · Mappe D&D 5E";requestAnimationFrame(fitView)}
 function openMd(id){$(id).style.display="flex"}
 function closeMd(id){$(id).style.display="none"}
@@ -798,9 +864,13 @@ function delMap(id){const m=mapsAll().find(x=>x.id===id);if(!m||!confirm(`Elimin
 /* ================= EXPORT / IMPORT ================= */
 function download(name,blob){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
 const fileName=s=>(s||"mappa").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\w-]+/g,"_").replace(/^_+|_+$/g,"").slice(0,50)||"mappa";
-function exportJson(id){if(DIRTY)saveNow();const m=id?mapsAll().find(x=>x.id===id):M;if(!m)return;
-  download("mappa_"+fileName(m.name)+".json",new Blob([JSON.stringify({type:"dnd5e_map",v:MAP_V,exported:new Date().toISOString(),map:m},null,1)],{type:"application/json"}))}
-function importJson(file){const rd=new FileReader();rd.onload=()=>{try{const d=safeParse(rd.result);
+async function exportJson(id){if(DIRTY)saveNow();const m=id?mapsAll().find(x=>x.id===id):M;if(!m)return;
+  /* la mappa porta con sé solo le immagini che usa, così arriva completa a un altro master */
+  const ids=mapAssetIds(m);const assets=ids.length?await assetsForExport(ids):[];
+  download("mappa_"+fileName(m.name)+".json",new Blob([JSON.stringify({type:"dnd5e_map",v:MAP_V,exported:new Date().toISOString(),map:m,assets},null,1)],{type:"application/json"}))}
+function importJson(file){const rd=new FileReader();rd.onload=async()=>{try{const raw=JSON.parse(rd.result);let imgMap={};
+    if(raw&&Array.isArray(raw.assets)&&raw.assets.length){try{imgMap=await mergeAssets(raw.assets);await loadLibrary();pvPost({t:"assets"})}catch(e){}}
+    const d=safeParse(remapAssetIds(JSON.stringify(raw),imgMap));
     if(!d||d.type!=="dnd5e_map"||!d.map)throw 0;if((parseInt(d.v,10)||1)>MAP_V){alert("Questa mappa è stata creata da una versione più recente della suite.");return}
     const m=normalizeMap(d.map);if(!m)throw 0;
     /* come per le altre entità: la mappa importata riceve ID nuovi */
@@ -809,12 +879,15 @@ function importJson(file){const rd=new FileReader();rd.onload=()=>{try{const d=s
 /* PNG: versione master (tutto) o giocatori (senza gli elementi nascosti né le note) */
 const PATHS={};function iconPath(n){if(!PATHS[n])PATHS[n]=new Path2D((ICONS[n]||ICONS["position-marker"]).d);return PATHS[n]}
 function exportPng(dm){if(!M)return;const W=M.grid.w*C,H=M.grid.h*C,sc=2;const cv=document.createElement("canvas");cv.width=W*sc;cv.height=H*sc;const ctx=cv.getContext("2d");
-  ctx.scale(sc,sc);ctx.fillStyle="#0b0805";ctx.fillRect(0,0,W,H);ctx.drawImage($("cv"),0,0,W,H);if(SHOW_GRID)drawGrid(ctx,M.grid.w,M.grid.h,.18);
+  ctx.scale(sc,sc);ctx.fillStyle="#0b0805";ctx.fillRect(0,0,W,H);
+  if(M.bg&&imgOk(M.bg.img)){const im=IMG.get(M.bg.img).el,bw=M.bg.wc*C;ctx.save();ctx.globalAlpha=M.bg.op;ctx.drawImage(im,M.bg.x*C,M.bg.y*C,bw,bw*im.naturalHeight/im.naturalWidth);ctx.restore()}
+  ctx.drawImage($("cv"),0,0,W,H);if(SHOW_GRID)drawGrid(ctx,M.grid.w,M.grid.h,.18);
   if(!dm&&M.fog.on){ctx.fillStyle="#000";for(let y=0;y<M.grid.h;y++)for(let x=0;x<M.grid.w;x++)if(!fogShown(x,y))ctx.fillRect(x*C,y*C,C,C)}
   M.objects.filter(o=>dm||pvVisible(o)).forEach(o=>{const s=o.size*C,t=OBJ_TYPES[o.type],x=o.x*C,y=o.y*C;ctx.save();
     if(o.type==="token"){ctx.beginPath();ctx.arc(x+s/2,y+s/2,s*.41,0,7);const g=ctx.createRadialGradient(x+s*.35,y+s*.3,1,x+s/2,y+s/2,s*.45);g.addColorStop(0,"#4a3a26");g.addColorStop(1,"#1c140b");
       ctx.fillStyle=g;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=objVis(o)==="all"?"#c9a227":"#8b2e2e";ctx.stroke()}
-    const pad=o.type==="token"?s*.22:s*.09,is=s-2*pad;ctx.translate(x+pad,y+pad);ctx.scale(is/512,is/512);ctx.shadowColor="rgba(0,0,0,.8)";ctx.shadowBlur=3;ctx.fillStyle=t.col;ctx.fill(iconPath(o.icon));ctx.restore();
+    if(o.img&&imgOk(o.img)){ctx.save();ctx.beginPath();ctx.arc(x+s/2,y+s/2,s*.39,0,7);ctx.clip();ctx.drawImage(IMG.get(o.img).el,x+s*.11,y+s*.11,s*.78,s*.78);ctx.restore();ctx.restore()}
+    else{const pad=o.type==="token"?s*.22:s*.09,is=s-2*pad;ctx.translate(x+pad,y+pad);ctx.scale(is/512,is/512);ctx.shadowColor="rgba(0,0,0,.8)";ctx.shadowBlur=3;ctx.fillStyle=t.col;ctx.fill(iconPath(o.icon));ctx.restore()}
     const lab=dispName(o);if(lab&&(dm||o.type!=="note")){ctx.save();ctx.font="10px Georgia";const tw=Math.min(170,ctx.measureText(lab).width)+8;const lx=x+s/2-tw/2,ly=y+s-4;
       ctx.fillStyle="rgba(16,11,6,.85)";ctx.fillRect(lx,ly,tw,13);ctx.fillStyle="#f4ead6";ctx.fillText(lab,lx+4,ly+10,170);ctx.restore()}});
   cv.toBlob(b=>{if(b)download("mappa_"+fileName(M.name)+(dm?"_master":"_giocatori")+".png",b)},"image/png")}
@@ -894,6 +967,112 @@ let ARMED_S=null;
 function suiteArm(el){const was=el.classList.contains("armed");setMode("select");if(was)return;ARMED_S=[el.dataset.k,el.dataset.key];el.classList.add("armed");$("vp").className="vp m-place";
   toast("Clicca sulla mappa per posizionare (Esc per annullare)")}
 
+/* ================= IMMAGINI: texture, ritratti dei token, sfondi =================
+   Le immagini stanno nella libreria comune (IndexedDB); le mappe le richiamano per ID (palette[].tex, objects[].img, bg.img).
+   Se un'immagine manca si usano il pattern o l'icona interni e l'editor lo segnala con ⚠. */
+const IMG=new Map();let IMG_READY=false;
+const IMG_MAX={texture:512,token:256,bg:4096},IMG_KIND={texture:"Texture",token:"Ritratto token",bg:"Sfondo"},IMG_PFX={texture:"tex",token:"tok",bg:"bg"};
+const imgOk=id=>!!(id&&IMG.has(id)&&IMG.get(id).el&&IMG.get(id).el.complete&&IMG.get(id).el.naturalWidth);
+const imgMissing=id=>!!id&&IMG_READY&&!IMG.has(id);
+async function loadLibrary(){let all=[];try{all=await assetAll()}catch(e){all=[]}
+  const keep=new Set(all.map(a=>a.id));[...IMG.keys()].forEach(id=>{if(!keep.has(id)){URL.revokeObjectURL(IMG.get(id).url);IMG.delete(id)}});
+  await Promise.all(all.map(a=>{const old=IMG.get(a.id);if(old&&old.size===a.size){old.meta=a;return Promise.resolve()}
+    if(old)URL.revokeObjectURL(old.url);const url=URL.createObjectURL(a.blob),el=new Image();el.src=url;IMG.set(a.id,{meta:a,url,el,size:a.size});
+    return el.decode?el.decode().catch(()=>{}):new Promise(r=>{el.onload=el.onerror=r})}));
+  IMG_READY=true}
+async function refreshImages(){await loadLibrary();if(!M)return;buildStage();renderObjs();if(!PVMODE){renderSel();renderBgForm();renderToolUI()}}
+function imgList(kind){return[...IMG.values()].map(x=>x.meta).filter(m=>!kind||m.kind===kind).sort((a,b)=>(a.name||"").localeCompare(b.name||""))}
+async function sha256Hex(buf){try{if(!(window.crypto&&crypto.subtle))return"";const h=await crypto.subtle.digest("SHA-256",buf);return[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,"0")).join("")}catch(e){return""}}
+/* caricamento: controlli, impronta (per non duplicare), ridimensionamento e conversione in WebP quando conviene */
+async function uploadImage(file,kind){
+  if(!file)return null;if(!ASSET_MIME.includes(file.type)){alert("Formato non supportato: usa PNG, JPEG, WebP o GIF.");return null}
+  if(file.size>20*1048576){alert("Immagine troppo grande: il limite è 20 MB per file.");return null}
+  const buf=await file.arrayBuffer(),kb=new TextEncoder().encode(kind+":"),all=new Uint8Array(kb.length+buf.byteLength);all.set(kb,0);all.set(new Uint8Array(buf),kb.length);
+  const hash=await sha256Hex(all);
+  if(hash){const ex=imgList(kind).find(m=>m.hash===hash);if(ex){toast("🖼 Immagine già presente nella libreria: riutilizzata");return ex.id}}
+  let src;try{src=await createImageBitmap(file)}catch(e){src=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(file)}).catch(()=>null)}
+  if(!src){alert("Immagine non leggibile.");return null}
+  const mx=IMG_MAX[kind]||512,k=Math.min(1,mx/Math.max(src.width,src.height)),w=Math.max(1,Math.round(src.width*k)),h=Math.max(1,Math.round(src.height*k));
+  const cv=document.createElement("canvas");cv.width=w;cv.height=h;cv.getContext("2d").drawImage(src,0,0,w,h);
+  let blob=await new Promise(r=>cv.toBlob(r,"image/webp",.86));if(!blob||blob.type!=="image/webp")blob=await new Promise(r=>cv.toBlob(r,"image/png"));
+  if(!blob){alert("Conversione dell'immagine non riuscita.");return null}
+  const rec={id:newId(IMG_PFX[kind]),name:file.name.replace(/\.[^.]+$/,"").replace(/[<>]/g,"").slice(0,80)||"immagine",kind,mime:blob.type,w,h,hash,size:blob.size,blob,created:new Date().toISOString()};
+  try{await assetPut(rec)}catch(e){alert("Salvataggio dell'immagine non riuscito: probabilmente lo spazio del browser è pieno.");return null}
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+  await loadLibrary();pvPost({t:"assets"});toast(`🖼 ${IMG_KIND[kind]} caricata (${Math.round(blob.size/1024)} KB)`);return rec.id}
+function pickFile(cb){const i=document.createElement("input");i.type="file";i.accept=ASSET_MIME.join(",");i.onchange=()=>{if(i.files[0])cb(i.files[0])};i.click()}
+function imgSelect(kind,cur,onch,none){const opts=imgList(kind).map(m=>`<option value="${esc(m.id)}" ${m.id===cur?"selected":""}>${esc(m.name)}</option>`).join("");
+  return`<select onchange="${onch}">${`<option value="">${none||"— nessuna —"}</option>`}${opts}${cur&&!IMG.has(cur)?`<option value="${esc(cur)}" selected>⚠ immagine mancante</option>`:""}</select>`}
+/* ---- libreria ---- */
+function mapsUsing(id){return mapsAll().filter(m=>m.palette.some(p=>p.tex===id)||m.objects.some(o=>o.img===id)||(m.bg&&m.bg.img===id)).map(m=>m.name)}
+async function openLib(){await loadLibrary();renderLib();openMd("mdLib")}
+async function renderLib(){const l=imgList();let est="";try{if(navigator.storage&&navigator.storage.estimate){const e=await navigator.storage.estimate();
+    est=`Spazio usato dal sito: ${(e.usage/1048576).toFixed(1).replace(".",",")} MB su circa ${Math.round(e.quota/1048576)} MB disponibili.`}
+  if(navigator.storage&&navigator.storage.persisted)est+=(await navigator.storage.persisted())?" Archiviazione persistente attiva.":" Archiviazione non ancora persistente: il browser potrebbe liberarla se il disco si riempie."}catch(e){}
+  const tot=l.reduce((s,m)=>s+(m.size||0),0);
+  $("libBody").innerHTML=`<p class="empty" style="margin-bottom:8px">${l.length} ${l.length===1?"immagine":"immagini"} · ${(tot/1048576).toFixed(1).replace(".",",")} MB. ${esc(est)}</p>
+   <div class="toolbar" style="margin:0 0 10px">${Object.keys(IMG_KIND).map(k=>`<button class="btn small" onclick="libUpload('${k}')">⬆ ${IMG_KIND[k]}</button>`).join("")}</div>`+
+   (l.length?l.map(m=>{const u=mapsUsing(m.id);return`<div class="mi"><img src="${IMG.get(m.id).url}" alt="" style="width:46px;height:46px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">
+     <div class="m"><input type="text" value="${esc(m.name)}" onchange="libRename('${m.id}',this.value)" style="padding:4px 7px">
+     <small>${IMG_KIND[m.kind]||m.kind} · ${m.w}×${m.h} px · ${Math.round((m.size||0)/1024)} KB${u.length?" · usata in: "+esc(u.join(", ")):" · non usata"}</small></div>
+     <span class="xbtn" onclick="libDelete('${m.id}')" title="Elimina">✕</span></div>`}).join(""):'<p class="empty">Nessuna immagine caricata.</p>')}
+function libUpload(kind){pickFile(async f=>{await uploadImage(f,kind);renderLib();refreshImages()})}
+async function libRename(id,v){const a=await assetGet(id);if(!a)return;a.name=String(v||"").replace(/[<>]/g,"").slice(0,80)||"immagine";await assetPut(a);await loadLibrary();pvPost({t:"assets"});renderLib();renderToolUI();renderSel();renderBgForm()}
+async function libDelete(id){const m=IMG.get(id);if(!m)return;const u=mapsUsing(id);
+  if(!confirm(`Eliminare «${m.meta.name}» dalla libreria?`+(u.length?`\n\nÈ usata in: ${u.join(", ")}.\nIn quelle mappe torneranno il pattern o l'icona interni, con ⚠ nell'editor.`:"")))return;
+  if(DIRTY)saveNow();await assetDel(id);await loadLibrary();pvPost({t:"assets"});renderLib();refreshImages()}
+/* ---- terreni della mappa: texture, scala e terreni personalizzati ---- */
+const palName=p=>p.n||(TERR_BY_K[p.k]?TERR_BY_K[p.k].n:p.k);
+function openTerr(){renderTerr();openMd("mdTerr")}
+function renderTerr(){if(!M)return;
+  $("terrBody").innerHTML=M.palette.map((p,i)=>{const custom=!TERR_BY_K[p.k];if(p.pattern==="none"&&!custom)return"";
+    return`<div class="mi"><canvas width="40" height="40" data-ti="${i}" style="border-radius:6px;border:1px solid var(--border);flex:none"></canvas>
+    <div class="m">${custom?`<input type="text" value="${esc(p.n||"")}" placeholder="Nome del terreno" onchange="terrSet(${i},'n',this.value)" style="padding:4px 7px;margin-bottom:4px">`:`<b>${esc(palName(p))}</b>`}
+     <div class="row2" style="grid-template-columns:1.4fr .9fr;gap:6px;margin-top:3px">${imgSelect("texture",p.tex||"",`terrSet(${i},'tex',this.value)`,"pattern interno")}
+      <select onchange="terrSet(${i},'scale',this.value)" title="Quante caselle copre una ripetizione della texture">${[1,2,4].map(n=>`<option value="${n}" ${(p.scale||1)===n?"selected":""}>${n}×${n} caselle</option>`).join("")}</select></div>
+     ${custom?`<div class="row2" style="grid-template-columns:1fr auto auto;gap:6px;margin-top:4px;align-items:center"><select onchange="terrSet(${i},'pattern',this.value)" title="Pattern di ripiego se la texture manca">${TERRAINS.filter(t=>t.pattern!=="none").map(t=>`<option value="${t.pattern}" ${p.pattern===t.pattern?"selected":""}>ripiego: ${esc(t.n)}</option>`).join("")}</select>
+       <input type="color" value="${esc(/^#[0-9a-f]{6}$/i.test(p.color)?p.color:"#6b5a45")}" onchange="terrSet(${i},'color',this.value)" style="width:42px;padding:2px" title="Colore di base">
+       <label class="chk" style="margin:0"><input type="checkbox" ${p.wall?"checked":""} onchange="terrSet(${i},'wall',this.checked)"> muro</label></div>`:""}
+     ${imgMissing(p.tex)?'<small style="color:#e0a35a">⚠ texture non presente nella libreria: si usa il pattern interno</small>':""}</div>
+    <button class="btn small" onclick="terrUpload(${i})" title="Carica una nuova texture per questo terreno">⬆</button></div>`}).join("")+
+   (M.palette.length<CH.length?`<div class="toolbar"><button class="btn small" onclick="terrAdd()">➕ Nuovo terreno personalizzato</button></div>`:"");
+  document.querySelectorAll("#terrBody canvas").forEach(cv=>{const p=M.palette[+cv.dataset.ti];drawSwatch(cv.getContext("2d"),p,40,+cv.dataset.ti)})}
+function drawSwatch(ctx,p,s,i){ctx.clearRect(0,0,s,s);if(p.pattern==="none"&&!p.tex){ctx.fillStyle="#0b0805";ctx.fillRect(0,0,s,s);ctx.strokeStyle="#6a521f";ctx.beginPath();ctx.moveTo(4,s-4);ctx.lineTo(s-4,4);ctx.stroke();return}
+  if(p.tex&&imgOk(p.tex)){ctx.drawImage(IMG.get(p.tex).el,0,0,s,s);return}drawPattern(ctx,p,0,0,s,cellRng(3,5,i))}
+function terrSet(i,f,v){const p=M.palette[i];if(!p)return;snap();
+  if(f==="tex"){if(v)p.tex=v;else delete p.tex}else if(f==="scale"){const n=parseInt(v,10);if(n>1)p.scale=n;else delete p.scale}
+  else if(f==="wall"){if(v)p.wall=true;else delete p.wall}else if(f==="n")p.n=String(v||"").replace(/[<>]/g,"").slice(0,40)||"Terreno";
+  else if(f==="color"&&/^#[0-9a-f]{6}$/i.test(v))p.color=v;else if(f==="pattern")p.pattern=v;
+  buildStage();renderToolUI();renderTerr();saveSoon()}
+function terrUpload(i){pickFile(async f=>{const id=await uploadImage(f,"texture");if(id)terrSet(i,"tex",id)})}
+function terrAdd(){if(M.palette.length>=CH.length)return;snap();M.palette.push({k:"c_"+newId("").slice(-8),n:"Terreno personalizzato",pattern:"stone",color:"#7a6a58"});renderToolUI();renderTerr();saveSoon()}
+/* ---- ritratto del token ---- */
+function setObjImg(v){const o=selObj();if(!o)return;snap();if(v)o.img=v;else delete o.img;renderObjs();renderSel();saveSoon()}
+function uploadObjImg(){pickFile(async f=>{const id=await uploadImage(f,"token");if(id)setObjImg(id)})}
+/* ---- sfondo: immagine sotto la griglia, larga «wc» caselle, spostabile a passi di 1/8 di casella ---- */
+function renderBg(){const el=$("bgImg");const b=M&&M.bg;if(!b||!b.img||!imgOk(b.img)){el.style.display="none";el.removeAttribute("src");return}
+  const it=IMG.get(b.img),w=b.wc*C,h=w*it.el.naturalHeight/it.el.naturalWidth;
+  Object.assign(el.style,{display:"block",left:b.x*C+"px",top:b.y*C+"px",width:w+"px",height:h+"px",opacity:b.op});if(el.getAttribute("src")!==it.url)el.src=it.url}
+function renderBgForm(){if(!M||!$("bgBox"))return;const b=M.bg||{};
+  $("bgBox").innerHTML=`${imgSelect("bg",b.img||"","setBg('img',this.value)","— nessuno —")}
+   <div class="toolbar" style="margin-top:6px"><button class="btn small" onclick="uploadBg()">⬆ Carica sfondo</button></div>
+   ${b.img?`<div class="row2"><div><label class="f">Larghezza (caselle)</label><input type="number" min="1" max="200" step="0.5" value="${b.wc}" onchange="setBg('wc',this.value)"></div>
+     <div><label class="f">Opacità</label><input type="range" min="0.1" max="1" step="0.05" value="${b.op}" oninput="setBg('op',this.value)" style="width:100%"></div></div>
+     <label class="f">Allinea alla griglia (1/8 di casella)</label><div class="toolbar" style="margin-top:2px">
+      <button class="btn small" onclick="nudgeBg(-1,0)">←</button><button class="btn small" onclick="nudgeBg(1,0)">→</button><button class="btn small" onclick="nudgeBg(0,-1)">↑</button><button class="btn small" onclick="nudgeBg(0,1)">↓</button>
+      <button class="btn small" onclick="setBg('x',0);setBg('y',0)">⟲</button><button class="btn small" onclick="setBg('img','')">✕ Rimuovi</button></div>
+     <div class="empty" style="margin-top:4px">Le caselle «Vuoto» lasciano vedere lo sfondo; quelle dipinte lo coprono.${imgMissing(b.img)?' <span style="color:#e0a35a">⚠ immagine mancante</span>':""}</div>`:""}`}
+let BG_SNAP=false;
+function setBg(f,v){if(!M)return;if(!(f==="op"&&BG_SNAP)){snap();BG_SNAP=f==="op"}
+  if(f==="img"){if(!v){delete M.bg}else{const prev=M.bg||{};M.bg={img:v,x:prev.x||0,y:prev.y||0,wc:prev.wc||M.grid.w,op:prev.op||1}}}
+  else if(M.bg){if(f==="wc")M.bg.wc=Math.max(1,Math.min(200,parseFloat(v)||M.grid.w));if(f==="op")M.bg.op=Math.max(.1,Math.min(1,parseFloat(v)||1));
+    if(f==="x"||f==="y")M.bg[f]=parseFloat(v)||0}
+  renderBg();if(f!=="op")renderBgForm();saveSoon()}
+function nudgeBg(dx,dy){if(!M||!M.bg)return;snap();M.bg.x=Math.round((M.bg.x+dx/8)*8)/8;M.bg.y=Math.round((M.bg.y+dy/8)*8)/8;renderBg();saveSoon()}
+function uploadBg(){pickFile(async f=>{const id=await uploadImage(f,"bg");if(id)setBg("img",id)})}
+/* ID delle immagini usate da una mappa (per l'export) */
+function mapAssetIds(m){const s=new Set();m.palette.forEach(p=>p.tex&&s.add(p.tex));m.objects.forEach(o=>o.img&&s.add(o.img));if(m.bg&&m.bg.img)s.add(m.bg.img);return[...s]}
+
 /* ================= NEBBIA DI GUERRA =================
    M.fog = {on, shown:[righe "0"/"1", 1 = rivelata]}: spenta di default; accendendola la mappa parte tutta coperta.
    Il master vede le caselle coperte scurite; la vista giocatori le vede nere. */
@@ -915,7 +1094,7 @@ function fogRect(a,b){const x0=Math.max(0,Math.min(a.x,b.x)),x1=Math.min(M.grid.
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)fogSet(x,y,true)}
 /* rivela la stanza: area connessa fino ai muri (rivelati ma non attraversati); le porte e il vuoto fanno da confine come i muri */
 function fogRoom(c){const doors=new Set();M.objects.filter(o=>o.type==="door").forEach(o=>{for(let j=0;j<o.size;j++)for(let i=0;i<o.size;i++)doors.add((o.x+i)+","+(o.y+j))});
-  const stop=(x,y)=>{const p=palAt(x,y);return!p||p.k==="wall"||p.pattern==="none"||doors.has(x+","+y)};
+  const stop=(x,y)=>{const p=palAt(x,y);return!p||isWall(p)||(p.pattern==="none"&&!p.tex)||doors.has(x+","+y)};
   const seen=new Set(),st=[[c.x,c.y]];let n=0;
   if(stop(c.x,c.y)){fogBrush(c.x,c.y,true);return 1}
   while(st.length&&n<GRID_MAX*GRID_MAX){const [x,y]=st.pop(),k=x+","+y;if(seen.has(k)||x<0||y<0||x>=M.grid.w||y>=M.grid.h)continue;seen.add(k);
@@ -957,15 +1136,16 @@ function pvStart(id){PVMODE=true;document.body.classList.add("pv");
   const m=mapsAll().find(x=>x.id===id);if(!m){document.body.innerHTML='<p style="padding:40px;color:#a89878;font-family:Georgia">Mappa non trovata.</p>';return}
   pvRender(m);
   if(PVCH)PVCH.onmessage=e=>{const d=e.data||{};if(d.t==="map"&&d.map){if(d.map.id!==M.id)PV_LOCK=null;pvRender(d.map)}
-    else if(d.t==="view"&&d.id===M.id){PV_LOCK=d.auto?null:{x:d.x,y:d.y,w:d.w,h:d.h};pvFit()}};
+    else if(d.t==="view"&&d.id===M.id){PV_LOCK=d.auto?null:{x:d.x,y:d.y,w:d.w,h:d.h};pvFit()}
+    else if(d.t==="assets")refreshImages()};
   window.addEventListener("storage",e=>{if(e.key!==dbKey("maps"))return;const n=mapsAll().find(x=>x.id===M.id);if(n&&n.updated!==M.updated)pvRender(n)});
   window.addEventListener("resize",pvFit);
   pvPost({t:"hello",id})}
 
 /* ================= AVVIO ================= */
 (function(){
-  if(location.hash.indexOf("#view=")===0){pvStart(decodeURIComponent(location.hash.slice(6)));return}
-  if(PVCH)PVCH.onmessage=e=>{const d=e.data||{};if(d.t==="hello")pvSend()};
+  if(location.hash.indexOf("#view=")===0){const id=decodeURIComponent(location.hash.slice(6));loadLibrary().then(()=>pvStart(id));return}
+  if(PVCH)PVCH.onmessage=e=>{const d=e.data||{};if(d.t==="hello")pvSend();if(d.t==="assets")refreshImages()};
   const vp=$("vp");
   vp.addEventListener("pointerdown",onDown);vp.addEventListener("pointermove",onMove);vp.addEventListener("pointerup",onUp);vp.addEventListener("pointercancel",onUp);
   vp.addEventListener("wheel",e=>{e.preventDefault();const r=vp.getBoundingClientRect();zoomAt(e.deltaY<0?1.12:1/1.12,e.clientX-r.left,e.clientY-r.top)},{passive:false});
@@ -979,7 +1159,7 @@ function pvStart(id){PVMODE=true;document.body.classList.add("pv");
     if(e.key===" "){SPACE=true;if(e.target===vp)e.preventDefault();return}
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();e.shiftKey?redo():undo();return}
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="y"){e.preventDefault();redo();return}
-    if(e.key==="Escape"){if($("mdNew").style.display==="flex")closeMd("mdNew");else if($("mdList").style.display==="flex")closeMd("mdList");else{setMode("select");SEL=null;renderObjs();renderSel()}return}
+    if(e.key==="Escape"){const open=[...document.querySelectorAll(".modal")].find(x=>x.style.display==="flex");if(open)open.style.display="none";else{setMode("select");SEL=null;renderObjs();renderSel()}return}
     if((e.key==="Delete"||e.key==="Backspace")&&SEL){e.preventDefault();delObj();return}
     if(e.ctrlKey||e.metaKey||e.altKey)return;
     const k={v:"select",b:"paint",r:"rect",f:"fill",e:"erase",m:"ruler"}[e.key.toLowerCase()];if(k)setMode(k)});
@@ -999,6 +1179,7 @@ function pvStart(id){PVMODE=true;document.body.classList.add("pv");
   if(!start&&all.length)start=all.sort((a,b)=>(b.updated||"").localeCompare(a.updated||""))[0];
   if(start)openMap(start);else{openMap(blankMap("La mia prima mappa",30,20,"room"));saveNow()}
   $("bGrid").classList.add("on");updUndo();
+  loadLibrary().then(()=>{if(M){buildStage();renderObjs();renderSel();renderBgForm();renderToolUI()}});
 })();
 </script>
 </body>

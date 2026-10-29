@@ -1053,19 +1053,58 @@ function shareCur(){
 }
 
 /* backup suite completo */
+/* ================= LIBRERIA IMMAGINI (IndexedDB "dnd5e_assets") =================
+   Texture, ritratti dei token e sfondi caricati dall'utente: restano nel browser e nei backup, non nel repository.
+   Record: {id:"tex_…", name, kind:"texture"|"token"|"bg", mime, w, h, hash, size, blob, created} */
+const ASSET_DB="dnd5e_assets",ASSET_OS="assets",ASSET_MIME=["image/png","image/jpeg","image/webp","image/gif"];
+let ASSET_DBP=null;
+function assetDb(){if(!ASSET_DBP)ASSET_DBP=new Promise((res,rej)=>{if(!window.indexedDB)return rej(new Error("IndexedDB non disponibile"));
+  const r=indexedDB.open(ASSET_DB,1);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(ASSET_OS))db.createObjectStore(ASSET_OS,{keyPath:"id"})};
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});return ASSET_DBP}
+function assetTx(mode,fn){return assetDb().then(db=>new Promise((res,rej)=>{const tx=db.transaction(ASSET_OS,mode),st=tx.objectStore(ASSET_OS);let out;
+  const q=fn(st);if(q)q.onsuccess=()=>{out=q.result};tx.oncomplete=()=>res(out);tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)}))}
+const assetAll=()=>assetTx("readonly",st=>st.getAll()).then(a=>a||[]);
+const assetGet=id=>assetTx("readonly",st=>st.get(id));
+const assetPut=a=>assetTx("readwrite",st=>st.put(a));
+const assetDel=id=>assetTx("readwrite",st=>st.delete(id));
+function blobToDataUrl(b){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(b)})}
+function dataUrlToBlob(u){const m=/^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(u||"");if(!m)return null;
+  const bin=atob(m[2]),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return new Blob([a],{type:m[1]})}
+async function assetsForExport(ids){const all=await assetAll().catch(()=>[]);const sel=ids?all.filter(a=>ids.includes(a.id)):all;
+  return Promise.all(sel.map(async a=>({id:a.id,name:a.name,kind:a.kind,mime:a.mime,w:a.w,h:a.h,hash:a.hash||"",data:await blobToDataUrl(a.blob)})))}
+/* aggiunge immagini (da backup o da una mappa importata) senza cancellare nulla: quelle già presenti, per ID o per impronta,
+   vengono riconosciute. Restituisce la mappa ID del file → ID nella libreria, per aggiornare i riferimenti. */
+async function mergeAssets(list){const map={};if(!Array.isArray(list)||!list.length)return map;
+  const all=await assetAll().catch(()=>[]);const byId=new Map(all.map(a=>[a.id,a])),byHash=new Map(all.filter(a=>a.hash).map(a=>[a.hash,a]));
+  for(const x of list){try{if(!x||!/^[\w-]+$/.test(x.id||""))continue;const blob=dataUrlToBlob(x.data);if(!blob||!ASSET_MIME.includes(blob.type))continue;
+    const hash=typeof x.hash==="string"&&/^[0-9a-f]{64}$/.test(x.hash)?x.hash:"";
+    if(hash&&byHash.has(hash)){map[x.id]=byHash.get(hash).id;continue}
+    if(byId.has(x.id)&&(!hash||byId.get(x.id).hash===hash)){map[x.id]=x.id;continue}
+    const id=byId.has(x.id)?newId(/^(tex|tok|bg)_/.test(x.id)?x.id.split("_")[0]:"tex"):x.id;
+    const rec={id,name:String(x.name||"immagine").replace(/[<>]/g,"").slice(0,80),kind:["texture","token","bg"].includes(x.kind)?x.kind:"texture",
+      mime:blob.type,w:parseInt(x.w,10)||0,h:parseInt(x.h,10)||0,hash,size:blob.size,blob,created:new Date().toISOString()};
+    await assetPut(rec);byId.set(id,rec);if(hash)byHash.set(hash,rec);map[x.id]=id}catch(e){}}
+  return map}
+/* sostituisce gli ID delle immagini in un testo JSON (gli ID sono token univoci, es. tex_mvto…_k3f9q2ab) */
+function remapAssetIds(txt,map){let out=txt;Object.keys(map).forEach(o=>{if(map[o]!==o)out=out.split('"'+o+'"').join('"'+map[o]+'"')});return out}
 /* chiavi reali di tutti i dati della suite (dalla tabella STORE) */
 const SUITE_KEYS=Object.values(STORE);
-function backupSuite(){
+async function backupSuite(){
   const data={type:"dnd5e_suite_backup",ver:3,schema:DB_SCHEMA,date:new Date().toISOString(),store:{}};
   let n=0;SUITE_KEYS.forEach(k=>{try{const v=localStorage.getItem(k);if(v!=null){data.store[k]=v;n++}}catch(e){}});
-  if(!n){alert("Nulla da salvare.");return}
+  /* immagini della libreria: facoltative, perché possono pesare molto */
+  let imgs=[];try{imgs=await assetAll()}catch(e){}
+  if(!n&&!imgs.length){alert("Nulla da salvare.");return}
+  if(imgs.length){const mb=imgs.reduce((s,a)=>s+(a.size||(a.blob&&a.blob.size)||0),0)/1048576;
+    if(confirm(`Includere nel backup anche le immagini caricate? (${imgs.length} ${imgs.length===1?"immagine":"immagini"}, ${mb.toFixed(1).replace(".",",")} MB)\n\nOK = backup completo · Annulla = solo i dati, file più leggero`))
+      data.assets=await assetsForExport()}
   const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
-  a.download="dnd5e_suite_backup_"+new Date().toISOString().slice(0,10)+".json";a.click();
+  a.download="dnd5e_suite_backup_"+new Date().toISOString().slice(0,10)+(data.assets?"_con_immagini":"")+".json";a.click();
 }
 function restoreSuite(file){
   const rd=new FileReader();
-  rd.onload=()=>{try{
+  rd.onload=async()=>{try{
     const d=JSON.parse(rd.result);
     if(d.type!=="dnd5e_suite_backup"||!d.store||typeof d.store!=="object")throw 0;
     const bs=parseInt(d.schema,10)>0?parseInt(d.schema,10):1;
@@ -1073,7 +1112,11 @@ function restoreSuite(file){
     /* backup vecchi: le chiavi precedenti (es. enc_trk) vengono tradotte nei nomi attuali; se ci sono entrambe vale quella attuale */
     const st={};Object.keys(d.store).forEach(k=>{const nk=STORE_LEGACY[k]||k;if(SUITE_KEYS.includes(nk)&&typeof d.store[k]==="string"&&(!(nk in st)||nk===k))st[nk]=d.store[k]});
     const keys=Object.keys(st);if(!keys.length)throw 0;
-    if(!confirm("Ripristinare il backup? Tutti i dati della suite in questo browser verranno sostituiti da quelli del file."))return;
+    const nImg=Array.isArray(d.assets)?d.assets.length:0;
+    if(!confirm("Ripristinare il backup? Tutti i dati della suite in questo browser verranno sostituiti da quelli del file."+(nImg?`\n\nLe ${nImg} immagini del backup verranno aggiunte alla libreria (quelle già presenti restano).`:"")))return;
+    /* immagini: aggiunte, mai cancellate; i riferimenti delle mappe seguono gli ID nella libreria */
+    let imgMap={},imgFail=false;if(nImg){try{imgMap=await mergeAssets(d.assets)}catch(e){imgFail=true}}
+    if(st[STORE.maps])st[STORE.maps]=remapAssetIds(st[STORE.maps],imgMap);
     /* sostituzione completa: le chiavi della suite assenti nel backup vengono rimosse, così non restano dati misti */
     let fail=0;
     SUITE_KEYS.forEach(k=>{try{if(keys.includes(k))localStorage.setItem(k,safeStoreVal(k,st[k]));else localStorage.removeItem(k)}catch(e){fail++}});
@@ -1081,7 +1124,7 @@ function restoreSuite(file){
     try{localStorage.setItem(DB_SCHEMA_KEY,String(Math.max(bs,1)));}catch(e){}
     dbMigrate();
     if(fail){alert("⚠ Ripristino incompleto: "+fail+" dati non sono stati scritti, probabilmente per spazio del browser insufficiente.\nLibera spazio e riprova.");return}
-    alert("✅ Backup ripristinato. La pagina verrà ricaricata.");location.reload();
+    alert("✅ Backup ripristinato."+(imgFail?"\n⚠ Le immagini non sono state ripristinate (libreria immagini non disponibile in questo browser).":"")+" La pagina verrà ricaricata.");location.reload();
   }catch(err){alert("File di backup non valido.")}};
   rd.readAsText(file);
 }
