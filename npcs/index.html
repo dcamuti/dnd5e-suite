@@ -355,15 +355,36 @@ function diaryLoad(){let D={};try{D=dbGet("diary",{})||{}}catch(e){}
   ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(D[k]))D[k]=[]});return D}
 function diarySave(D){try{dbSet("diary",D)}catch(e){}}
 /* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione
-   src (facoltativo): {t,id} dell'elemento di origine nel tool che invia (es. {t:"npc",id:"npc_…"}), registrato sulla voce */
-function toDiary(kind,item,src){const D=diaryLoad();
+   src (facoltativo): {t,id} dell'elemento di origine nel tool che invia (es. {t:"npc",id:"npc_…"}), registrato sulla voce.
+   Una voce già presente si riconosce prima per origine, poi per nome (voci vecchie senza origine); se c'è, si chiede una
+   volta sola se aggiornarla e si conservano atteggiamento e note scritte nel Diario. */
+const DIARY_KEEP=["att","note"];
+const SRC_SELF=["npc","fz"];/* origini in cui la voce rappresenta l'elemento stesso: si riconosce anche se il nome è cambiato */
+let DIARY_Q=null;
+function diaryFind(D,kind,item,src){const key=kind==="hooks"?"text":"name",nm=x=>(x&&x[key]||"").trim().toLowerCase(),v=nm(item);
+  if(src&&src.t&&src.id){const same=D[kind].filter(x=>x&&x.src&&x.src.t===src.t&&x.src.id===src.id);
+    const byKey=same.find(x=>nm(x)===v);if(byKey)return byKey;
+    if(SRC_SELF.includes(src.t)&&same.length===1)return same[0];
+    return D[kind].find(x=>x&&!x.src&&nm(x)===v)||null}
+  return D[kind].find(x=>nm(x)===v)||null}
+function diaryApply(D,kind,item,src,upd){
   if(kind==="session"){if(D.sessions.length)D.sessions[0].text=(D.sessions[0].text?D.sessions[0].text+"\n\n":"")+item;
-    else D.sessions.unshift({id:newId("ses"),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});diarySave(D);return"added"}
+    else D.sessions.unshift({id:newId("ses"),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});return"added"}
   if(src&&src.t&&src.id)item=Object.assign({},item,{src:{t:src.t,id:src.id}});
-  const key=kind==="hooks"?"text":"name";
-  const ex=D[kind].find(x=>(x[key]||"").trim().toLowerCase()===(item[key]||"").trim().toLowerCase());
-  if(ex){Object.assign(ex,item,{id:ex.id});diarySave(D);return"updated"}
-  D[kind].unshift(Object.assign({id:newId({npcs:"dnpc",places:"plc",hooks:"hok"}[kind])},kind==="hooks"?{done:false}:{},item));diarySave(D);return"added"}
+  const ex=diaryFind(D,kind,item,src);
+  if(ex){if(!upd)return"skipped";const keep={id:ex.id};
+    DIARY_KEEP.forEach(f=>{if(ex[f]!=null&&String(ex[f]).trim()!=="")keep[f]=ex[f]});if("done" in ex)keep.done=ex.done;
+    Object.assign(ex,item,keep);return"updated"}
+  D[kind].unshift(Object.assign({id:newId({npcs:"dnpc",places:"plc",hooks:"hok"}[kind])},kind==="hooks"?{done:false}:{},item));return"added"}
+/* invii raggruppati (es. un insediamento con luogo, agganci e PNG): una sola domanda per tutte le voci già presenti */
+function diaryBegin(){DIARY_Q=[]}
+function diaryEnd(){const q=DIARY_Q||[];DIARY_Q=null;const D=diaryLoad(),res={added:0,updated:0,skipped:0};
+  const dup=q.filter(([k,it,s])=>k!=="session"&&diaryFind(D,k,it,s)).length;
+  const upd=dup?confirm(`${dup===1?"Una voce è già":dup+" voci sono già"} nel Diario: aggiornarle?\n\nAtteggiamento e note scritte nel Diario restano come sono.`):false;
+  q.forEach(([k,it,s])=>{res[diaryApply(D,k,it,s,upd)]++});
+  if(res.added||res.updated)diarySave(D);return res}
+function toDiary(kind,item,src){if(DIARY_Q){DIARY_Q.push([kind,item,src]);return"queued"}
+  diaryBegin();toDiary(kind,item,src);const r=diaryEnd();return r.added?"added":r.updated?"updated":"skipped"}
 /* ==== FINE MOTORE SUITE ==== */
 /* conserva la posizione di scorrimento durante i re-render */
 function ks(){const y=window.scrollY;requestAnimationFrame(()=>window.scrollTo(0,y))}
@@ -656,8 +677,13 @@ const NPC_PLACES={
 /* fazioni del tool Mondo, se presenti */
 function worldFactions(){const w=dbGet("world",{})||{};return Array.isArray(w.factions)?w.factions:[]}
 function makeFaction(tags){const wf=worldFactions();
-  if(wf.length&&rnd()<.6){const f=rPick(wf);return{nome:f.name,scopo:f.goal||"",ruolo:rPick(G_NPC.faz_ruolo),world:true}}
+  if(wf.length&&rnd()<.6){const f=rPick(wf);return{nome:f.name,scopo:f.goal||"",ruolo:rPick(G_NPC.faz_ruolo),world:true,fzId:f.id}}
   return{nome:gPick(G_NPC.faz_tipo,tags)+" "+gPick(G_NPC.faz_nome,tags),scopo:gPick(G_NPC.faz_scopo,tags),ruolo:rPick(G_NPC.faz_ruolo)}}
+/* fazione dell'NPC: se collegata al Mondo (fzId, o per nome per gli NPC creati prima) nome e scopo si leggono dal Mondo;
+   se la fazione non c'è più resta la copia salvata, segnata come mancante */
+function npcFaction(n){const f=n&&n.fazione;if(!f)return null;if(!f.world&&!f.fzId)return f;
+  const wf=worldFactions(),w=f.fzId?wf.find(x=>x&&x.id===f.fzId):wf.find(x=>x&&(x.name||"").trim().toLowerCase()===(f.nome||"").trim().toLowerCase());
+  return w?Object.assign({},f,{nome:w.name,scopo:w.goal||"",fzId:w.id,live:true}):Object.assign({},f,{missing:true})}
 /* arricchisce un NPC base con i campi coerenti al mestiere */
 function enrichNpc(n,extraTags){
   const tags=npcTags(n.cat,n.occ).concat(extraTags||[]);n.tags=tags;
@@ -745,7 +771,7 @@ function renderGroup(){const g=GROUP;if(!g)return;$("npcWrap").style.display="no
   const first=n=>esc(n.name.split(" ")[0]);
   $("quickList").innerHTML=`<div class="panel" style="margin-top:18px"><h2>👥 Gruppo collegato${g.place?" — "+esc(g.place):""}</h2>
    <div class="hint">${g.list.length} NPC con legami tra loro: una rete di agganci pronta. Seme <span style="font-family:monospace">${g.seed}</span>.</div>
-   ${g.list.map((n,i)=>`<p style="padding:8px 0;border-bottom:1px dotted var(--border);font-size:.93rem">🎭 <b style="color:var(--gold-l)">${esc(n.name)}</b> — ${esc(n.race)} ${n.sex==="f"?"♀":"♂"}, ${esc(n.occ)}${n.fazione?` · <i>${esc(n.fazione.nome)}</i>`:""}<br>
+   ${g.list.map((n,i)=>`<p style="padding:8px 0;border-bottom:1px dotted var(--border);font-size:.93rem">🎭 <b style="color:var(--gold-l)">${esc(n.name)}</b> — ${esc(n.race)} ${n.sex==="f"?"♀":"♂"}, ${esc(n.occ)}${n.fazione?` · <i>${esc(npcFaction(n).nome)}</i>`:""}<br>
      <span style="color:var(--muted)">Vuole ${esc(n.vuole)}; teme ${esc(n.teme)}.</span> <button class="btn small" onclick="openGroupNpc(${i})">🔍 Apri</button></p>`).join("")}
    <h4 style="font-family:var(--font-display);color:var(--gold-l);margin:12px 0 6px;font-size:.85rem;letter-spacing:1px">🔗 Legami</h4>
    ${g.rels.map(r=>`<p style="font-size:.92rem;padding:3px 0">• ${esc(r.t)}.</p>`).join("")}
@@ -755,13 +781,15 @@ function openGroupNpc(i){if(!GROUP||!GROUP.list[i])return;N=GROUP.list[i];render
 function npcDiaryItem(n){
   const att={"amichevole":"Amichevole","servizievole":"Amichevole","ostile":"Ostile","diffidente":"Diffidente","impaurit":"Diffidente","neutrale":"Neutrale","curios":"Neutrale"};
   const a=Object.keys(att).find(k=>(n.atteggiamento||"").toLowerCase().includes(k));
-  const note=[`${n.race||""}${n.occ?", "+n.occ:""}`,n.vuole&&"Vuole: "+n.vuole,n.teme&&"Teme: "+n.teme,n.fazione&&"Fazione: "+n.fazione.nome+" ("+n.fazione.ruolo+")",
+  const note=[`${n.race||""}${n.occ?", "+n.occ:""}`,n.vuole&&"Vuole: "+n.vuole,n.teme&&"Teme: "+n.teme,n.fazione&&"Fazione: "+npcFaction(n).nome+" ("+n.fazione.ruolo+")",
     n.gancio&&"Gancio: "+n.gancio,n.segreto&&"Segreto: "+n.segreto].filter(Boolean).join(" · ");
   return{name:(n.name||"").trim(),where:n.where||"",att:a?att[a]:"Neutrale",note}}
-function groupToDiary(){if(!GROUP)return;let add=0,upd=0;
-  GROUP.list.forEach(n=>{if(!n.id)n.id=newId("npc");toDiary("npcs",npcDiaryItem(n),{t:"npc",id:n.id})==="added"?add++:upd++});
+function groupToDiary(){if(!GROUP)return;
+  diaryBegin();
+  GROUP.list.forEach(n=>{if(!n.id)n.id=newId("npc");toDiary("npcs",npcDiaryItem(n),{t:"npc",id:n.id})});
   GROUP.rels.forEach(r=>toDiary("hooks",{text:"Legame: "+r.t}));
-  alert(`📖 Diario aggiornato: ${add} PNG aggiunti${upd?`, ${upd} aggiornati`:""} e ${GROUP.rels.length} legami tra gli agganci.`)}
+  const r=diaryEnd();
+  alert(`📖 Diario: ${r.added} voci aggiunte${r.updated?`, ${r.updated} aggiornate`:""}${r.skipped?`, ${r.skipped} lasciate com'erano`:""} (PNG del gruppo e legami tra gli agganci).`)}
 function groupSave(){if(!GROUP)return;const r=roster();GROUP.list.forEach(n=>{if(!r.some(x=>x.id===n.id))r.push(n)});dbSet("npcs",r);alert(`💾 ${GROUP.list.length} NPC salvati.`)}
 
 function showNpc(i){if(!QL[i])return;N=QL[i];$("quickList").innerHTML="";render()}
@@ -778,6 +806,7 @@ function reroll(f){
 function render(){
   if(!N)return;
   ks();
+  const F=npcFaction(N);
   $("npcWrap").style.display="grid";
   const d=$("dossier");
   const rr=f=>`<span class="rr" onclick="reroll('${f}')" title="Rigenera questa sezione">🎲</span>`;
@@ -788,7 +817,7 @@ function render(){
    <div class="sec"><h4>Personalità e voce ${rr("tratto")}</h4><p>Questo personaggio ${esc(N.tratto)}. Voce: ${esc(N.voce)}.</p></div>
    ${N.vuole?`<div class="sec"><h4>Desideri, paure, bisogni ${rr("vts")}</h4><p><b>Vuole:</b> ${esc(N.vuole)}.<br><b>Teme:</b> ${esc(N.teme)}.<br><b>Bisogno:</b> ${esc(N.serve)}.</p></div>`:""}
    ${N.contra?`<div class="sec"><h4>Contraddizione e modi ${rr("contra")}</h4><p>È ${esc(N.contra)}. ${esc(cap(N.modo||""))}.</p></div>`:""}
-   ${N.vuole?`<div class="sec"><h4>Fazione ${rr("faz")}</h4><p>${N.fazione?`<b>${esc(N.fazione.nome)}</b>${N.fazione.scopo?" — vuole "+esc(N.fazione.scopo):""}. Ruolo: ${esc(N.fazione.ruolo)}.${N.fazione.world?" <i>(dal tool Mondo)</i>":""}`:"Nessuna affiliazione nota."}</p></div>`:""}
+   ${N.vuole?`<div class="sec"><h4>Fazione ${rr("faz")}</h4><p>${F?`<b>${esc(F.nome)}</b>${F.scopo?" — vuole "+esc(F.scopo):""}. Ruolo: ${esc(F.ruolo)}.${F.live?" <i>(dal tool Mondo)</i>":F.missing?" <i>(non più presente nel Mondo)</i>":""}`:"Nessuna affiliazione nota."}</p></div>`:""}
    <div class="sec"><h4>Ideale, legame, difetto ${rr("motiv")}</h4><p><b>Ideale.</b> ${esc(N.ideale)}<br><b>Legame.</b> ${esc(cap(N.legame))}.<br><b>Difetto.</b> ${esc(cap(N.difetto))}.</p></div>
    <div class="sec secret"><h4>Segreto (solo per il DM) ${rr("segreto")}</h4><p>${esc(cap(N.segreto))}.</p></div>
    <div class="sec"><h4>Gancio di trama ${rr("gancio")}</h4><p>${esc(cap(N.gancio))}.</p></div>
@@ -853,11 +882,10 @@ function exportNpc(id){
 /* NPC → Diario di Campagna («PNG incontrati») */
 function npcToDiary(){
   if(!N)return;
-  const it=npcDiaryItem(N);const ex=diaryLoad().npcs.some(x=>(x.name||"").trim().toLowerCase()===it.name.toLowerCase());
-  if(ex&&!confirm(`«${it.name}» è già nel diario. Aggiornare le sue note?`))return;
+  const it=npcDiaryItem(N);
   if(!N.id)N.id=newId("npc");
-  toDiary("npcs",it,{t:"npc",id:N.id});
-  alert(`📖 «${it.name}» ${ex?"aggiornato":"aggiunto"} tra i PNG incontrati del Diario di Campagna.`);
+  const r=toDiary("npcs",it,{t:"npc",id:N.id});if(r==="skipped")return;
+  alert(`📖 «${it.name}» ${r==="updated"?"aggiornato":"aggiunto"} tra i PNG incontrati del Diario di Campagna.`);
 }
 /* export in formato bestiario (Homebrew del generatore incontri) */
 function exportMonster(){
@@ -942,6 +970,11 @@ function shareNpc(){
       }
       history.replaceState(null,"",location.pathname+location.search);
     }catch(e){}
+  }else if(location.hash.indexOf("#open=")===0){
+    /* aperto da un collegamento ↗ del Diario o del Mondo */
+    const id=decodeURIComponent(location.hash.slice(6)),n=roster().find(x=>x&&x.id===id);
+    history.replaceState(null,"",location.pathname+location.search);
+    if(n){N=JSON.parse(JSON.stringify(n));render()}else alert("NPC non trovato tra i salvati: potrebbe essere stato eliminato.");
   }
 })();
 </script>
