@@ -125,25 +125,59 @@ select,input,textarea,.fld{max-width:100%}
   /* le intestazioni verranno ridisegnate: qui restano come sono */
   .app-header .btn,.app-header button,.app-header select,.app-header input{min-height:0}
 }
+/* ==== INTESTAZIONE COMPATTA E MENU ⋯ / ⚙ DATI (uguale in tutti i tool) ==== */
+.app-header{padding:10px 22px; flex-wrap:nowrap}
+.app-header h1{font-size:1.3rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
+.app-header h1 small{font-size:.64rem; letter-spacing:2.5px; margin-top:2px; overflow:hidden; text-overflow:ellipsis}
+.app-header h1 a{color:inherit; text-decoration:none}
+.app-header h1 a:hover{color:#fff1c2}
+.t-short,.lbl-s,.sn-ico{display:none}
+.hdr-actions{display:flex; gap:6px; align-items:center; flex-wrap:nowrap; flex:none}
+.hdr-actions .btn{white-space:nowrap}
+.hmenu{position:relative; display:inline-block}
+.hmenu>.btn{padding:8px 12px}
+.hmenu-list{position:absolute; right:0; top:calc(100% + 6px); min-width:240px; background:linear-gradient(170deg,#2a2015,#1f170e); border:1px solid var(--gold); border-radius:10px; padding:6px; box-shadow:0 14px 34px rgba(0,0,0,.6); z-index:80; display:none; text-align:left}
+.hmenu.open .hmenu-list{display:block}
+.hmenu-list .mi-it{display:flex; width:100%; gap:8px; align-items:center; text-align:left; background:none; border:none; color:var(--ink); font-family:Georgia,serif; font-size:.88rem; padding:9px 10px; border-radius:7px; cursor:pointer; min-height:0}
+.hmenu-list .mi-it:hover,.hmenu-list .mi-it:focus-visible{background:#3a2c1a; color:var(--gold-l); outline:none}
+.hmenu-list .mi-sep{height:1px; background:var(--border); margin:5px 4px}
+.hmenu-list .mi-note{font-size:.76rem; color:var(--muted); padding:6px 10px 4px; line-height:1.4; white-space:normal}
+.hmenu-list .mi-note b{color:var(--ink)}
+.suite-nav{flex-wrap:nowrap}
+.suite-nav .sn-tools{display:flex; gap:8px; flex-wrap:wrap; align-items:center; min-width:0; flex:1}
+.sn-data{margin-left:auto; flex:none; align-self:flex-start}
+.sn-data>.btn{border-radius:20px; padding:5px 13px; font-size:.8rem}
+.sn-data.warn>.btn{border-color:#d9822b; color:#f0a95a}
+.sn-data .hmenu-list{min-width:270px}
+@media (pointer:coarse){.hmenu-list .mi-it{min-height:44px}}
+@media (max-width:760px){
+  .app-header{padding:8px 12px; gap:8px}
+  .app-header h1{font-size:1.02rem; letter-spacing:1px}
+  .app-header h1 small{display:none}
+  .t-full,.lbl-l{display:none}.t-short,.lbl-s{display:inline}
+  .hdr-actions{gap:5px}
+  .hdr-actions .btn:not(.gold) .lbl{display:none}
+  .hdr-actions .btn{padding:7px 9px}
+  .hdr-actions input[type=text]{width:118px !important}
+  .suite-nav{margin-top:8px; padding:0 10px; gap:6px}
+  .suite-nav .sn-tools{flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; padding-bottom:2px}
+  .suite-nav .sn-tools::-webkit-scrollbar{display:none}
+  .suite-nav .sn-tools{-webkit-mask-image:linear-gradient(90deg,#000 82%,transparent);mask-image:linear-gradient(90deg,#000 82%,transparent)}
+  .suite-nav .sn-tools a{flex:none}
+  .sn-full{display:none}.sn-ico{display:inline}
+  .sn-data .lbl{display:none}
+}
+@media print{.hmenu{display:none !important}}
 </style>
 </head>
 <body>
 <header class="app-header">
-  <h1>🔐 Enigmi e Rompicapi <small>Cifrari · Rune · Indovinelli · Logica · Griglie · Catene</small></h1>
-  <div>
-    <button class="btn" onclick="openSaved()">📂 Enigmi salvati</button>
-    <span class="sep"></span>
-    <button class="btn" onclick="doPrint(false)">🖨 Stampa handout</button>
-    <button class="btn" onclick="doPrint(true)">🖨 Stampa con soluzione</button>
-    <span class="sep"></span>
-    <button class="btn gold" onclick="showPlayers()">📺 Mostra ai giocatori</button>
-    <span class="sep"></span>
-    <button class="btn" onclick="backupSuite()">🗄 Backup suite</button>
-    <label class="btn" style="cursor:pointer">⬆ Ripristina backup<input type="file" accept=".json" style="display:none" onchange="if(this.files[0])restoreSuite(this.files[0]);this.value=''"></label>
-  </div>
+  <h1>🔐 <span class="t-full">Enigmi e Rompicapi</span><span class="t-short">Enigmi</span> <small>Cifrari · Rune · Indovinelli · Logica · Griglie · Catene</small></h1>
+  <div class="hdr-actions"><button class="btn" onclick="openSaved()" title="Enigmi salvati">📂 <span class="lbl">Enigmi salvati</span></button><button class="btn gold" onclick="showPlayers()" title="Mostra ai giocatori">📺 <span class="lbl"><span class="lbl-l">Mostra ai giocatori</span><span class="lbl-s">Mostra</span></span></button><div class="hmenu"><button class="btn" onclick="hmToggle(this,event)" aria-haspopup="true" aria-expanded="false" title="Altre azioni">⋯</button><div class="hmenu-list" role="menu"><button class="mi-it" role="menuitem" onclick="doPrint(false)">🖨 Stampa handout</button><button class="mi-it" role="menuitem" onclick="doPrint(true)">🖨 Stampa con soluzione</button></div></div></div>
 </header>
 <nav class="suite-nav">
-  <a class="sn-lbl" href="../index.html" title="Home della suite">SUITE D&amp;D 5E</a>
+  <div class="sn-tools">
+  <a class="sn-lbl" href="../index.html" title="Home della suite"><span class="sn-full">SUITE D&amp;D 5E</span><span class="sn-ico">🏠</span></a>
   <a href="../characters/index.html">⚔️ Schede PG</a>
   <a href="../npcs/index.html">🎭 NPC</a>
   <a href="../encounters/index.html">🐉 Incontri</a>
@@ -151,6 +185,8 @@ select,input,textarea,.fld{max-width:100%}
   <a href="../journal/index.html">📖 Diario</a>
   <a class="on" href="../puzzles/index.html">🔐 Enigmi</a>
   <a href="../maps/index.html">🗺 Mappe</a>
+  </div>
+  <div class="hmenu sn-data" id="snData"><button class="btn" onclick="hmToggle(this,event)" aria-haspopup="true" aria-expanded="false" title="Backup e ripristino di tutti i dati della suite">⚙ <span class="lbl">Dati</span></button><div class="hmenu-list" role="menu"><div class="mi-note" id="snDataInfo"></div><button class="mi-it" role="menuitem" onclick="backupSuite()" title="Salva in un file tutti i dati di tutti i tool">🗄 Backup suite</button><label class="mi-it" role="menuitem" tabindex="0" onkeydown="hmFileKey(event,this)">⬆ Ripristina backup<input type="file" id="bkFile" accept=".json" style="display:none" onchange="if(this.files[0])restoreSuite(this.files[0]);this.value=''"></label><div class="mi-note">Il backup salva in un file i dati di tutti i tool. Il ripristino sostituisce i dati di questo browser; le immagini vengono aggiunte alla libreria.</div></div></div>
 </nav>
 <main>
   <div class="tabbar">
@@ -388,8 +424,8 @@ select,input,textarea,.fld{max-width:100%}
    La versione dello schema è in dnd5e_schema; dbMigrate() applica le migrazioni mancanti all'apertura di qualunque tool. */
 const STORE={chars:"dnd5e_chars",draft:"dnd5e_draft",lang:"dnd5e_lang",homebrew:"dnd5e_homebrew",npcs:"dnd5e_npcs",
   encSrc:"dnd5e_enc_src",encSaved:"dnd5e_enc_saved",encTrk:"dnd5e_enc_trk",encHb:"dnd5e_enc_hb",
-  diary:"dnd5e_diary",puzzles:"dnd5e_puzzles",profile:"dnd5e_profile",world:"dnd5e_world",maps:"dnd5e_maps"};
-const STORE_RAW=["lang"];/* testo semplice, non JSON */
+  diary:"dnd5e_diary",puzzles:"dnd5e_puzzles",profile:"dnd5e_profile",world:"dnd5e_world",maps:"dnd5e_maps",lastBackup:"dnd5e_last_backup"};
+const STORE_RAW=["lang","lastBackup"];/* testo semplice, non JSON */
 const DB_SCHEMA=2,DB_SCHEMA_KEY="dnd5e_schema";
 /* chiavi delle versioni precedenti → chiave attuale (migrazione 1→2 e ripristino di backup vecchi) */
 const STORE_LEGACY={enc_src:"dnd5e_enc_src",enc_saved:"dnd5e_enc_saved",enc_trk:"dnd5e_enc_trk",enc_hb:"dnd5e_enc_hb"};
@@ -1114,9 +1150,11 @@ async function backupSuite(){
   if(imgs.length){const mb=imgs.reduce((s,a)=>s+(a.size||(a.blob&&a.blob.size)||0),0)/1048576;
     if(confirm(`Includere nel backup anche le immagini caricate? (${imgs.length} ${imgs.length===1?"immagine":"immagini"}, ${mb.toFixed(1).replace(".",",")} MB)\n\nOK = backup completo · Annulla = solo i dati, file più leggero`))
       data.assets=await assetsForExport()}
+  const now=new Date().toISOString();data.store[STORE.lastBackup]=now;
   const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
-  a.download="dnd5e_suite_backup_"+new Date().toISOString().slice(0,10)+(data.assets?"_con_immagini":"")+".json";a.click();
+  a.download="dnd5e_suite_backup_"+now.slice(0,10)+(data.assets?"_con_immagini":"")+".json";a.click();
+  dbSet("lastBackup",now);dataBadge();
 }
 function restoreSuite(file){
   const rd=new FileReader();
@@ -1144,6 +1182,30 @@ function restoreSuite(file){
   }catch(err){alert("File di backup non valido.")}};
   rd.readAsText(file);
 }
+/* ================= MENU ⋯ / ⚙ DATI E PROMEMORIA DEL BACKUP (uguale in tutti i tool) ================= */
+function hmCloseAll(){document.querySelectorAll(".hmenu.open").forEach(m=>{m.classList.remove("open");const b=m.querySelector(":scope>.btn");if(b)b.setAttribute("aria-expanded","false")})}
+function hmToggle(btn,ev){if(ev)ev.stopPropagation();const m=btn.closest(".hmenu"),open=!m.classList.contains("open");hmCloseAll();if(!open)return;
+  m.classList.add("open");btn.setAttribute("aria-expanded","true");if(m.id==="snData")renderDataMenu();
+  if(ev&&ev.detail===0){const f=m.querySelector(".mi-it");if(f)f.focus()}}
+document.addEventListener("click",e=>{if(!e.target.closest(".hmenu>.btn")&&!e.target.closest(".mi-note"))hmCloseAll()});
+document.addEventListener("keydown",e=>{const m=document.querySelector(".hmenu.open");if(!m)return;
+  if(e.key==="Escape"){hmCloseAll();const b=m.querySelector(":scope>.btn");if(b)b.focus();e.preventDefault();e.stopPropagation();return}
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){const it=[...m.querySelectorAll(".mi-it")];if(!it.length)return;const i=it.indexOf(document.activeElement);
+    it[e.key==="ArrowDown"?(i+1)%it.length:(i-1+it.length)%it.length].focus();e.preventDefault();e.stopPropagation()}},true);
+/* un'etichetta con un campo file si attiva anche da tastiera */
+function hmFileKey(e,el){if(e.key==="Enter"||e.key===" "){e.preventDefault();const i=el.querySelector("input[type=file]");if(i)i.click()}}
+const BACKUP_WARN_DAYS=30;
+function lastBackupDays(){const v=dbGet("lastBackup",null);const t=v?Date.parse(v):NaN;return isNaN(t)?null:Math.floor((Date.now()-t)/86400000)}
+function suiteHasData(){return SUITE_KEYS.some(k=>k!==STORE.lang&&k!==STORE.lastBackup&&localStorage.getItem(k)!=null)}
+function dataBadge(){const el=document.getElementById("snData");if(!el)return;const d=lastBackupDays(),warn=suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS);
+  el.classList.toggle("warn",warn);const b=el.querySelector(":scope>.btn");
+  if(b)b.title=warn?(d===null?"Non hai ancora fatto un backup dei dati della suite":`L'ultimo backup risale a ${d} giorni fa`):"Backup e ripristino di tutti i dati della suite"}
+function renderDataMenu(){const i=document.getElementById("snDataInfo");if(!i)return;const d=lastBackupDays();
+  const quando=d===null?"<b>mai</b>":d===0?"<b>oggi</b>":d===1?"<b>ieri</b>":`<b>${d} giorni fa</b>`;
+  i.innerHTML=`Ultimo backup: ${quando}`+(suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS)?" · è consigliato farne uno":"")}
+dataBadge();
+/* su schermi stretti la barra dei tool scorre: il tool attivo viene portato in vista */
+(function(){const w=document.querySelector(".sn-tools"),on=w&&w.querySelector("a.on");if(w&&on&&w.scrollWidth>w.clientWidth)w.scrollLeft=Math.max(0,on.offsetLeft-w.offsetLeft-60)})();
 /* ================= 8. DATI PER GENERATORI COMBINATORI ================= */
 /* indovinelli generati: ogni oggetto ha un insieme di caratteristiche; l'indovinello sceglie
    quelle che bastano a identificarlo in modo univoco tra tutti gli oggetti della banca */
