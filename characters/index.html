@@ -1913,11 +1913,15 @@ function safeParse(txt,allowPzHtml){
 function safeStoreVal(k,v){try{return JSON.stringify(safeParse(v,k==="dnd5e_puzzles"))}catch(e){return String(v).replace(/[^\w-]/g,"")}}
 /* stringa come argomento JS dentro un attributo HTML tra virgolette, es. onclick="f(${jsa(nome)})": regge apostrofi, virgolette, & e < */
 function jsa(s){return JSON.stringify(String(s??"")).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
+/* ID univoci e stabili: tipo_tempo_casuale, es. npc_mvtd9yx6_k3f9q2ab. Tipi: pc npc enc trk fx ses dnpc plc hok xp pz wld fz hb dun */
+function newId(t){const a=new Uint8Array(8),c="0123456789abcdefghijklmnopqrstuvwxyz";
+  if(window.crypto&&crypto.getRandomValues)crypto.getRandomValues(a);else for(let i=0;i<8;i++)a[i]=Math.floor(Math.random()*256);
+  return(t?t+"_":"")+Date.now().toString(36)+"_"+Array.from(a,b=>c[b%36]).join("")}
 function roster(){return lsGet("dnd5e_chars",[])}
 function autosave(){if(C&&(C.race||C.cls))lsSet("dnd5e_draft",C)}
 function saveChar(){
   if(!C||!C.race||!C.cls){alert("Crea prima un personaggio (almeno razza e classe).");return}
-  if(!C.id)C.id=Date.now()+"_"+Math.floor(Math.random()*1e4);
+  if(!C.id)C.id=newId("pc");
   const list=roster().filter(x=>x.id!==C.id);
   const prevE=roster().find(x=>x.id===C.id);
   list.unshift({id:C.id,name:C.name||"Senza nome",info:`${rN(C.race)} · ${entries().map(e=>cN(e.n)+" "+e.lv).join(" / ")}`,ts:Date.now(),
@@ -1945,7 +1949,7 @@ function importChar(inp){const f=inp.files&&inp.files[0];if(!f)return;
   const rd=new FileReader();
   rd.onload=()=>{try{const d=safeParse(rd.result,PZ_ALLOW);
       if(typeof d!=="object"||(!d.cls&&!d.race))throw new Error("shape");
-      d.id=Date.now()+"_imp";C=d;sanitizeChar();saveChar();
+      d.id=newId("pc");C=d;sanitizeChar();saveChar();
       if(C.race&&C.cls){closeCharModal();buildSheet()}else{closeCharModal();startWizard(true)}
     }catch(e){alert("File non valido: non è un personaggio esportato da questo tool.")}};
   rd.readAsText(f);inp.value="";

@@ -220,6 +220,10 @@ function safeParse(txt,allowPzHtml){
 function safeStoreVal(k,v){try{return JSON.stringify(safeParse(v,k==="dnd5e_puzzles"))}catch(e){return String(v).replace(/[^\w-]/g,"")}}
 /* stringa come argomento JS dentro un attributo HTML tra virgolette, es. onclick="f(${jsa(nome)})": regge apostrofi, virgolette, & e < */
 function jsa(s){return JSON.stringify(String(s??"")).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
+/* ID univoci e stabili: tipo_tempo_casuale, es. npc_mvtd9yx6_k3f9q2ab. Tipi: pc npc enc trk fx ses dnpc plc hok xp pz wld fz hb dun */
+function newId(t){const a=new Uint8Array(8),c="0123456789abcdefghijklmnopqrstuvwxyz";
+  if(window.crypto&&crypto.getRandomValues)crypto.getRandomValues(a);else for(let i=0;i<8;i++)a[i]=Math.floor(Math.random()*256);
+  return(t?t+"_":"")+Date.now().toString(36)+"_"+Array.from(a,b=>c[b%36]).join("")}
 /* ==== MOTORE SUITE v1 ==== */
 /* Base comune dei generatori: casualità con seme, modelli con etichette, profilo campagna, invio al diario.
    Questo blocco è identico in tutti i tool della suite: modificarlo ovunque insieme. */
@@ -297,15 +301,16 @@ function gExpand(G,tpl,ctx,depth){ctx=ctx||{};ctx.tags=ctx.tags||[];ctx.vars=ctx
 function diaryLoad(){let D={};try{D=JSON.parse(localStorage.getItem("dnd5e_diary")||"{}")||{}}catch(e){}
   ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(D[k]))D[k]=[]});return D}
 function diarySave(D){try{localStorage.setItem("dnd5e_diary",JSON.stringify(D))}catch(e){}}
-const diaryId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-/* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione */
-function toDiary(kind,item){const D=diaryLoad();
+/* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione
+   src (facoltativo): {t,id} dell'elemento di origine nel tool che invia (es. {t:"npc",id:"npc_…"}), registrato sulla voce */
+function toDiary(kind,item,src){const D=diaryLoad();
   if(kind==="session"){if(D.sessions.length)D.sessions[0].text=(D.sessions[0].text?D.sessions[0].text+"\n\n":"")+item;
-    else D.sessions.unshift({id:diaryId(),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});diarySave(D);return"added"}
+    else D.sessions.unshift({id:newId("ses"),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});diarySave(D);return"added"}
+  if(src&&src.t&&src.id)item=Object.assign({},item,{src:{t:src.t,id:src.id}});
   const key=kind==="hooks"?"text":"name";
   const ex=D[kind].find(x=>(x[key]||"").trim().toLowerCase()===(item[key]||"").trim().toLowerCase());
   if(ex){Object.assign(ex,item,{id:ex.id});diarySave(D);return"updated"}
-  D[kind].unshift(Object.assign({id:diaryId()},kind==="hooks"?{done:false}:{},item));diarySave(D);return"added"}
+  D[kind].unshift(Object.assign({id:newId({npcs:"dnpc",places:"plc",hooks:"hok"}[kind])},kind==="hooks"?{done:false}:{},item));diarySave(D);return"added"}
 /* ==== FINE MOTORE SUITE ==== */
 /* ================= BACKUP SUITE ================= */
 const SUITE_KEYS=["dnd5e_chars","dnd5e_draft","dnd5e_lang","dnd5e_homebrew","dnd5e_npcs","enc_src","enc_saved","enc_trk","enc_hb","dnd5e_diary","dnd5e_puzzles","dnd5e_profile","dnd5e_world"];
@@ -541,10 +546,10 @@ function htmlSettlement(S){
    <div class="sec"><h4>Voci di paese</h4><ul>${S.voci.map(v=>`<li>${esc(v.t)} <span class="dmonly tag ${vt[v.v]}">${esc(v.v)}</span></li>`).join("")}</ul></div>
    <div class="sec"><h4>Segreto (solo DM)</h4><p class="dm">${esc(cap(S.segreto))}.</p></div>
    <div class="seed">seme ${S.seed}</div></div>`}
-function diarySettlement(S){
-  toDiary("places",{name:S.name,note:`${S.size}, ${S.pop} ab. · ${esc(envName(S.env))} · Governo: ${S.governo} · Economia: ${S.economia} · Luoghi: ${S.luoghi.map(l=>l.nome+" ("+l.gestore.nome+")").join(", ")} · Segreto: ${S.segreto}`});
-  toDiary("hooks",{text:`${S.name}: ${S.problema}`});
-  S.luoghi.forEach(l=>toDiary("npcs",{name:l.gestore.nome,where:S.name+" — "+l.nome,att:"Neutrale",note:`${cap(l.ruolo)}; ${l.gestore.tratto}`}));
+function diarySettlement(S,src){
+  toDiary("places",{name:S.name,note:`${S.size}, ${S.pop} ab. · ${envName(S.env)} · Governo: ${S.governo} · Economia: ${S.economia} · Luoghi: ${S.luoghi.map(l=>l.nome+" ("+l.gestore.nome+")").join(", ")} · Segreto: ${S.segreto}`},src);
+  toDiary("hooks",{text:`${S.name}: ${S.problema}`},src);
+  S.luoghi.forEach(l=>toDiary("npcs",{name:l.gestore.nome,where:S.name+" — "+l.nome,att:"Neutrale",note:`${cap(l.ruolo)}; ${l.gestore.tratto}`},src));
   return`${S.name}: luogo, aggancio e ${S.luoghi.length} PNG`}
 
 /* ================= LOCANDE ================= */
@@ -563,8 +568,8 @@ function htmlInn(I){return`<div class="card"><h3>Locanda «${esc(I.name)}»</h3>
    <div class="sec"><h4>Quando entrate…</h4><p>${esc(I.scena)}</p></div>
    <div class="sec"><h4>Si sente dire</h4><p>${esc(I.voce)}</p></div>
    <div class="seed">seme ${esc(I.seed)}</div></div>`}
-function diaryInn(I){toDiary("places",{name:"Locanda «"+I.name+"»",note:`${I.atm} · Oste: ${I.oste.nome} · Avventori: ${I.avventori.map(a=>a.p.nome).join(", ")}`});
-  toDiary("npcs",{name:I.oste.nome,where:"Locanda «"+I.name+"»",att:"Neutrale",note:"Oste; "+I.oste.tratto});return"la locanda e l'oste"}
+function diaryInn(I,src){toDiary("places",{name:"Locanda «"+I.name+"»",note:`${I.atm} · Oste: ${I.oste.nome} · Avventori: ${I.avventori.map(a=>a.p.nome).join(", ")}`},src);
+  toDiary("npcs",{name:I.oste.nome,where:"Locanda «"+I.name+"»",att:"Neutrale",note:"Oste; "+I.oste.tratto},src);return"la locanda e l'oste"}
 
 /* ================= ROVINE ================= */
 function genRuin(seed){const envSel=$("rEnv").value;
@@ -578,8 +583,8 @@ function htmlRuin(V){return`<div class="card"><h3>${esc(V.name)}</h3><div class=
    <div class="sec"><h4>Tesoro (solo DM)</h4><p class="dm">${esc(cap(V.tesoro))}.</p></div>
    <div class="sec"><h4>Come ci arrivano i PG</h4><p>${esc(V.aggancio)}</p></div>
    <div class="seed">seme ${esc(V.seed)}</div></div>`}
-function diaryRuin(V){toDiary("places",{name:V.name+" ("+V.tipo+")",note:`Costruita da ${V.chi} per ${V.per}; caduta per ${V.fine}. Ora: ${V.ora}. Pericolo: ${V.pericolo}. Tesoro: ${V.tesoro}`});
-  toDiary("hooks",{text:V.name+": "+V.aggancio});return"la rovina e un aggancio"}
+function diaryRuin(V,src){toDiary("places",{name:V.name+" ("+V.tipo+")",note:`Costruita da ${V.chi} per ${V.per}; caduta per ${V.fine}. Ora: ${V.ora}. Pericolo: ${V.pericolo}. Tesoro: ${V.tesoro}`},src);
+  toDiary("hooks",{text:V.name+": "+V.aggancio},src);return"la rovina e un aggancio"}
 
 /* ================= VIAGGI ================= */
 function genTravel(seed){const envSel=$("tEnv").value,days=parseInt($("tDays").value,10)||3;
@@ -591,7 +596,7 @@ function genTravel(seed){const envSel=$("tEnv").value,days=parseInt($("tDays").v
 function htmlTravel(T){return`<div class="card"><h3>Viaggio di ${esc(T.days.length)} giorni</h3><div class="sub">${esc(envName(T.env))}</div>
    <table>${T.days.map((d,i)=>`<tr><td style="white-space:nowrap"><b>Giorno ${i+1}</b></td><td><i>${esc(cap(d.meteo))}.</i> ${d.ev?esc(d.ev):"<span style='color:#8a744c'>Nessun evento: il cammino procede.</span>"}${d.campo?`<br><span style="font-size:.85rem">🔥 ${esc(d.campo)}</span>`:""}</td></tr>`).join("")}</table>
    <div class="seed">seme ${esc(T.seed)}</div></div>`}
-function diaryTravel(T){toDiary("session",`— 🧭 Viaggio (${T.days.length} giorni, ${esc(envName(T.env))}) —\n`+T.days.map((d,i)=>`G${i+1}: ${d.meteo}. ${d.ev||"—"}`).join("\n"));return"il resoconto del viaggio (nella sessione)"}
+function diaryTravel(T,src){toDiary("session",`— 🧭 Viaggio (${T.days.length} giorni, ${envName(T.env)}) —\n`+T.days.map((d,i)=>`G${i+1}: ${d.meteo}. ${d.ev||"—"}`).join("\n"));return"il resoconto del viaggio (nella sessione)"}
 
 /* ================= EVENTI ================= */
 function genEvent(seed){const envSel=$("eEnv").value;
@@ -602,7 +607,7 @@ function htmlEvent(E){return`<div class="card"><h3>${esc(E.causa)}</h3><div clas
    <div class="sec"><h4>Colpi di scena (solo DM)</h4><ul class="dm" style="margin-left:0;padding-left:26px">${E.colpi.map(c=>`<li>${esc(c)}</li>`).join("")}</ul></div>
    <div class="sec"><h4>Incontro senza spade</h4><p>${esc(E.nc)}</p></div>
    <div class="seed">seme ${esc(E.seed)}</div></div>`}
-function diaryEvent(E){toDiary("hooks",{text:`${E.causa}: ${E.effetto}`});return"l'evento tra gli agganci"}
+function diaryEvent(E,src){toDiary("hooks",{text:`${E.causa}: ${E.effetto}`},src);return"l'evento tra gli agganci"}
 
 /* ================= DISPATCH ================= */
 const GEN={set:[genSettlement,htmlSettlement,diarySettlement,"sSeed",S=>S.name],inn:[genInn,htmlInn,diaryInn,"iSeed",I=>"Locanda «"+I.name+"»"],
@@ -610,9 +615,10 @@ const GEN={set:[genSettlement,htmlSettlement,diarySettlement,"sSeed",S=>S.name],
 function run(k){const g=GEN[k];CUR[k]=g[0](seedFrom(g[3]));show(k)}
 function show(k){const g=GEN[k],o=CUR[k];if(!o)return;
   $("out-"+k).innerHTML=g[1](o)+`<div class="toolbar"><button class="btn gold" onclick="toDiaryCur('${k}')">📖 Al diario</button><button class="btn" onclick="saveCur('${k}')">💾 Salva</button><button class="btn" onclick="$('${g[3]}').value=${jsa(o.seed)};run('${k}')" title="Rigenera identico dal seme">↻ Stesso seme</button></div>`}
-function toDiaryCur(k){const o=CUR[k];if(!o)return;const what=GEN[k][2](o);toast("📖 Nel diario: "+what)}
+function wldSrc(o){const ex=(world().saved||[]).find(x=>x.type===o.type&&x.seed===o.seed);if(ex)o.id=ex.id;else if(!o.id)o.id=newId("wld");return{t:"wld",id:o.id}}
+function toDiaryCur(k){const o=CUR[k];if(!o)return;const what=GEN[k][2](o,wldSrc(o));toast("📖 Nel diario: "+what)}
 function saveCur(k){const o=CUR[k];if(!o)return;const W=world();W.saved=W.saved||[];
-  if(!W.saved.some(x=>x.type===o.type&&x.seed===o.seed))W.saved.unshift(Object.assign({id:diaryId(),title:GEN[k][4](o),date:new Date().toISOString().slice(0,10)},o));
+  if(!W.saved.some(x=>x.type===o.type&&x.seed===o.seed))W.saved.unshift(Object.assign({id:o.id||newId("wld"),title:GEN[k][4](o),date:new Date().toISOString().slice(0,10)},o));
   W.saved=W.saved.slice(0,80);worldSave(W);toast("💾 Salvato")}
 function openSaved(){const W=world(),l=W.saved||[];const ic={set:"🏘",inn:"🍺",rov:"🏚",tra:"🧭",eve:"⚡"};
   $("savedList").innerHTML=l.length?l.map(x=>`<div class="row"><span style="flex:1">${ic[x.type]||""} <b style="color:var(--gold-l)">${esc(x.title)}</b> <span style="color:var(--muted);font-size:.78rem">${x.date}</span></span>
@@ -631,13 +637,13 @@ function newFaction(){const env=profGet().amb==="misto"?R(ENV_LIST.slice(1))[0]:
     const n=4+Math.floor(rnd()*3);const passi=[];for(let k=0;k<20&&passi.length<n-1;k++){const p=X("fz_passo",C);if(!passi.includes(p))passi.push(p)}
     const goal=X("fz_scopo",C);passi.push("ottenere il risultato finale: "+goal);
     const capo=persona();
-    return{id:diaryId(),name:R(GW.fz_tipo)+" "+X("fz_nome",C),goal,leader:capo.nome,leaderTr:capo.tratto,res:R(GW.fz_risorsa),steps:passi,prog:0,log:[]}});
+    return{id:newId("fz"),name:R(GW.fz_tipo)+" "+X("fz_nome",C),goal,leader:capo.nome,leaderTr:capo.tratto,res:R(GW.fz_risorsa),steps:passi,prog:0,log:[]}});
   const W=world();W.factions.unshift(f);worldSave(W);renderFactions();toast("⚔ Nuova fazione: "+f.name)}
 function fzSet(id,v){const W=world(),f=W.factions.find(x=>x.id===id);if(!f)return;f.prog=Math.max(0,Math.min(f.steps.length,v));worldSave(W);renderFactions()}
 function fzDel(id){if(!confirm("Eliminare questa fazione?"))return;const W=world();W.factions=W.factions.filter(x=>x.id!==id);worldSave(W);renderFactions()}
 function fzRename(id,v){const W=world(),f=W.factions.find(x=>x.id===id);if(!f)return;f.name=v.trim()||f.name;worldSave(W)}
 function fzDiaryId(id){const f=world().factions.find(x=>x.id===id);if(f)fzDiary(f)}
-function fzDiary(f){toDiary("hooks",{text:`${f.name} vuole ${f.goal} (capo: ${f.leader})`});toast("📖 Fazione tra gli agganci del diario")}
+function fzDiary(f){toDiary("hooks",{text:`${f.name} vuole ${f.goal} (capo: ${f.leader})`},{t:"fz",id:f.id});toast("📖 Fazione tra gli agganci del diario")}
 function renderFactions(){const W=world();
   $("fzList").innerHTML=W.factions.length?W.factions.map(f=>`<div class="fz">
     <h3><input type="text" value="${esc(f.name)}" onchange="fzRename('${f.id}',this.value)" style="font-family:var(--font-display);color:var(--gold-l);background:transparent;border:none;font-size:1rem;width:100%;padding:0"></h3>

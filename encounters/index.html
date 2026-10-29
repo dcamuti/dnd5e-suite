@@ -441,6 +441,10 @@ function safeParse(txt,allowPzHtml){
 function safeStoreVal(k,v){try{return JSON.stringify(safeParse(v,k==="dnd5e_puzzles"))}catch(e){return String(v).replace(/[^\w-]/g,"")}}
 /* stringa come argomento JS dentro un attributo HTML tra virgolette, es. onclick="f(${jsa(nome)})": regge apostrofi, virgolette, & e < */
 function jsa(s){return JSON.stringify(String(s??"")).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
+/* ID univoci e stabili: tipo_tempo_casuale, es. npc_mvtd9yx6_k3f9q2ab. Tipi: pc npc enc trk fx ses dnpc plc hok xp pz wld fz hb dun */
+function newId(t){const a=new Uint8Array(8),c="0123456789abcdefghijklmnopqrstuvwxyz";
+  if(window.crypto&&crypto.getRandomValues)crypto.getRandomValues(a);else for(let i=0;i<8;i++)a[i]=Math.floor(Math.random()*256);
+  return(t?t+"_":"")+Date.now().toString(36)+"_"+Array.from(a,b=>c[b%36]).join("")}
 /* ==== MOTORE SUITE v1 ==== */
 /* Base comune dei generatori: casualità con seme, modelli con etichette, profilo campagna, invio al diario.
    Questo blocco è identico in tutti i tool della suite: modificarlo ovunque insieme. */
@@ -518,15 +522,16 @@ function gExpand(G,tpl,ctx,depth){ctx=ctx||{};ctx.tags=ctx.tags||[];ctx.vars=ctx
 function diaryLoad(){let D={};try{D=JSON.parse(localStorage.getItem("dnd5e_diary")||"{}")||{}}catch(e){}
   ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(D[k]))D[k]=[]});return D}
 function diarySave(D){try{localStorage.setItem("dnd5e_diary",JSON.stringify(D))}catch(e){}}
-const diaryId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-/* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione */
-function toDiary(kind,item){const D=diaryLoad();
+/* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione
+   src (facoltativo): {t,id} dell'elemento di origine nel tool che invia (es. {t:"npc",id:"npc_…"}), registrato sulla voce */
+function toDiary(kind,item,src){const D=diaryLoad();
   if(kind==="session"){if(D.sessions.length)D.sessions[0].text=(D.sessions[0].text?D.sessions[0].text+"\n\n":"")+item;
-    else D.sessions.unshift({id:diaryId(),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});diarySave(D);return"added"}
+    else D.sessions.unshift({id:newId("ses"),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});diarySave(D);return"added"}
+  if(src&&src.t&&src.id)item=Object.assign({},item,{src:{t:src.t,id:src.id}});
   const key=kind==="hooks"?"text":"name";
   const ex=D[kind].find(x=>(x[key]||"").trim().toLowerCase()===(item[key]||"").trim().toLowerCase());
   if(ex){Object.assign(ex,item,{id:ex.id});diarySave(D);return"updated"}
-  D[kind].unshift(Object.assign({id:diaryId()},kind==="hooks"?{done:false}:{},item));diarySave(D);return"added"}
+  D[kind].unshift(Object.assign({id:newId({npcs:"dnpc",places:"plc",hooks:"hok"}[kind])},kind==="hooks"?{done:false}:{},item));diarySave(D);return"added"}
 /* ==== FINE MOTORE SUITE ==== */
 /* conserva la posizione di scorrimento durante i re-render */
 const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -905,8 +910,11 @@ function hbAll(){return lsGet("enc_hb",[])}
 function loadHB(){MONSTERS.splice(BASE_COUNT);
   /* voci malformate (es. da versioni precedenti o link incompleti) vengono riparate o scartate,
      e l'elenco salvato viene riallineato così gli indici di modifica restano coerenti */
-  const raw=hbAll(),ok=raw.map(m=>m&&m.src==="HB"&&m.tp&&m.sz&&Array.isArray(m.ab)&&typeof m.hp==="string"&&typeof m.ac==="string"?m:hbNormalize(m)).filter(Boolean);
-  if(ok.length!==raw.length||ok.some((m,i)=>m!==raw[i]))lsSet("enc_hb",ok);
+  const raw=hbAll(),ok=raw.map(m=>{if(m&&m.src==="HB"&&m.tp&&m.sz&&Array.isArray(m.ab)&&typeof m.hp==="string"&&typeof m.ac==="string")return m;
+    const o=hbNormalize(m);if(o&&m&&m.id)o.id=m.id;return o}).filter(Boolean);
+  /* ogni mostro homebrew ha un ID stabile (assegnato una volta sola ai mostri che ne sono privi) */
+  let idNew=false;ok.forEach(m=>{if(!m.id||!/^[\w-]+$/.test(m.id)){m.id=newId("hb");idNew=true}});
+  if(idNew||ok.length!==raw.length||ok.some((m,i)=>m!==raw[i]))lsSet("enc_hb",ok);
   ok.forEach(m=>MONSTERS.push(m))}
 function withRemap(fn){
   const encN=ENC.map(r=>({n:MONSTERS[r.i]?MONSTERS[r.i].n:null,q:r.q}));
@@ -1008,7 +1016,7 @@ function hbSave(){
   const m=hbRead();const err=hbValidate(m);
   if(err){$("hbErr").textContent=err;return}
   const hb=hbAll();
-  if(hbEditIdx>=0)hb[hbEditIdx]=m;else hb.push(m);
+  if(hbEditIdx>=0){m.id=hb[hbEditIdx].id||newId("hb");hb[hbEditIdx]=m}else{m.id=newId("hb");hb.push(m)}
   lsSet("enc_hb",hb);
   withRemap(loadHB);hbCancel();renderHbList();srcBadge();
 }
@@ -1156,7 +1164,7 @@ function addToTrk(idx,v){
   const m=variantOf(MONSTERS[idx],v||0);
   const hpm=hpFromDice(m);
   const count=TRK.list.filter(u=>u.mi===idx).length;
-  TRK.list.push({id:"t"+Date.now()+Math.random().toString(36).slice(2,6),
+  TRK.list.push({id:newId("trk"),
    name:m.it+(count?" "+(count+1):""),sub:MONSTERS[idx].n+" · GS "+m.cr,mi:idx,pc:false,
    init:null,ac:parseInt(m.ac,10)||10,hpMax:hpm,hp:hpm,
    dex:Math.floor((m.ab[1]-10)/2),cond:[]});
@@ -1268,7 +1276,7 @@ function saveEnc(){
   if(!ENC.length)return;
   const name=prompt("Nome dell'incontro:","Incontro "+new Date().toLocaleDateString("it-IT"));
   if(!name)return;
-  const r=encSaved();r.push({id:"e"+Date.now(),name,enc:ENC.map(x=>({n:MONSTERS[x.i].n,q:x.q,v:x.v}))});
+  const r=encSaved();r.push({id:newId("enc"),name,enc:ENC.map(x=>({n:MONSTERS[x.i].n,q:x.q,v:x.v}))});
   lsSet("enc_saved",r);alert("💾 Salvato.");
 }
 function openEncSaved(){
@@ -1441,9 +1449,10 @@ function dunToDiary(){
   let txt=`— 🏰 ${DUN.name} —\n`+(DUN.hist?`Storia: costruito da ${DUN.hist.chi} per ${DUN.hist.scopo}; poi ${DUN.hist.sorte}. Oggi: ${DUN.hist.ora}.\n`:"")+DUN.rooms.map(r=>`Stanza ${r.n}: ${r.forma}; ${r.dress}. ${dunLabel(r.tipo).replace(/[⚔💰⚠◻🧩🎭👑] ?/g,"")}${r.det?" — "+r.det:""}. Uscite: ${r.ex.join("; ")}.`).join("\n");
   const DIA=lsGet("dnd5e_diary",{sessions:[],npcs:[],places:[],hooks:[]});
   ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(DIA[k]))DIA[k]=[]});
-  DIA.places.unshift({id:Date.now().toString(36),name:DUN.name,note:"Dungeon generato — pianta e stanze nel testo della sessione più recente."});
+  if(!DUN.id)DUN.id=newId("dun");
+  DIA.places.unshift({id:newId("plc"),src:{t:"dun",id:DUN.id},name:DUN.name,note:"Dungeon generato — pianta e stanze nel testo della sessione più recente."});
   if(DIA.sessions.length)DIA.sessions[0].text=(DIA.sessions[0].text?DIA.sessions[0].text+"\n\n":"")+txt;
-  else DIA.sessions.unshift({id:Date.now().toString(36),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:txt});
+  else DIA.sessions.unshift({id:newId("ses"),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:txt});
   lsSet("dnd5e_diary",DIA);
   toast("📖 Dungeon salvato nel Diario di Campagna (luoghi + sessione)");
 }
@@ -1539,7 +1548,7 @@ function addFx(){
   const name=prompt("Nome dell'effetto (es. Benedizione, Ragnatela):");if(!name)return;
   const rds=parseInt(prompt("Durata in round (1 minuto = 10):","10"),10)||10;
   const tgt=prompt("Su chi? (facoltativo, testo libero)","")||"";
-  TRK.fx.push({id:"f"+Date.now(),name,rds,tgt});trkSave();renderTrk();
+  TRK.fx.push({id:newId("fx"),name,rds,tgt});trkSave();renderTrk();
 }
 function rmFx(id){TRK.fx=TRK.fx.filter(f=>f.id!==id);trkSave();renderTrk()}
 function tickFx(){
@@ -1639,14 +1648,14 @@ function endCombat(){
       const it=u.charId&&ros.find(x=>x.id===u.charId);
       if(!DIA.xp.pcs[k]){const lv=(it&&it.st&&it.st.lv)||1;DIA.xp.pcs[k]={name:u.name,xp:[0,300,900,2700,6500,14000,23000,34000,48000,64000,85000,100000,120000,140000,165000,195000,225000,265000,305000,355000][Math.min(19,lv-1)]}}
       DIA.xp.pcs[k].name=u.name;DIA.xp.pcs[k].xp+=per;return k});
-    DIA.xp.log.unshift({id:Date.now().toString(36),date:new Date().toISOString().slice(0,10),amount:per,who,note:"Combattimento: "+(dead.length?grp(dead):"—")});
+    DIA.xp.log.unshift({id:newId("xp"),date:new Date().toISOString().slice(0,10),amount:per,who,note:"Combattimento: "+(dead.length?grp(dead):"—")});
     DIA.xp.log=DIA.xp.log.slice(0,50);
     xpDone=true;
   }
   /* 2) riepilogo nella sessione più recente del diario (scelta separata) */
   if(confirm("Aggiungere questo riepilogo al Diario di Campagna?\n\n"+txt)){
     if(DIA.sessions.length)DIA.sessions[0].text=(DIA.sessions[0].text?DIA.sessions[0].text+"\n\n":"")+txt;
-    else DIA.sessions.unshift({id:Date.now().toString(36),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:txt});
+    else DIA.sessions.unshift({id:newId("ses"),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:txt});
     sumDone=true;
   }
   if(!xpDone&&!sumDone)return;
@@ -1675,7 +1684,7 @@ function encToTracker(){
   ENC.forEach(r=>{const m=variantOf(MONSTERS[r.i],r.v||0);
     for(let k=1;k<=r.q;k++){
       const hpm=hpFromDice(m);
-      TRK.list.push({id:"t"+Date.now()+Math.random().toString(36).slice(2,6),
+      TRK.list.push({id:newId("trk"),
        name:m.it+(r.q>1?" "+k:""),sub:MONSTERS[r.i].n+" · GS "+m.cr,mi:r.i,pc:false,
        init:null,ac:parseInt(m.ac,10)||10,hpMax:hpm,hp:hpm,
        dex:Math.floor((m.ab[1]-10)/2),cond:[]});
@@ -1685,7 +1694,7 @@ function encToTracker(){
 function addPc(){
   const name=prompt("Nome del personaggio:");if(!name)return;
   const init=parseInt(prompt("Iniziativa tirata:","10"),10)||10;
-  TRK.list.push({id:"t"+Date.now(),name,sub:"Personaggio giocante",mi:-1,pc:true,init,ac:null,hpMax:null,hp:null,dex:0,cond:[]});delete TRK.ended;
+  TRK.list.push({id:newId("trk"),name,sub:"Personaggio giocante",mi:-1,pc:true,init,ac:null,hpMax:null,hp:null,dex:0,cond:[]});delete TRK.ended;
   sortInit();
 }
 /* ---- PG salvati nel generatore schede (stessa origine) ---- */
@@ -1750,7 +1759,7 @@ function addPcRow(p){
     :TRK.list.find(u=>u.pc&&u.name===name);
   const hpM=parseInt(p.hpM,10)||null;
   const hpC=(p.hpC!=null&&!isNaN(parseInt(p.hpC,10)))?parseInt(p.hpC,10):hpM;
-  const row={id:ex?ex.id:"t"+Date.now()+Math.random().toString(36).slice(2,6),
+  const row={id:ex?ex.id:newId("trk"),
    name,sub:[p.race,p.cls].filter(Boolean).join(" · ")||"Personaggio giocante",
    mi:-1,pc:true,init:ex?ex.init:null,
    ac:parseInt(p.ac,10)||null,hpMax:hpM,hp:hpC,

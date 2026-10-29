@@ -226,6 +226,10 @@ function safeParse(txt,allowPzHtml){
 function safeStoreVal(k,v){try{return JSON.stringify(safeParse(v,k==="dnd5e_puzzles"))}catch(e){return String(v).replace(/[^\w-]/g,"")}}
 /* stringa come argomento JS dentro un attributo HTML tra virgolette, es. onclick="f(${jsa(nome)})": regge apostrofi, virgolette, & e < */
 function jsa(s){return JSON.stringify(String(s??"")).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
+/* ID univoci e stabili: tipo_tempo_casuale, es. npc_mvtd9yx6_k3f9q2ab. Tipi: pc npc enc trk fx ses dnpc plc hok xp pz wld fz hb dun */
+function newId(t){const a=new Uint8Array(8),c="0123456789abcdefghijklmnopqrstuvwxyz";
+  if(window.crypto&&crypto.getRandomValues)crypto.getRandomValues(a);else for(let i=0;i<8;i++)a[i]=Math.floor(Math.random()*256);
+  return(t?t+"_":"")+Date.now().toString(36)+"_"+Array.from(a,b=>c[b%36]).join("")}
 /* ==== MOTORE SUITE v1 ==== */
 /* Base comune dei generatori: casualità con seme, modelli con etichette, profilo campagna, invio al diario.
    Questo blocco è identico in tutti i tool della suite: modificarlo ovunque insieme. */
@@ -303,15 +307,16 @@ function gExpand(G,tpl,ctx,depth){ctx=ctx||{};ctx.tags=ctx.tags||[];ctx.vars=ctx
 function diaryLoad(){let D={};try{D=JSON.parse(localStorage.getItem("dnd5e_diary")||"{}")||{}}catch(e){}
   ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(D[k]))D[k]=[]});return D}
 function diarySave(D){try{localStorage.setItem("dnd5e_diary",JSON.stringify(D))}catch(e){}}
-const diaryId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-/* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione */
-function toDiary(kind,item){const D=diaryLoad();
+/* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione
+   src (facoltativo): {t,id} dell'elemento di origine nel tool che invia (es. {t:"npc",id:"npc_…"}), registrato sulla voce */
+function toDiary(kind,item,src){const D=diaryLoad();
   if(kind==="session"){if(D.sessions.length)D.sessions[0].text=(D.sessions[0].text?D.sessions[0].text+"\n\n":"")+item;
-    else D.sessions.unshift({id:diaryId(),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});diarySave(D);return"added"}
+    else D.sessions.unshift({id:newId("ses"),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});diarySave(D);return"added"}
+  if(src&&src.t&&src.id)item=Object.assign({},item,{src:{t:src.t,id:src.id}});
   const key=kind==="hooks"?"text":"name";
   const ex=D[kind].find(x=>(x[key]||"").trim().toLowerCase()===(item[key]||"").trim().toLowerCase());
   if(ex){Object.assign(ex,item,{id:ex.id});diarySave(D);return"updated"}
-  D[kind].unshift(Object.assign({id:diaryId()},kind==="hooks"?{done:false}:{},item));diarySave(D);return"added"}
+  D[kind].unshift(Object.assign({id:newId({npcs:"dnpc",places:"plc",hooks:"hok"}[kind])},kind==="hooks"?{done:false}:{},item));diarySave(D);return"added"}
 /* ==== FINE MOTORE SUITE ==== */
 /* conserva la posizione di scorrimento durante i re-render */
 function ks(){const y=window.scrollY;requestAnimationFrame(()=>window.scrollTo(0,y))}
@@ -677,7 +682,7 @@ function genGroup(){
   readPlace();const sd=($("fSeed").value||"").trim()||newSeed();$("fSeed").value="";
   const pl=NPC_PLACES[PLACE_SEL.kind];
   GROUP=withSeed(sd,()=>{
-    const k=rInt(3,5),list=[];for(let i=0;i<k;i++){const n=enrichNpc(makeNpc(),pl?pl.tags:[]);if(PLACE_SEL.name)n.where=PLACE_SEL.name;n.id="npc_"+Date.now()+"_"+i;n.seed=sd+"·"+(i+1);list.push(n)}
+    const k=rInt(3,5),list=[];for(let i=0;i<k;i++){const n=enrichNpc(makeNpc(),pl?pl.tags:[]);if(PLACE_SEL.name)n.where=PLACE_SEL.name;n.id=newId("npc");n.seed=sd+"·"+(i+1);list.push(n)}
     /* una fazione comune per due di loro, e una rete di relazioni che li collega tutti */
     const fz=makeFaction(list[0].tags);list[0].fazione=fz;list[1].fazione=Object.assign({},fz,{ruolo:rPick(G_NPC.faz_ruolo)});
     const rels=[];const pairs=new Set(),usedT=new Set();
@@ -707,7 +712,7 @@ function npcDiaryItem(n){
     n.gancio&&"Gancio: "+n.gancio,n.segreto&&"Segreto: "+n.segreto].filter(Boolean).join(" · ");
   return{name:(n.name||"").trim(),where:n.where||"",att:a?att[a]:"Neutrale",note}}
 function groupToDiary(){if(!GROUP)return;let add=0,upd=0;
-  GROUP.list.forEach(n=>{toDiary("npcs",npcDiaryItem(n))==="added"?add++:upd++});
+  GROUP.list.forEach(n=>{if(!n.id)n.id=newId("npc");toDiary("npcs",npcDiaryItem(n),{t:"npc",id:n.id})==="added"?add++:upd++});
   GROUP.rels.forEach(r=>toDiary("hooks",{text:"Legame: "+r.t}));
   alert(`📖 Diario aggiornato: ${add} PNG aggiunti${upd?`, ${upd} aggiornati`:""} e ${GROUP.rels.length} legami tra gli agganci.`)}
 function groupSave(){if(!GROUP)return;const r=roster();GROUP.list.forEach(n=>{if(!r.some(x=>x.id===n.id))r.push(n)});lsSet("dnd5e_npcs",r);alert(`💾 ${GROUP.list.length} NPC salvati.`)}
@@ -774,7 +779,7 @@ function roster(){return lsGet("dnd5e_npcs",[])}
 function saveNpc(){
   if(!N)return;const r=roster();
   const i=r.findIndex(x=>x.id===N.id);
-  if(!N.id)N.id="npc_"+Date.now();
+  if(!N.id)N.id=newId("npc");
   if(i>=0)r[i]=N;else r.push(N);
   lsSet("dnd5e_npcs",r);alert("💾 NPC salvato: "+N.name);
 }
@@ -803,7 +808,8 @@ function npcToDiary(){
   if(!N)return;
   const it=npcDiaryItem(N);const ex=diaryLoad().npcs.some(x=>(x.name||"").trim().toLowerCase()===it.name.toLowerCase());
   if(ex&&!confirm(`«${it.name}» è già nel diario. Aggiornare le sue note?`))return;
-  toDiary("npcs",it);
+  if(!N.id)N.id=newId("npc");
+  toDiary("npcs",it,{t:"npc",id:N.id});
   alert(`📖 «${it.name}» ${ex?"aggiornato":"aggiunto"} tra i PNG incontrati del Diario di Campagna.`);
 }
 /* export in formato bestiario (Homebrew del generatore incontri) */
@@ -849,7 +855,7 @@ function importNpc(){$("impFile").click()}
 $("impFile").addEventListener("change",e=>{
   const f=e.target.files[0];if(!f)return;
   const rd=new FileReader();
-  rd.onload=()=>{try{const n=safeParse(rd.result,PZ_ALLOW);if(!n.name||!n.sb)throw 0;n.id="npc_"+Date.now();N=n;$("quickList").innerHTML="";render()}catch(err){alert("File JSON non valido.")}};
+  rd.onload=()=>{try{const n=safeParse(rd.result,PZ_ALLOW);if(!n.name||!n.sb)throw 0;n.id=newId("npc");N=n;$("quickList").innerHTML="";render()}catch(err){alert("File JSON non valido.")}};
   rd.readAsText(f);e.target.value="";
 });
 

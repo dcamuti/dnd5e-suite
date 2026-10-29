@@ -165,6 +165,10 @@ function safeParse(txt,allowPzHtml){
 function safeStoreVal(k,v){try{return JSON.stringify(safeParse(v,k==="dnd5e_puzzles"))}catch(e){return String(v).replace(/[^\w-]/g,"")}}
 /* stringa come argomento JS dentro un attributo HTML tra virgolette, es. onclick="f(${jsa(nome)})": regge apostrofi, virgolette, & e < */
 function jsa(s){return JSON.stringify(String(s??"")).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
+/* ID univoci e stabili: tipo_tempo_casuale, es. npc_mvtd9yx6_k3f9q2ab. Tipi: pc npc enc trk fx ses dnpc plc hok xp pz wld fz hb dun */
+function newId(t){const a=new Uint8Array(8),c="0123456789abcdefghijklmnopqrstuvwxyz";
+  if(window.crypto&&crypto.getRandomValues)crypto.getRandomValues(a);else for(let i=0;i<8;i++)a[i]=Math.floor(Math.random()*256);
+  return(t?t+"_":"")+Date.now().toString(36)+"_"+Array.from(a,b=>c[b%36]).join("")}
 /* ==== MOTORE SUITE v1 ==== */
 /* Base comune dei generatori: casualità con seme, modelli con etichette, profilo campagna, invio al diario.
    Questo blocco è identico in tutti i tool della suite: modificarlo ovunque insieme. */
@@ -242,15 +246,16 @@ function gExpand(G,tpl,ctx,depth){ctx=ctx||{};ctx.tags=ctx.tags||[];ctx.vars=ctx
 function diaryLoad(){let D={};try{D=JSON.parse(localStorage.getItem("dnd5e_diary")||"{}")||{}}catch(e){}
   ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(D[k]))D[k]=[]});return D}
 function diarySave(D){try{localStorage.setItem("dnd5e_diary",JSON.stringify(D))}catch(e){}}
-const diaryId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-/* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione */
-function toDiary(kind,item){const D=diaryLoad();
+/* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione
+   src (facoltativo): {t,id} dell'elemento di origine nel tool che invia (es. {t:"npc",id:"npc_…"}), registrato sulla voce */
+function toDiary(kind,item,src){const D=diaryLoad();
   if(kind==="session"){if(D.sessions.length)D.sessions[0].text=(D.sessions[0].text?D.sessions[0].text+"\n\n":"")+item;
-    else D.sessions.unshift({id:diaryId(),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});diarySave(D);return"added"}
+    else D.sessions.unshift({id:newId("ses"),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});diarySave(D);return"added"}
+  if(src&&src.t&&src.id)item=Object.assign({},item,{src:{t:src.t,id:src.id}});
   const key=kind==="hooks"?"text":"name";
   const ex=D[kind].find(x=>(x[key]||"").trim().toLowerCase()===(item[key]||"").trim().toLowerCase());
   if(ex){Object.assign(ex,item,{id:ex.id});diarySave(D);return"updated"}
-  D[kind].unshift(Object.assign({id:diaryId()},kind==="hooks"?{done:false}:{},item));diarySave(D);return"added"}
+  D[kind].unshift(Object.assign({id:newId({npcs:"dnpc",places:"plc",hooks:"hok"}[kind])},kind==="hooks"?{done:false}:{},item));diarySave(D);return"added"}
 /* ==== FINE MOTORE SUITE ==== */
 function ks(){const y=window.scrollY;requestAnimationFrame(()=>window.scrollTo(0,y))}
 const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
@@ -259,14 +264,13 @@ let DIA=lsGet("dnd5e_diary",{sessions:[],npcs:[],places:[],hooks:[]});
 ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(DIA[k]))DIA[k]=[]});
 if(!DIA.xp||typeof DIA.xp.total!=="number")DIA.xp={total:0,log:[]};
 function save(){lsSet("dnd5e_diary",DIA)}
-const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const match=(q,...fields)=>!q||fields.some(f=>(f||"").toLowerCase().includes(q));
 
-function addSess(){DIA.sessions.unshift({id:uid(),date:new Date().toISOString().slice(0,10),title:"Sessione "+(DIA.sessions.length+1),text:""});save();render()}
+function addSess(){DIA.sessions.unshift({id:newId("ses"),date:new Date().toISOString().slice(0,10),title:"Sessione "+(DIA.sessions.length+1),text:""});save();render()}
 function addRow(k){
-  if(k==="npcs")DIA.npcs.unshift({id:uid(),name:"",where:"",att:"Neutrale",note:""});
-  else if(k==="places")DIA.places.unshift({id:uid(),name:"",note:""});
-  else DIA.hooks.unshift({id:uid(),text:"",done:false});
+  if(k==="npcs")DIA.npcs.unshift({id:newId("dnpc"),name:"",where:"",att:"Neutrale",note:""});
+  else if(k==="places")DIA.places.unshift({id:newId("plc"),name:"",note:""});
+  else DIA.hooks.unshift({id:newId("hok"),text:"",done:false});
   save();render();
 }
 function del(k,id){if(!confirm("Eliminare questa voce?"))return;DIA[k]=DIA[k].filter(x=>x.id!==id);save();render()}
@@ -382,7 +386,7 @@ function addXp(){
   const who=selKeys();if(!who.length)return;
   const note=$("xpNote").value.trim()||"Ricompensa di missione";
   const X=DIA.xp;who.forEach(k=>{const r=partyRows().find(x=>x.k===k);if(!X.pcs[k])X.pcs[k]={name:r?r.name:"?",xp:0};X.pcs[k].xp=Math.max(0,X.pcs[k].xp+a)});
-  X.log.unshift({id:uid(),date:new Date().toISOString().slice(0,10),amount:a,who,note});X.log=X.log.slice(0,50);
+  X.log.unshift({id:newId("xp"),date:new Date().toISOString().slice(0,10),amount:a,who,note});X.log=X.log.slice(0,50);
   save();renderXp();
 }
 function giveMilestone(){
@@ -390,7 +394,7 @@ function giveMilestone(){
   const note=$("msNote").value.trim()||"Milestone";
   who.forEach(k=>{const r=rows.find(x=>x.k===k);const lv=(r&&r.lv)||1;if(!X.pcs[k])X.pcs[k]={name:r?r.name:"?",xp:0};
     X.pcs[k].ms=Math.min(20,Math.max(X.pcs[k].ms||0,lv)+1)});
-  X.log.unshift({id:uid(),date:new Date().toISOString().slice(0,10),amount:0,ms:true,who,note});X.log=X.log.slice(0,50);
+  X.log.unshift({id:newId("xp"),date:new Date().toISOString().slice(0,10),amount:0,ms:true,who,note});X.log=X.log.slice(0,50);
   save();renderXp();
 }
 function xpAlign(k,lv){const p=DIA.xp.pcs[k];if(!p)return;p.xp=LVL_XP[lv-1];save();renderXp()}

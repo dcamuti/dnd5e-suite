@@ -398,6 +398,10 @@ function safeParse(txt,allowPzHtml){
 function safeStoreVal(k,v){try{return JSON.stringify(safeParse(v,k==="dnd5e_puzzles"))}catch(e){return String(v).replace(/[^\w-]/g,"")}}
 /* stringa come argomento JS dentro un attributo HTML tra virgolette, es. onclick="f(${jsa(nome)})": regge apostrofi, virgolette, & e < */
 function jsa(s){return JSON.stringify(String(s??"")).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
+/* ID univoci e stabili: tipo_tempo_casuale, es. npc_mvtd9yx6_k3f9q2ab. Tipi: pc npc enc trk fx ses dnpc plc hok xp pz wld fz hb dun */
+function newId(t){const a=new Uint8Array(8),c="0123456789abcdefghijklmnopqrstuvwxyz";
+  if(window.crypto&&crypto.getRandomValues)crypto.getRandomValues(a);else for(let i=0;i<8;i++)a[i]=Math.floor(Math.random()*256);
+  return(t?t+"_":"")+Date.now().toString(36)+"_"+Array.from(a,b=>c[b%36]).join("")}
 /* ==== MOTORE SUITE v1 ==== */
 /* Base comune dei generatori: casualità con seme, modelli con etichette, profilo campagna, invio al diario.
    Questo blocco è identico in tutti i tool della suite: modificarlo ovunque insieme. */
@@ -475,15 +479,16 @@ function gExpand(G,tpl,ctx,depth){ctx=ctx||{};ctx.tags=ctx.tags||[];ctx.vars=ctx
 function diaryLoad(){let D={};try{D=JSON.parse(localStorage.getItem("dnd5e_diary")||"{}")||{}}catch(e){}
   ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(D[k]))D[k]=[]});return D}
 function diarySave(D){try{localStorage.setItem("dnd5e_diary",JSON.stringify(D))}catch(e){}}
-const diaryId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-/* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione */
-function toDiary(kind,item){const D=diaryLoad();
+/* kind: "npcs" {name,where,att,note} · "places" {name,note} · "hooks" {text} · "session" testo da aggiungere all'ultima sessione
+   src (facoltativo): {t,id} dell'elemento di origine nel tool che invia (es. {t:"npc",id:"npc_…"}), registrato sulla voce */
+function toDiary(kind,item,src){const D=diaryLoad();
   if(kind==="session"){if(D.sessions.length)D.sessions[0].text=(D.sessions[0].text?D.sessions[0].text+"\n\n":"")+item;
-    else D.sessions.unshift({id:diaryId(),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});diarySave(D);return"added"}
+    else D.sessions.unshift({id:newId("ses"),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:item});diarySave(D);return"added"}
+  if(src&&src.t&&src.id)item=Object.assign({},item,{src:{t:src.t,id:src.id}});
   const key=kind==="hooks"?"text":"name";
   const ex=D[kind].find(x=>(x[key]||"").trim().toLowerCase()===(item[key]||"").trim().toLowerCase());
   if(ex){Object.assign(ex,item,{id:ex.id});diarySave(D);return"updated"}
-  D[kind].unshift(Object.assign({id:diaryId()},kind==="hooks"?{done:false}:{},item));diarySave(D);return"added"}
+  D[kind].unshift(Object.assign({id:newId({npcs:"dnpc",places:"plc",hooks:"hok"}[kind])},kind==="hooks"?{done:false}:{},item));diarySave(D);return"added"}
 /* ==== FINE MOTORE SUITE ==== */
 const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
 function toast(m){const t=$("toastBox");t.textContent=m;t.className="show";clearTimeout(toast._t);toast._t=setTimeout(()=>t.className="",2400)}
@@ -927,7 +932,7 @@ function savePz(){
   if(!CUR){toast("Genera prima un enigma");return}
   const name=prompt("Nome dell'enigma:",CUR.tipo+" — "+(CUR.testo||"").slice(0,30));
   if(!name)return;
-  const l=pzAll();l.unshift({id:Date.now().toString(36),name,tipo:CUR.tipo,player:CUR.player,dm:CUR.dm,date:new Date().toISOString().slice(0,10)});
+  const l=pzAll();l.unshift({id:newId("pz"),name,tipo:CUR.tipo,player:CUR.player,dm:CUR.dm,date:new Date().toISOString().slice(0,10)});
   lsSet("dnd5e_puzzles",l.slice(0,60));toast("💾 Enigma salvato");
 }
 function openSaved(){
@@ -965,7 +970,7 @@ function pzToDiary(){
   const DIA=lsGet("dnd5e_diary",{sessions:[],npcs:[],places:[],hooks:[]});
   ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(DIA[k]))DIA[k]=[]});
   if(DIA.sessions.length)DIA.sessions[0].text=(DIA.sessions[0].text?DIA.sessions[0].text+"\n\n":"")+txt;
-  else DIA.sessions.unshift({id:Date.now().toString(36),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:txt});
+  else DIA.sessions.unshift({id:newId("ses"),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:txt});
   lsSet("dnd5e_diary",DIA);toast("📖 Annotato nel Diario di Campagna");
 }
 const b64e=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
