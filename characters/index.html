@@ -262,6 +262,22 @@ select,input,textarea,.fld{max-width:100%}
   .sn-data .lbl{display:none}
 }
 @media print{.hmenu{display:none !important}}
+/* ==== FINESTRE DELLA SUITE E «ANNULLA» (uguale in tutti i tool) ==== */
+.ui-ov{position:fixed; inset:0; background:rgba(0,0,0,.66); display:flex; align-items:center; justify-content:center; z-index:200; padding:16px}
+.ui-box{background:linear-gradient(170deg,#2a2015,#1e160d); border:1px solid var(--gold); border-radius:14px; padding:18px 20px; width:min(520px,100%); max-height:88vh; overflow:auto; box-shadow:0 20px 50px rgba(0,0,0,.6); color:var(--ink)}
+.ui-box h3{font-family:var(--font-display,'Cinzel',Georgia,serif); color:var(--gold-l); font-size:1.05rem; margin:0 0 10px}
+.ui-msg{font-size:.92rem; line-height:1.5; margin-bottom:12px; white-space:normal; overflow-wrap:anywhere}
+.ui-msg .ui-list{margin:8px 0 0; padding:8px 10px; background:#1a130b; border:1px solid var(--border); border-radius:8px; font-size:.84rem; color:var(--muted); white-space:pre-line; max-height:40vh; overflow:auto}
+.ui-f{display:block; margin-bottom:10px}
+.ui-f span{display:block; font-size:.74rem; color:var(--muted); letter-spacing:.5px; margin-bottom:3px}
+.ui-f input{width:100%; background:#1a130b; color:var(--ink); border:1px solid var(--border-field,#7d6648); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:.95rem}
+.ui-f input:focus{outline:none; border-color:var(--gold); box-shadow:0 0 0 2px rgba(201,162,39,.2)}
+.ui-btns{display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:4px}
+.btn.danger{background:linear-gradient(180deg,#a13636,#7a2626); border-color:#c95454; color:#fff}
+.btn.danger:hover{color:#fff; border-color:#e07a7a}
+.ui-undo{position:fixed; left:50%; bottom:22px; transform:translateX(-50%); display:flex; gap:12px; align-items:center; background:#2a1f12; border:1px solid var(--gold); color:var(--ink); padding:8px 10px 8px 16px; border-radius:12px; z-index:210; box-shadow:0 8px 24px rgba(0,0,0,.55); font-size:.9rem; max-width:calc(100% - 24px)}
+.ui-undo .btn{flex:none}
+@media (max-width:520px){.ui-btns .btn{flex:1 1 auto}}
 </style>
 </head>
 <body>
@@ -2030,7 +2046,8 @@ function saveChar(){
 function loadChar(id){const it=roster().find(x=>x.id===id);if(!it)return;
   C=JSON.parse(JSON.stringify(it.data));C._syncTs=it.syncTs||0;sanitizeChar();closeCharModal();
   if(C.race&&C.cls)buildSheet();else startWizard(true)}
-function delChar(id){dbSet("chars",roster().filter(x=>x.id!==id));renderCharModal()}
+function delChar(id){const prev=roster(),it=prev.find(x=>x.id===id);if(!it)return;dbSet("chars",prev.filter(x=>x.id!==id));renderCharModal();
+  uiUndo(`🗑 «${it.name||"Personaggio"}» eliminato`,()=>{dbSet("chars",prev);renderCharModal()})}
 function exportChar(id){
   let name,data;
   if(id){const it=roster().find(x=>x.id===id);if(!it)return;name=it.name;data=it.data}
@@ -2060,7 +2077,7 @@ function renderCharModal(){
      <span style="flex:none;display:flex;gap:5px">
       <button class="btn small" onclick="loadChar('${it.id}')">▶ Apri</button>
       <button class="btn small" onclick="exportChar('${it.id}')">⬇ JSON</button>
-      <button class="btn small" onclick="if(confirm(${jsa("Eliminare "+(it.name||"")+"?")}))delChar('${it.id}')">🗑</button>
+      <button class="btn small" onclick="delChar('${it.id}')" title="Elimina">🗑</button>
      </span></div>`).join(""):`<div class="hint">Nessun personaggio salvato.</div>`;
 }
 function resumeDraft(){if(!C)return;if(C.race&&C.cls)buildSheet();else startWizard(true)}
@@ -2929,8 +2946,10 @@ function randName(){return rnd(NAMES[C.gender||"m"])+" "+rnd(NAMES.sur)}
 function finishWizard(){if(!C.name)C.name=randName();buildSheet()}
 
 /* ---- generatore casuale ---- */
-function generateRandom(){
-  let lv=parseInt(prompt("A che livello vuoi il personaggio? (1–20)","3"),10);
+async function generateRandom(){
+  const lvIn=await uiPrompt("A che livello vuoi il personaggio?","3",{title:"🎲 Genera un personaggio",label:"Livello (1–20)",type:"number",min:1,max:20,yes:"Genera"});
+  if(lvIn===null)return;
+  let lv=parseInt(lvIn,10);
   if(isNaN(lv)||lv<1)lv=3;if(lv>20)lv=20;
   C=newChar();C.level=lv;
   const r=rnd(racesAvail());C.race=r.n;
@@ -3467,8 +3486,9 @@ async function backupSuite(){
   let imgs=[];try{imgs=await assetAll()}catch(e){}
   if(!n&&!imgs.length){alert("Nulla da salvare.");return}
   if(imgs.length){const mb=imgs.reduce((s,a)=>s+(a.size||(a.blob&&a.blob.size)||0),0)/1048576;
-    if(confirm(`Includere nel backup anche le immagini caricate? (${imgs.length} ${imgs.length===1?"immagine":"immagini"}, ${mb.toFixed(1).replace(".",",")} MB)\n\nOK = backup completo · Annulla = solo i dati, file più leggero`))
-      data.assets=await assetsForExport()}
+    const r=await uiDialog({title:"🗄 Backup suite",text:`Nella libreria ci sono ${imgs.length} ${imgs.length===1?"immagine":"immagini"} (${mb.toFixed(1).replace(".",",")} MB). Vuoi includerle nel backup?`,
+      buttons:[{label:"Annulla",value:null,cancel:true},{label:"Solo i dati",value:"data"},{label:`Backup completo (${mb.toFixed(1).replace(".",",")} MB)`,value:"all",primary:true,kind:"gold"}]});
+    if(!r.value)return;if(r.value==="all")data.assets=await assetsForExport()}
   const now=new Date().toISOString();data.store[STORE.lastBackup]=now;
   const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
@@ -3486,7 +3506,7 @@ function restoreSuite(file){
     const st={};Object.keys(d.store).forEach(k=>{const nk=STORE_LEGACY[k]||k;if(SUITE_KEYS.includes(nk)&&typeof d.store[k]==="string"&&(!(nk in st)||nk===k))st[nk]=d.store[k]});
     const keys=Object.keys(st);if(!keys.length)throw 0;
     const nImg=Array.isArray(d.assets)?d.assets.length:0;
-    if(!confirm("Ripristinare il backup? Tutti i dati della suite in questo browser verranno sostituiti da quelli del file."+(nImg?`\n\nLe ${nImg} immagini del backup verranno aggiunte alla libreria (quelle già presenti restano).`:"")))return;
+    if(!await uiConfirm("Tutti i dati della suite in questo browser verranno sostituiti da quelli del file. L'operazione non si può annullare."+(nImg?`\n\nLe ${nImg} immagini del backup verranno aggiunte alla libreria (quelle già presenti restano).`:""),{title:"⬆ Ripristinare il backup?",yes:"Sostituisci tutti i dati",danger:true}))return;
     /* immagini: aggiunte, mai cancellate; i riferimenti delle mappe seguono gli ID nella libreria */
     let imgMap={},imgFail=false;if(nImg){try{imgMap=await mergeAssets(d.assets)}catch(e){imgFail=true}}
     if(st[STORE.maps])st[STORE.maps]=remapAssetIds(st[STORE.maps],imgMap);
@@ -3501,6 +3521,58 @@ function restoreSuite(file){
   }catch(err){alert("File di backup non valido.")}};
   rd.readAsText(file);
 }
+/* ================= FINESTRE DELLA SUITE (al posto di confirm/prompt del browser) =================
+   uiDialog({title,text|html,fields:[{k,label,type,value,min,max,placeholder}],buttons:[{label,value,kind,primary,cancel}]}) → Promise
+   Invio = pulsante principale, Esc o clic fuori = annulla; il focus resta nella finestra finché è aperta. */
+const uiEsc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+function uiDialog(o){return new Promise(res=>{
+  const prev=document.activeElement,ov=document.createElement("div");ov.className="ui-ov";
+  const flds=(o.fields||[]).map(f=>`<label class="ui-f"><span>${uiEsc(f.label||"")}</span><input data-k="${uiEsc(f.k)}" type="${f.type==="number"?"number":"text"}"${f.min!=null?` min="${f.min}"`:""}${f.max!=null?` max="${f.max}"`:""}${f.readonly?" readonly":""} value="${uiEsc(f.value??"")}"${f.placeholder?` placeholder="${uiEsc(f.placeholder)}"`:""}></label>`).join("");
+  const body=o.html!=null?o.html:o.text!=null?uiEsc(o.text).replace(/\n/g,"<br>"):"";
+  ov.innerHTML=`<div class="ui-box" role="dialog" aria-modal="true"${o.title?' aria-labelledby="uiT"':""}>${o.title?`<h3 id="uiT">${uiEsc(o.title)}</h3>`:""}${body?`<div class="ui-msg">${body}</div>`:""}${flds}
+    <div class="ui-btns">${o.buttons.map((b,i)=>`<button type="button" class="btn ${b.kind||""}" data-i="${i}">${uiEsc(b.label)}</button>`).join("")}</div></div>`;
+  document.body.appendChild(ov);
+  const btns=[...ov.querySelectorAll(".ui-btns .btn")],ins=[...ov.querySelectorAll("input")];
+  const vals=()=>{const v={};ins.forEach(x=>v[x.dataset.k]=x.value);return v};
+  const pi=o.buttons.findIndex(b=>b.primary),ci=o.buttons.findIndex(b=>b.cancel);
+  const close=i=>{ov.remove();document.removeEventListener("keydown",key,true);try{if(prev&&prev.focus&&document.contains(prev))prev.focus()}catch(e){}
+    res({i,value:i>=0?o.buttons[i].value:null,fields:vals()})};
+  btns.forEach((b,i)=>b.onclick=()=>close(i));
+  const key=e=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();close(ci)}
+    else if(e.key==="Enter"&&pi>=0&&e.target.tagName!=="BUTTON"){e.preventDefault();e.stopPropagation();close(pi)}
+    else if(e.key==="Tab"){const f=[...ins,...btns],i=f.indexOf(document.activeElement);
+      if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&i===f.length-1){e.preventDefault();f[0].focus()}}
+    else if(!ov.contains(e.target)){e.stopPropagation()}};
+  document.addEventListener("keydown",key,true);
+  ov.addEventListener("mousedown",e=>{if(e.target===ov)close(ci)});
+  setTimeout(()=>{const f=ins[0]&&o.focusField!==false?ins[0]:btns[pi>=0?pi:btns.length-1];if(f){f.focus();if(f.select&&f.tagName==="INPUT")f.select()}},20)})}
+async function uiConfirm(text,o={}){const r=await uiDialog({title:o.title,text:o.html!=null?undefined:text,html:o.html,
+  buttons:[{label:o.no||"Annulla",value:false,cancel:true},{label:o.yes||"Conferma",value:true,primary:true,kind:o.danger?"danger":"gold"}]});return r.value===true}
+async function uiPrompt(text,def,o={}){const r=await uiDialog({title:o.title,text,fields:[{k:"v",label:o.label||"",type:o.type,value:def??"",min:o.min,max:o.max,placeholder:o.placeholder}],
+  buttons:[{label:"Annulla",value:null,cancel:true},{label:o.yes||"OK",value:"ok",primary:true,kind:"gold"}]});return r.value==="ok"?r.fields.v:null}
+async function uiForm(title,fields,o={}){const r=await uiDialog({title,text:o.text,fields,buttons:[{label:"Annulla",value:null,cancel:true},{label:o.yes||"OK",value:"ok",primary:true,kind:"gold"}]});
+  return r.value==="ok"?r.fields:null}
+/* link da copiare quando gli appunti del browser non sono disponibili */
+async function uiCopy(url,title){const r=await uiDialog({title:title||"🔗 Link da copiare",text:"Copia il link e incollalo dove ti serve.",fields:[{k:"u",label:"",value:url,readonly:true}],
+  buttons:[{label:"Chiudi",value:null,cancel:true},{label:"📋 Copia",value:"copy",primary:true,kind:"gold"}]});
+  if(r.value!=="copy")return;let ok=false;
+  try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(url);ok=true}}catch(e){}
+  if(!ok){const t=document.createElement("textarea");t.value=url;t.style.position="fixed";t.style.opacity="0";document.body.appendChild(t);t.select();try{ok=document.execCommand("copy")}catch(e){}t.remove()}
+  uiNote(ok?"🔗 Link copiato negli appunti":"Copia non riuscita: seleziona il link e copialo a mano")}
+/* avviso breve in basso (usato da «Annulla» e dalle copie) */
+function uiNote(msg,ms){const old=document.getElementById("uiUndo");if(old)old.remove();clearTimeout(UI_UNDO_T);
+  const d=document.createElement("div");d.id="uiUndo";d.className="ui-undo";d.setAttribute("role","status");uiPlace(d);d.innerHTML=`<span>${uiEsc(msg)}</span>`;
+  document.body.appendChild(d);UI_UNDO_T=setTimeout(()=>d.remove(),ms||2600)}
+/* l'avviso sta sopra eventuali barre fisse in basso (es. i dadi degli Incontri) e sostituisce il toast del tool */
+function uiPlace(d){const t=document.getElementById("toast");if(t)t.style.display="none";const tb=document.getElementById("toastBox");if(tb)tb.className="";
+  const bar=document.getElementById("dbar"),cs=bar&&getComputedStyle(bar);d.style.bottom=(cs&&cs.display!=="none"&&cs.position==="fixed"?bar.offsetHeight+14:22)+"px"}
+/* eliminazione immediata con «Annulla» per 8 secondi: alla successiva eliminazione la precedente diventa definitiva */
+let UI_UNDO_T=null;
+function uiUndo(msg,restore){const old=document.getElementById("uiUndo");if(old)old.remove();clearTimeout(UI_UNDO_T);
+  const d=document.createElement("div");d.id="uiUndo";d.className="ui-undo";d.setAttribute("role","status");uiPlace(d);
+  d.innerHTML=`<span>${uiEsc(msg)}</span><button type="button" class="btn small">↶ Annulla</button>`;document.body.appendChild(d);
+  d.querySelector("button").onclick=()=>{clearTimeout(UI_UNDO_T);d.remove();try{restore()}catch(e){console.error(e)}};
+  UI_UNDO_T=setTimeout(()=>d.remove(),8000)}
 /* ================= MENU ⋯ / ⚙ DATI E PROMEMORIA DEL BACKUP (uguale in tutti i tool) ================= */
 function hmCloseAll(){document.querySelectorAll(".hmenu.open").forEach(m=>{m.classList.remove("open");const b=m.querySelector(":scope>.btn");if(b)b.setAttribute("aria-expanded","false")})}
 function hmToggle(btn,ev){if(ev)ev.stopPropagation();const m=btn.closest(".hmenu"),open=!m.classList.contains("open");hmCloseAll();if(!open)return;

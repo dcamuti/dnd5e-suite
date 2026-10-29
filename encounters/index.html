@@ -213,6 +213,22 @@ select,input,textarea,.fld{max-width:100%}
   .sn-data .lbl{display:none}
 }
 @media print{.hmenu{display:none !important}}
+/* ==== FINESTRE DELLA SUITE E «ANNULLA» (uguale in tutti i tool) ==== */
+.ui-ov{position:fixed; inset:0; background:rgba(0,0,0,.66); display:flex; align-items:center; justify-content:center; z-index:200; padding:16px}
+.ui-box{background:linear-gradient(170deg,#2a2015,#1e160d); border:1px solid var(--gold); border-radius:14px; padding:18px 20px; width:min(520px,100%); max-height:88vh; overflow:auto; box-shadow:0 20px 50px rgba(0,0,0,.6); color:var(--ink)}
+.ui-box h3{font-family:var(--font-display,'Cinzel',Georgia,serif); color:var(--gold-l); font-size:1.05rem; margin:0 0 10px}
+.ui-msg{font-size:.92rem; line-height:1.5; margin-bottom:12px; white-space:normal; overflow-wrap:anywhere}
+.ui-msg .ui-list{margin:8px 0 0; padding:8px 10px; background:#1a130b; border:1px solid var(--border); border-radius:8px; font-size:.84rem; color:var(--muted); white-space:pre-line; max-height:40vh; overflow:auto}
+.ui-f{display:block; margin-bottom:10px}
+.ui-f span{display:block; font-size:.74rem; color:var(--muted); letter-spacing:.5px; margin-bottom:3px}
+.ui-f input{width:100%; background:#1a130b; color:var(--ink); border:1px solid var(--border-field,#7d6648); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:.95rem}
+.ui-f input:focus{outline:none; border-color:var(--gold); box-shadow:0 0 0 2px rgba(201,162,39,.2)}
+.ui-btns{display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:4px}
+.btn.danger{background:linear-gradient(180deg,#a13636,#7a2626); border-color:#c95454; color:#fff}
+.btn.danger:hover{color:#fff; border-color:#e07a7a}
+.ui-undo{position:fixed; left:50%; bottom:22px; transform:translateX(-50%); display:flex; gap:12px; align-items:center; background:#2a1f12; border:1px solid var(--gold); color:var(--ink); padding:8px 10px 8px 16px; border-radius:12px; z-index:210; box-shadow:0 8px 24px rgba(0,0,0,.55); font-size:.9rem; max-width:calc(100% - 24px)}
+.ui-undo .btn{flex:none}
+@media (max-width:520px){.ui-btns .btn{flex:1 1 auto}}
 </style>
 </head>
 <body>
@@ -658,13 +674,14 @@ function diaryApply(D,kind,item,src,upd){
   D[kind].unshift(Object.assign({id:newId({npcs:"dnpc",places:"plc",hooks:"hok"}[kind])},kind==="hooks"?{done:false}:{},item));return"added"}
 /* invii raggruppati (es. un insediamento con luogo, agganci e PNG): una sola domanda per tutte le voci già presenti */
 function diaryBegin(){DIARY_Q=[]}
-function diaryEnd(){const q=DIARY_Q||[];DIARY_Q=null;const D=diaryLoad(),res={added:0,updated:0,skipped:0};
+async function diaryEnd(){const q=DIARY_Q||[];DIARY_Q=null;let D=diaryLoad();const res={added:0,updated:0,skipped:0};
   const dup=q.filter(([k,it,s])=>k!=="session"&&diaryFind(D,k,it,s)).length;
-  const upd=dup?confirm(`${dup===1?"Una voce è già":dup+" voci sono già"} nel Diario: aggiornarle?\n\nAtteggiamento e note scritte nel Diario restano come sono.`):false;
+  const upd=dup?await uiConfirm(`${dup===1?"Una voce è già":dup+" voci sono già"} nel Diario. Atteggiamento e note scritte nel Diario restano come sono.`,{title:"📖 Già nel Diario",yes:dup===1?"Aggiorna la voce":"Aggiorna le voci",no:"Lascia com'è"}):false;
+  if(dup)D=diaryLoad();
   q.forEach(([k,it,s])=>{res[diaryApply(D,k,it,s,upd)]++});
   if(res.added||res.updated)diarySave(D);return res}
 function toDiary(kind,item,src){if(DIARY_Q){DIARY_Q.push([kind,item,src]);return"queued"}
-  diaryBegin();toDiary(kind,item,src);const r=diaryEnd();return r.added?"added":r.updated?"updated":"skipped"}
+  diaryBegin();toDiary(kind,item,src);return diaryEnd().then(r=>r.added?"added":r.updated?"updated":"skipped")}
 /* ==== FINE MOTORE SUITE ==== */
 /* conserva la posizione di scorrimento durante i re-render */
 const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -1154,9 +1171,9 @@ function hbSave(){
   withRemap(loadHB);hbCancel();renderHbList();srcBadge();
 }
 function hbDel(k){
-  if(!confirm("Eliminare questo mostro homebrew?"))return;
-  const hb=hbAll();hb.splice(k,1);dbSet("encHb",hb);
+  const prev=hbAll(),m=prev[k];if(!m)return;const hb=prev.slice();hb.splice(k,1);dbSet("encHb",hb);
   withRemap(loadHB);renderHbList();
+  uiUndo(`🗑 «${m.it||m.n}» eliminato`,()=>{dbSet("encHb",prev);withRemap(loadHB);renderHbList()});
 }
 function hbPreview(){
   const m=hbRead();const err=hbValidate(m);
@@ -1405,9 +1422,9 @@ function renderEnc(){
 }
 /* salvataggio incontri */
 function encSaved(){return dbGet("encSaved",[])}
-function saveEnc(){
+async function saveEnc(){
   if(!ENC.length)return;
-  const name=prompt("Nome dell'incontro:","Incontro "+new Date().toLocaleDateString("it-IT"));
+  const name=await uiPrompt("","Incontro "+new Date().toLocaleDateString("it-IT"),{title:"💾 Salva incontro",label:"Nome dell'incontro",yes:"Salva"});
   if(!name)return;
   const r=encSaved();r.push({id:newId("enc"),name,enc:ENC.map(x=>({n:MONSTERS[x.i].n,q:x.q,v:x.v}))});
   dbSet("encSaved",r);alert("💾 Salvato.");
@@ -1427,7 +1444,8 @@ function loadEnc(id){
   ENC=e.enc.map(x=>({i:MONSTERS.findIndex(m=>m.n===x.n),q:x.q,v:x.v})).filter(x=>x.i>=0);
   closeEncSaved();showTab("gen");renderEnc();
 }
-function delEnc(id){if(!confirm("Eliminare?"))return;dbSet("encSaved",encSaved().filter(x=>x.id!==id));openEncSaved()}
+function delEnc(id){const prev=encSaved(),e=prev.find(x=>x.id===id);if(!e)return;dbSet("encSaved",prev.filter(x=>x.id!==id));openEncSaved();
+  uiUndo(`🗑 «${e.name}» eliminato`,()=>{dbSet("encSaved",prev);openEncSaved()})}
 function exportEnc(){
   if(!ENC.length)return;
   const data={party:partyLevels(),encounter:ENC.map(r=>({name:MONSTERS[r.i].n,nome:MONSTERS[r.i].it,cr:MONSTERS[r.i].cr,xp:XP[MONSTERS[r.i].cr],q:r.q}))};
@@ -1577,14 +1595,14 @@ function printDun(){
   window.print();
   setTimeout(()=>document.body.classList.remove("printsb"),800);
 }
-function dunToDiary(){
+async function dunToDiary(){
   if(!DUN)return;
   let txt=`— 🏰 ${DUN.name} —\n`+(DUN.hist?`Storia: costruito da ${DUN.hist.chi} per ${DUN.hist.scopo}; poi ${DUN.hist.sorte}. Oggi: ${DUN.hist.ora}.\n`:"")+DUN.rooms.map(r=>`Stanza ${r.n}: ${r.forma}; ${r.dress}. ${dunLabel(r.tipo).replace(/[⚔💰⚠◻🧩🎭👑] ?/g,"")}${r.det?" — "+r.det:""}. Uscite: ${r.ex.join("; ")}.`).join("\n");
   if(!DUN.id)DUN.id=newId("dun");
   const src={t:"dun",id:DUN.id},place={name:DUN.name,note:"Dungeon generato — pianta e stanze nel testo della sessione più recente."};
   /* lo stesso dungeon già mandato: non si ripete la descrizione nella sessione */
   const già=!!diaryFind(diaryLoad(),"places",place,src);
-  diaryBegin();toDiary("places",place,src);if(!già)toDiary("session",txt);const r=diaryEnd();
+  diaryBegin();toDiary("places",place,src);if(!già)toDiary("session",txt);const r=await diaryEnd();
   toast(r.added?"📖 Dungeon salvato nel Diario di Campagna (luoghi + sessione)":r.updated?"📖 Dungeon aggiornato nel Diario":"📖 Diario invariato");
 }
 /* ================= LINK CONDIVISIBILI ================= */
@@ -1592,8 +1610,8 @@ const b64e=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
 const b64d=s=>safeParse(decodeURIComponent(escape(atob(s))),PZ_ALLOW);
 function copyLink(url){
   if(navigator.clipboard&&navigator.clipboard.writeText)
-    navigator.clipboard.writeText(url).then(()=>toast("🔗 Link copiato negli appunti")).catch(()=>prompt("Copia il link:",url));
-  else prompt("Copia il link:",url);
+    navigator.clipboard.writeText(url).then(()=>toast("🔗 Link copiato negli appunti")).catch(()=>uiCopy(url));
+  else uiCopy(url);
 }
 function shareEnc(){
   if(!ENC.length)return;
@@ -1609,10 +1627,10 @@ function checkHash(){
   try{
     if(h.indexOf("#enc=")===0){
       const o=b64d(h.slice(5));
-      if(o&&o.t==="enc"&&Array.isArray(o.e)&&confirm("Questo link contiene un incontro condiviso. Caricarlo?")){
+      if(o&&o.t==="enc"&&Array.isArray(o.e))uiConfirm("Questo link contiene un incontro condiviso.",{title:"🔗 Incontro condiviso",yes:"Carica l'incontro",no:"Ignora"}).then(ok=>{if(!ok)return;
         ENC=o.e.map(x=>({i:MONSTERS.findIndex(m=>m.n===x.n),q:x.q,v:x.v})).filter(x=>x.i>=0&&x.q>0);
         showTab("gen");renderEnc();toast("🔗 Incontro caricato dal link");
-      }
+      });
       history.replaceState(null,"",location.pathname+location.search);
     }else if(h.indexOf("#sb=")===0){
       /* aperto da un collegamento ↗ (es. un token sulla mappa): blocco statistiche di un mostro, per nome o per ID homebrew */
@@ -1622,11 +1640,11 @@ function checkHash(){
     }else if(h.indexOf("#hb=")===0){
       const o=b64d(h.slice(4));
       if(o&&o.t==="hb")o.m=hbNormalize(o.m);
-      if(o&&o.t==="hb"&&o.m&&confirm(`Questo link contiene il mostro homebrew «${o.m.it||o.m.n}». Aggiungerlo al tuo bestiario?`)){
+      if(o&&o.t==="hb"&&o.m)uiConfirm(`Questo link contiene il mostro homebrew «${o.m.it||o.m.n}».`,{title:"🔗 Mostro condiviso",yes:"Aggiungi al bestiario",no:"Ignora"}).then(ok=>{if(!ok)return;
         const hb=hbAll();o.m.src="HB";
         let nm=o.m.n,k=2;while(MONSTERS.some(x=>x.n===nm))nm=o.m.n+" ("+(k++)+")";o.m.n=nm;
         hb.push(o.m);dbSet("encHb",hb);withRemap(loadHB);toast("🔗 Mostro homebrew importato dal link");
-      }
+      });
       history.replaceState(null,"",location.pathname+location.search);
     }
   }catch(e){}
@@ -1675,8 +1693,9 @@ async function backupSuite(){
   let imgs=[];try{imgs=await assetAll()}catch(e){}
   if(!n&&!imgs.length){alert("Nulla da salvare.");return}
   if(imgs.length){const mb=imgs.reduce((s,a)=>s+(a.size||(a.blob&&a.blob.size)||0),0)/1048576;
-    if(confirm(`Includere nel backup anche le immagini caricate? (${imgs.length} ${imgs.length===1?"immagine":"immagini"}, ${mb.toFixed(1).replace(".",",")} MB)\n\nOK = backup completo · Annulla = solo i dati, file più leggero`))
-      data.assets=await assetsForExport()}
+    const r=await uiDialog({title:"🗄 Backup suite",text:`Nella libreria ci sono ${imgs.length} ${imgs.length===1?"immagine":"immagini"} (${mb.toFixed(1).replace(".",",")} MB). Vuoi includerle nel backup?`,
+      buttons:[{label:"Annulla",value:null,cancel:true},{label:"Solo i dati",value:"data"},{label:`Backup completo (${mb.toFixed(1).replace(".",",")} MB)`,value:"all",primary:true,kind:"gold"}]});
+    if(!r.value)return;if(r.value==="all")data.assets=await assetsForExport()}
   const now=new Date().toISOString();data.store[STORE.lastBackup]=now;
   const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
@@ -1694,7 +1713,7 @@ function restoreSuite(file){
     const st={};Object.keys(d.store).forEach(k=>{const nk=STORE_LEGACY[k]||k;if(SUITE_KEYS.includes(nk)&&typeof d.store[k]==="string"&&(!(nk in st)||nk===k))st[nk]=d.store[k]});
     const keys=Object.keys(st);if(!keys.length)throw 0;
     const nImg=Array.isArray(d.assets)?d.assets.length:0;
-    if(!confirm("Ripristinare il backup? Tutti i dati della suite in questo browser verranno sostituiti da quelli del file."+(nImg?`\n\nLe ${nImg} immagini del backup verranno aggiunte alla libreria (quelle già presenti restano).`:"")))return;
+    if(!await uiConfirm("Tutti i dati della suite in questo browser verranno sostituiti da quelli del file. L'operazione non si può annullare."+(nImg?`\n\nLe ${nImg} immagini del backup verranno aggiunte alla libreria (quelle già presenti restano).`:""),{title:"⬆ Ripristinare il backup?",yes:"Sostituisci tutti i dati",danger:true}))return;
     /* immagini: aggiunte, mai cancellate; i riferimenti delle mappe seguono gli ID nella libreria */
     let imgMap={},imgFail=false;if(nImg){try{imgMap=await mergeAssets(d.assets)}catch(e){imgFail=true}}
     if(st[STORE.maps])st[STORE.maps]=remapAssetIds(st[STORE.maps],imgMap);
@@ -1709,6 +1728,58 @@ function restoreSuite(file){
   }catch(err){alert("File di backup non valido.")}};
   rd.readAsText(file);
 }
+/* ================= FINESTRE DELLA SUITE (al posto di confirm/prompt del browser) =================
+   uiDialog({title,text|html,fields:[{k,label,type,value,min,max,placeholder}],buttons:[{label,value,kind,primary,cancel}]}) → Promise
+   Invio = pulsante principale, Esc o clic fuori = annulla; il focus resta nella finestra finché è aperta. */
+const uiEsc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+function uiDialog(o){return new Promise(res=>{
+  const prev=document.activeElement,ov=document.createElement("div");ov.className="ui-ov";
+  const flds=(o.fields||[]).map(f=>`<label class="ui-f"><span>${uiEsc(f.label||"")}</span><input data-k="${uiEsc(f.k)}" type="${f.type==="number"?"number":"text"}"${f.min!=null?` min="${f.min}"`:""}${f.max!=null?` max="${f.max}"`:""}${f.readonly?" readonly":""} value="${uiEsc(f.value??"")}"${f.placeholder?` placeholder="${uiEsc(f.placeholder)}"`:""}></label>`).join("");
+  const body=o.html!=null?o.html:o.text!=null?uiEsc(o.text).replace(/\n/g,"<br>"):"";
+  ov.innerHTML=`<div class="ui-box" role="dialog" aria-modal="true"${o.title?' aria-labelledby="uiT"':""}>${o.title?`<h3 id="uiT">${uiEsc(o.title)}</h3>`:""}${body?`<div class="ui-msg">${body}</div>`:""}${flds}
+    <div class="ui-btns">${o.buttons.map((b,i)=>`<button type="button" class="btn ${b.kind||""}" data-i="${i}">${uiEsc(b.label)}</button>`).join("")}</div></div>`;
+  document.body.appendChild(ov);
+  const btns=[...ov.querySelectorAll(".ui-btns .btn")],ins=[...ov.querySelectorAll("input")];
+  const vals=()=>{const v={};ins.forEach(x=>v[x.dataset.k]=x.value);return v};
+  const pi=o.buttons.findIndex(b=>b.primary),ci=o.buttons.findIndex(b=>b.cancel);
+  const close=i=>{ov.remove();document.removeEventListener("keydown",key,true);try{if(prev&&prev.focus&&document.contains(prev))prev.focus()}catch(e){}
+    res({i,value:i>=0?o.buttons[i].value:null,fields:vals()})};
+  btns.forEach((b,i)=>b.onclick=()=>close(i));
+  const key=e=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();close(ci)}
+    else if(e.key==="Enter"&&pi>=0&&e.target.tagName!=="BUTTON"){e.preventDefault();e.stopPropagation();close(pi)}
+    else if(e.key==="Tab"){const f=[...ins,...btns],i=f.indexOf(document.activeElement);
+      if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&i===f.length-1){e.preventDefault();f[0].focus()}}
+    else if(!ov.contains(e.target)){e.stopPropagation()}};
+  document.addEventListener("keydown",key,true);
+  ov.addEventListener("mousedown",e=>{if(e.target===ov)close(ci)});
+  setTimeout(()=>{const f=ins[0]&&o.focusField!==false?ins[0]:btns[pi>=0?pi:btns.length-1];if(f){f.focus();if(f.select&&f.tagName==="INPUT")f.select()}},20)})}
+async function uiConfirm(text,o={}){const r=await uiDialog({title:o.title,text:o.html!=null?undefined:text,html:o.html,
+  buttons:[{label:o.no||"Annulla",value:false,cancel:true},{label:o.yes||"Conferma",value:true,primary:true,kind:o.danger?"danger":"gold"}]});return r.value===true}
+async function uiPrompt(text,def,o={}){const r=await uiDialog({title:o.title,text,fields:[{k:"v",label:o.label||"",type:o.type,value:def??"",min:o.min,max:o.max,placeholder:o.placeholder}],
+  buttons:[{label:"Annulla",value:null,cancel:true},{label:o.yes||"OK",value:"ok",primary:true,kind:"gold"}]});return r.value==="ok"?r.fields.v:null}
+async function uiForm(title,fields,o={}){const r=await uiDialog({title,text:o.text,fields,buttons:[{label:"Annulla",value:null,cancel:true},{label:o.yes||"OK",value:"ok",primary:true,kind:"gold"}]});
+  return r.value==="ok"?r.fields:null}
+/* link da copiare quando gli appunti del browser non sono disponibili */
+async function uiCopy(url,title){const r=await uiDialog({title:title||"🔗 Link da copiare",text:"Copia il link e incollalo dove ti serve.",fields:[{k:"u",label:"",value:url,readonly:true}],
+  buttons:[{label:"Chiudi",value:null,cancel:true},{label:"📋 Copia",value:"copy",primary:true,kind:"gold"}]});
+  if(r.value!=="copy")return;let ok=false;
+  try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(url);ok=true}}catch(e){}
+  if(!ok){const t=document.createElement("textarea");t.value=url;t.style.position="fixed";t.style.opacity="0";document.body.appendChild(t);t.select();try{ok=document.execCommand("copy")}catch(e){}t.remove()}
+  uiNote(ok?"🔗 Link copiato negli appunti":"Copia non riuscita: seleziona il link e copialo a mano")}
+/* avviso breve in basso (usato da «Annulla» e dalle copie) */
+function uiNote(msg,ms){const old=document.getElementById("uiUndo");if(old)old.remove();clearTimeout(UI_UNDO_T);
+  const d=document.createElement("div");d.id="uiUndo";d.className="ui-undo";d.setAttribute("role","status");uiPlace(d);d.innerHTML=`<span>${uiEsc(msg)}</span>`;
+  document.body.appendChild(d);UI_UNDO_T=setTimeout(()=>d.remove(),ms||2600)}
+/* l'avviso sta sopra eventuali barre fisse in basso (es. i dadi degli Incontri) e sostituisce il toast del tool */
+function uiPlace(d){const t=document.getElementById("toast");if(t)t.style.display="none";const tb=document.getElementById("toastBox");if(tb)tb.className="";
+  const bar=document.getElementById("dbar"),cs=bar&&getComputedStyle(bar);d.style.bottom=(cs&&cs.display!=="none"&&cs.position==="fixed"?bar.offsetHeight+14:22)+"px"}
+/* eliminazione immediata con «Annulla» per 8 secondi: alla successiva eliminazione la precedente diventa definitiva */
+let UI_UNDO_T=null;
+function uiUndo(msg,restore){const old=document.getElementById("uiUndo");if(old)old.remove();clearTimeout(UI_UNDO_T);
+  const d=document.createElement("div");d.id="uiUndo";d.className="ui-undo";d.setAttribute("role","status");uiPlace(d);
+  d.innerHTML=`<span>${uiEsc(msg)}</span><button type="button" class="btn small">↶ Annulla</button>`;document.body.appendChild(d);
+  d.querySelector("button").onclick=()=>{clearTimeout(UI_UNDO_T);d.remove();try{restore()}catch(e){console.error(e)}};
+  UI_UNDO_T=setTimeout(()=>d.remove(),8000)}
 /* ================= MENU ⋯ / ⚙ DATI E PROMEMORIA DEL BACKUP (uguale in tutti i tool) ================= */
 function hmCloseAll(){document.querySelectorAll(".hmenu.open").forEach(m=>{m.classList.remove("open");const b=m.querySelector(":scope>.btn");if(b)b.setAttribute("aria-expanded","false")})}
 function hmToggle(btn,ev){if(ev)ev.stopPropagation();const m=btn.closest(".hmenu"),open=!m.classList.contains("open");hmCloseAll();if(!open)return;
@@ -1758,10 +1829,10 @@ let UNDO=[];
 function snap(){UNDO.push(JSON.stringify(TRK));if(UNDO.length>15)UNDO.shift()}
 function undoTrk(){if(!UNDO.length){dlog("↩ Nulla da annullare");return}TRK=JSON.parse(UNDO.pop());trkSave();renderTrk();dlog("↩ Annullata l'ultima modifica")}
 /* effetti con durata */
-function addFx(){
-  const name=prompt("Nome dell'effetto (es. Benedizione, Ragnatela):");if(!name)return;
-  const rds=parseInt(prompt("Durata in round (1 minuto = 10):","10"),10)||10;
-  const tgt=prompt("Su chi? (facoltativo, testo libero)","")||"";
+async function addFx(){
+  const f=await uiForm("✨ Nuovo effetto",[{k:"name",label:"Nome dell'effetto",placeholder:"es. Benedizione, Ragnatela"},{k:"rds",label:"Durata in round (1 minuto = 10)",type:"number",min:1,value:"10"},
+    {k:"tgt",label:"Su chi? (facoltativo)",placeholder:"testo libero"}],{yes:"Aggiungi"});
+  if(!f||!f.name.trim())return;const name=f.name.trim(),rds=parseInt(f.rds,10)||10,tgt=f.tgt.trim();
   TRK.fx.push({id:newId("fx"),name,rds,tgt});trkSave();renderTrk();
 }
 function rmFx(id){TRK.fx=TRK.fx.filter(f=>f.id!==id);trkSave();renderTrk()}
@@ -1835,7 +1906,7 @@ ${rows||'<div class="empty">Il combattimento sta per iniziare…</div>'}
   PV.document.close();
 }
 /* concludi combattimento → riepilogo nel diario di campagna */
-function endCombat(){
+async function endCombat(){
   if(!TRK.list.length){alert("Il tracker è vuoto.");return}
   /* già concluso: niente XP doppi finché non si aggiungono combattenti, inizia un nuovo round o si svuota il tracker */
   if(TRK.ended){const E=TRK.ended;alert(`Questo combattimento è già stato concluso: ${E.xp&&E.sum?"XP e riepilogo sono già stati registrati":E.xp?"gli XP sono già stati assegnati":"il riepilogo è già nel diario"}.\n\nPer un nuovo scontro svuota il tracker, aggiungi nuovi combattenti o passa al round successivo.`);return}
@@ -1852,7 +1923,7 @@ function endCombat(){
   txt+=`\nSconfitti: ${dead.length?grp(dead):"nessuno"}${xp?` · ${xp.toLocaleString("it-IT")} XP${pcs.length?` (${Math.floor(xp/pcs.length).toLocaleString("it-IT")} a testa per ${pcs.length} PG)`:""}`:""}`;
   if(alive.length)txt+=`\nSopravvissuti/fuggiti: ${grp(alive)}`;
   if(down.length)txt+=`\nPG a terra: ${down.join(", ")}`;
-  const nSync=syncPcsToSheets();if(nSync)dlog(`🔄 Schede aggiornate: ${nSync} PG`);
+  const nSync=await syncPcsToSheets();if(nSync)dlog(`🔄 Schede aggiornate: ${nSync} PG`);
   const DIA=dbGet("diary",{sessions:[],npcs:[],places:[],hooks:[]});
   ["sessions","npcs","places","hooks"].forEach(k=>{if(!Array.isArray(DIA[k]))DIA[k]=[]});
   if(!DIA.xp||typeof DIA.xp.total!=="number")DIA.xp={total:0,log:[]};
@@ -1861,7 +1932,7 @@ function endCombat(){
   /* 1) XP: divisi solo tra i PG presenti nel tracker, ognuno ha il suo totale nel diario (indipendente dal riepilogo) */
   const per=pcs.length?Math.floor(xp/pcs.length):0;
   let xpDone=false,sumDone=false;
-  if(per>0&&DIA.xp.mode!=="milestone"&&confirm(`Assegnare ${per.toLocaleString("it-IT")} XP a testa a ${pcs.length} PG?\n\n${pcs.map(u=>"• "+u.name).join("\n")}`)){
+  if(per>0&&DIA.xp.mode!=="milestone"&&await uiConfirm("",{title:"⭐ Esperienza",html:`${per.toLocaleString("it-IT")} XP a testa per ${pcs.length} PG:<div class="ui-list">${pcs.map(u=>"• "+uiEsc(u.name)).join("\n")}</div>`,yes:`Assegna ${per.toLocaleString("it-IT")} XP`,no:"Non assegnare"})){
     const ros=dbGet("chars",[]);
     const who=pcs.map(u=>{const k=u.charId||("n:"+u.name.toLowerCase());
       const it=u.charId&&ros.find(x=>x.id===u.charId);
@@ -1872,7 +1943,7 @@ function endCombat(){
     xpDone=true;
   }
   /* 2) riepilogo nella sessione più recente del diario (scelta separata) */
-  if(confirm("Aggiungere questo riepilogo al Diario di Campagna?\n\n"+txt)){
+  if(await uiConfirm("",{title:"📖 Riepilogo nel Diario",html:`Aggiungere il riepilogo alla sessione più recente del Diario?<div class="ui-list">${uiEsc(txt)}</div>`,yes:"Aggiungi al Diario",no:"Non aggiungere"})){
     if(DIA.sessions.length)DIA.sessions[0].text=(DIA.sessions[0].text?DIA.sessions[0].text+"\n\n":"")+txt;
     else DIA.sessions.unshift({id:newId("ses"),date:new Date().toISOString().slice(0,10),title:"Sessione 1",text:txt});
     sumDone=true;
@@ -1881,7 +1952,7 @@ function endCombat(){
   dbSet("diary",DIA);
   TRK.ended={xp:xpDone,sum:sumDone};trkSave();
   dlog(xpDone&&sumDone?`🏁 ${per} XP a testa assegnati e riepilogo salvato nel diario`:xpDone?`🏁 ${per} XP a testa assegnati`:"🏁 Riepilogo salvato nel diario");
-  if(confirm("Combattimento concluso. Svuotare il tracker?")){snap();TRK={list:[],turn:-1,round:0,fx:[]};trkSave();renderTrk()}
+  if(await uiConfirm("Il combattimento è concluso.",{title:"🏁 Fine del combattimento",yes:"Svuota il tracker",no:"Tieni il tracker"})){snap();TRK={list:[],turn:-1,round:0,fx:[]};trkSave();renderTrk()}
 }
 /* stampa statblock dell'incontro */
 function printEnc(){
@@ -1910,10 +1981,11 @@ function encToTracker(){
     }});
   delete TRK.ended;trkSave();showTab("track");renderTrk();
 }
-function addPc(){
-  const name=prompt("Nome del personaggio:");if(!name)return;
-  const init=parseInt(prompt("Iniziativa tirata:","10"),10)||10;
-  TRK.list.push({id:newId("trk"),name,sub:"Personaggio giocante",mi:-1,pc:true,init,ac:null,hpMax:null,hp:null,dex:0,cond:[]});delete TRK.ended;
+async function addPc(){
+  const f=await uiForm("➕ Aggiungi PG",[{k:"name",label:"Nome del personaggio"},{k:"init",label:"Iniziativa tirata",type:"number",value:"10"},
+    {k:"ac",label:"CA (facoltativa)",type:"number",placeholder:"—"},{k:"hp",label:"PF massimi (facoltativi)",type:"number",placeholder:"—"}],{yes:"Aggiungi"});
+  if(!f||!f.name.trim())return;const name=f.name.trim(),init=parseInt(f.init,10)||10,ac=parseInt(f.ac,10)||null,hp=parseInt(f.hp,10)||null;
+  TRK.list.push({id:newId("trk"),name,sub:"Personaggio giocante",mi:-1,pc:true,init,ac,hpMax:hp,hp,dex:0,cond:[]});delete TRK.ended;
   sortInit();
 }
 /* ---- PG salvati nel generatore schede (stessa origine) ---- */
@@ -1944,7 +2016,7 @@ function rosterAdd(){
   delete TRK.ended;trkSave();closeRoster();sortInit();showTab("track");renderTrk();toast(`👥 ${ids.length} PG nel tracker: tira l'iniziativa e inseriscila`);
 }
 /* fine combattimento: riporta sulle schede PF, PF temporanei, condizioni e TS contro morte (con conferma) */
-function syncPcsToSheets(){
+async function syncPcsToSheets(){
   const rows=TRK.list.filter(u=>u.pc&&u.charId&&u.hp!=null);if(!rows.length)return 0;
   const list=dbGet("chars",[]);const ch=[];
   rows.forEach(u=>{const it=list.find(x=>x.id===u.charId);if(!it||!it.data)return;
@@ -1957,7 +2029,7 @@ function syncPcsToSheets(){
     if(u.hp===0&&((u.dsS||0)||(u.dsF||0)))d.push(`TS morte ${u.dsS||0}✓ ${u.dsF||0}✗`);
     if(d.length)ch.push({it,u,nc,txt:`• ${u.name}: ${d.join(" · ")}`})});
   if(!ch.length)return 0;
-  if(!confirm("Aggiornare le schede dei personaggi con lo stato di fine combattimento?\n\n"+ch.map(c=>c.txt).join("\n")))return 0;
+  if(!await uiConfirm("",{title:"🔄 Schede dei personaggi",html:`Aggiornare le schede con lo stato di fine combattimento?<div class="ui-list">${uiEsc(ch.map(c=>c.txt).join("\n"))}</div>`,yes:"Aggiorna le schede",no:"Non aggiornare"}))return 0;
   const now=Date.now();
   ch.forEach(({it,u,nc})=>{const p=it.data.play||(it.data.play={hp:null,thp:0,slots:{},pact:0,hd:0,dsS:0,dsF:0,insp:false,res:{}});
     p.hp=(it.st&&u.hp>=it.st.hpM)?null:u.hp;p.thp=u.thp||0;p.cond=nc;p.dsS=u.hp===0?(u.dsS||0):0;p.dsF=u.hp===0?(u.dsF||0):0;
@@ -1987,13 +2059,14 @@ function addPcRow(p){
     if(!ex){row.thp=parseInt(p.thp,10)||0;row.cond=pcCondIn(p.cond);row.dsS=p.dsS||0;row.dsF=p.dsF||0}}
   if(ex)Object.assign(ex,row);else TRK.list.push(row);
 }
-function importPc(obj){
+async function importPc(obj){
   if(obj&&obj.type==="dnd5e_party"&&Array.isArray(obj.pcs)){obj.pcs.forEach(addPcRow);return obj.pcs.length}
   if(obj&&obj._stats&&obj._stats.name){addPcRow(obj._stats);return 1}
   if(obj&&obj.name&&(obj.race||obj.cls)){
     /* personaggio esportato con una versione precedente: chiedi i dati mancanti */
-    const ac=parseInt(prompt(`CA di ${obj.name}?`,"14"),10)||14;
-    const hp=parseInt(prompt(`PF massimi di ${obj.name}?`,"20"),10)||20;
+    const f=await uiForm(`👤 ${obj.name}`,[{k:"ac",label:"CA",type:"number",value:"14"},{k:"hp",label:"PF massimi",type:"number",value:"20"}],
+      {text:"Il personaggio è stato esportato con una versione precedente: indica CA e PF.",yes:"Aggiungi"});if(!f)return 0;
+    const ac=parseInt(f.ac,10)||14,hp=parseInt(f.hp,10)||20;
     addPcRow({name:obj.name,race:obj.race,cls:obj.cls,ac,hpM:hp,init:0});return 1}
   return 0;
 }
@@ -2001,7 +2074,7 @@ $("pcFile").addEventListener("change",e=>{
   const files=[...e.target.files];if(!files.length)return;
   let done=0,pending=files.length;
   files.forEach(f=>{const rd=new FileReader();
-    rd.onload=()=>{try{done+=importPc(safeParse(rd.result,PZ_ALLOW))}catch(err){}
+    rd.onload=async()=>{try{done+=await importPc(safeParse(rd.result,PZ_ALLOW))}catch(err){}
       if(--pending===0){
         if(done){trkSave();sortInit();showTab("track");renderTrk()}
         else alert("Nessun personaggio riconosciuto nel file. Usa l'export del generatore schede (party o singolo PG).");
@@ -2082,7 +2155,8 @@ function dsPips(u){
   return`<span style="white-space:nowrap;font-size:.68rem;color:var(--muted)" title="Tiri salvezza contro morte: successi (verdi) e fallimenti (rossi)">☠ ${[0,1,2].map(k=>pip("dsS",k,"#5a8a5a")).join("")} ${[0,1,2].map(k=>pip("dsF",k,"#b54444")).join("")}</span>`;
 }
 function rmU(id){snap();TRK.list=TRK.list.filter(x=>x.id!==id);trkSave();renderTrk()}
-function clearTrk(){if(!confirm("Svuotare il tracker?"))return;snap();TRK={list:[],turn:-1,round:0,fx:[]};trkSave();renderTrk()}
+function clearTrk(){if(!TRK.list.length&&!(TRK.fx||[]).length)return;const prev=JSON.stringify(TRK);snap();TRK={list:[],turn:-1,round:0,fx:[]};trkSave();renderTrk();
+  uiUndo("🗑 Tracker svuotato",()=>{TRK=JSON.parse(prev);trkSave();renderTrk()})}
 function renderTrk(){
   ks();
   $("roundLbl").textContent=TRK.round>0?`— Round ${TRK.round}`:"";
