@@ -1045,11 +1045,11 @@ function dlog(t){DLOG.unshift(t);DLOG=DLOG.slice(0,5);
   $("dlog").innerHTML=DLOG.map((x,i)=>i?`<span style="color:#8a7a5a">${x}</span>`:`<b style="color:var(--gold-l)">${x}</b>`).join(" · ")}
 function rollD(n){dlog(`d${n}: <b>${D(n)}</b>`)}
 function rollAtk(label,bonus){const r=D(20);
-  dlog(`${label}: (${r})${bonus>=0?"+":""}${bonus} = <b>${r+bonus}</b>${r===20?" ⭐":r===1?" 💀":""}`)}
+  dlog(`${esc(label)}: (${r})${bonus>=0?"+":""}${bonus} = <b>${r+bonus}</b>${r===20?" ⭐":r===1?" 💀":""}`)}
 function rollDmgX(label,expr){const m=expr.match(/(\d+)d(\d+)([+-]\d+)?/);if(!m)return;
   let tot=0,det=[];for(let i=0;i<+m[1];i++){const r=D(+m[2]);tot+=r;det.push(r)}
   const md=m[3]?parseInt(m[3],10):0;tot+=md;
-  dlog(`${label} (${expr}): [${det.join(",")}]${md?(md>0?"+":"")+md:""} = <b>${tot}</b>`)}
+  dlog(`${esc(label)} (${esc(expr)}): [${det.join(",")}]${md?(md>0?"+":"")+md:""} = <b>${tot}</b>`)}
 function dbarVis(){$("dbar").style.display=(TAB==="track"||$("sbModal").style.display==="flex")?"flex":"none"}
 /* pulsanti di tiro estratti dal testo di un'azione */
 function sbBtns(name,txt){
@@ -1545,7 +1545,7 @@ function addFx(){
 function rmFx(id){TRK.fx=TRK.fx.filter(f=>f.id!==id);trkSave();renderTrk()}
 function tickFx(){
   TRK.fx.forEach(f=>f.rds--);
-  TRK.fx.filter(f=>f.rds<=0).forEach(f=>dlog(`⏳ Effetto terminato: <b>${f.name}</b>${f.tgt?" ("+f.tgt+")":""}`));
+  TRK.fx.filter(f=>f.rds<=0).forEach(f=>dlog(`⏳ Effetto terminato: <b>${esc(f.name)}</b>${f.tgt?" ("+esc(f.tgt)+")":""}`));
   TRK.fx=TRK.fx.filter(f=>f.rds>0);
 }
 /* tana */
@@ -1744,8 +1744,11 @@ function syncPcsToSheets(){
 /* ---- import party dal generatore schede ---- */
 function addPcRow(p){
   const name=p.name||"PG";
-  /* se già presente (stesso nome), aggiorna invece di duplicare */
-  const ex=TRK.list.find(u=>u.pc&&u.name===name);
+  /* se già presente aggiorna invece di duplicare: i PG collegati a una scheda si riconoscono per ID
+     (due PG diversi con lo stesso nome restano separati); quelli senza scheda per nome */
+  const ex=p.charId
+    ?(TRK.list.find(u=>u.pc&&u.charId===p.charId)||TRK.list.find(u=>u.pc&&!u.charId&&u.name===name))
+    :TRK.list.find(u=>u.pc&&u.name===name);
   const hpM=parseInt(p.hpM,10)||null;
   const hpC=(p.hpC!=null&&!isNaN(parseInt(p.hpC,10)))?parseInt(p.hpC,10):hpM;
   const row={id:ex?ex.id:"t"+Date.now()+Math.random().toString(36).slice(2,6),

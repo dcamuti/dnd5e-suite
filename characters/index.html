@@ -2897,10 +2897,10 @@ function rollDie(n){dlog(`d${n}: ${1+Math.floor(Math.random()*n)}`)}
 function d20adv(){const a=1+Math.floor(Math.random()*20),b=1+Math.floor(Math.random()*20);
   if(ADV===0)return{t:a,txt:""+a};
   const t=ADV>0?Math.max(a,b):Math.min(a,b);return{t,txt:`${a},${b}→${t}`}}
-function doRoll(label,md){const r=d20adv();dlog(`${label}: (${r.txt})${md>=0?"+":""}${md} = <b>${r.t+md}</b>${r.t===20?" ⭐":r.t===1?" 💀":""}`)}
+function doRoll(label,md){const r=d20adv();dlog(`${htmlEsc(label)}: (${r.txt})${md>=0?"+":""}${md} = <b>${r.t+md}</b>${r.t===20?" ⭐":r.t===1?" 💀":""}`)}
 function rollDmg(label,dmg,md){const mm=dmg.match(/(\d+)d(\d+)/);let tot=0,det=[];
   if(mm)for(let i=0;i<+mm[1];i++){const r=1+Math.floor(Math.random()*+mm[2]);tot+=r;det.push(r)}
-  tot+=md;dlog(`${label} danni: [${det.join(",")}]${md?(md>0?"+":"")+md:""} = <b>${tot}</b>`)}
+  tot+=md;dlog(`${htmlEsc(label)} danni: [${det.join(",")}]${md?(md>0?"+":"")+md:""} = <b>${tot}</b>`)}
 function hpMod(d){const p=play(),mx=hpOf(finalScores());p.hp=Math.max(0,Math.min(mx,(p.hp==null?mx:p.hp)+d));buildSheet()}
 function thpMod(d){const p=play();p.thp=Math.max(0,(p.thp||0)+d);buildSheet()}
 function pipSet(field,k,lvl){const p=play();
@@ -3213,7 +3213,7 @@ function buildSheet(){
   if(gw.length)gw.forEach(wn=>{const w=WEAPONS.find(x=>x[0]===wn);if(!w)return;
     const ab=w[3]==="r"?"dex":(w[4]?(mod(f.dex)>=mod(f.str)?"dex":"str"):"str");
     const m=mod(f[ab]);const wnm=LANG==="it"?w[1]:w[0];
-    h+=`<div class="sh-line"><span class="${PLAY?"rollable":""}" ${PLAY?`onclick="doRoll(${jsa("Attacco: "+wnm)},${m+pb})"`:""}>${LANG==="it"?w[1]:w[0]}${PLAY?" 🎲":""}${w[5]?` <i style="color:#999;font-size:.74rem">(${w[5]})</i>`:""}</span><b class="${PLAY?"rollable":""}" ${PLAY?`onclick="rollDmg(${jsa(wnm)},${jsa(w[2])},${m})"`:""}>${fm(m+pb)} · ${w[2]} ${fm(m)}${PLAY?" 🎲":""}</b></div>`});
+    h+=`<div class="sh-line"><span class="${PLAY?"rollable":""}" ${PLAY?`onclick="doRoll(${jsa("Attacco: "+wnm)},${m+pb})"`:""}>${htmlEsc(LANG==="it"?w[1]:w[0])}${PLAY?" 🎲":""}${w[5]?` <i style="color:#999;font-size:.74rem">(${htmlEsc(w[5])})</i>`:""}</span><b class="${PLAY?"rollable":""}" ${PLAY?`onclick="rollDmg(${jsa(wnm)},${jsa(w[2])},${m})"`:""}>${fm(m+pb)} · ${w[2]} ${fm(m)}${PLAY?" 🎲":""}</b></div>`});
   else entries().forEach(e=>{clsOf(e.n).atk.forEach(([n,dmg,ab])=>{
     const m=mod(f[ab]);h+=`<div class="sh-line"><span>${n}</span><b>${fm(m+pb)} · ${dmg} ${fm(m)}</b></div>`})});
   h+=`</div>`;
