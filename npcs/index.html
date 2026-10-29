@@ -630,7 +630,6 @@ function makeNpc(){
   const occ=R(cat[1]);
   const powIdx=fP==="1"?R([0,1,1,1,2]):parseInt(fP,10);
   const sbKey=occ[1][powIdx];
-  const pool=NM[race[2]]||NM.hum;
   const name=npcName(race[2],sex);
   return {
     name, race:race[1], raceEn:race[0], raceNote:race[4], sex, age:ageDesc(),

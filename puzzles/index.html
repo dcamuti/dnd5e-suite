@@ -910,7 +910,6 @@ function doWords(){
     body=`<i>«${sent}»</i>`;
     dm=`<b>Soluzione:</b> <span class="sol">${w}</span> — le lettere compaiono consecutive dentro la frase: <span class="mono">${esc(sent).replace(new RegExp(w.toLowerCase(),"i"),"[$&]")}</span><br><b>Indizio:</b> «leggi senza respirare tra le parole».<br><b>Prova:</b> Intelligenza (Indagare) CD 15.`;
   }else{
-    const half=w.slice(0,Math.ceil(w.length/2));
     const pal=w+"·"+w.split("").reverse().join("");
     title="Lo specchio di parole";
     body=`Sull'arco, due iscrizioni gemelle:\n\n<b style="font-size:1.3rem;letter-spacing:5px">${pal}</b>\n\n<i>«Ciò che va e ciò che torna sono la stessa cosa.»</i>`;
@@ -1179,7 +1178,8 @@ function zebraGen(d,theme){
   const ord=["primo","secondo","terzo","quarto"];
   const mkClue=()=>{const t=rPick(["same","same","pos","left","next","not","not"]);
     const c1=rInt(0,cats.length-1);let c2=rInt(0,cats.length-1);if(c2===c1)c2=(c1+1)%cats.length;
-    const p=rInt(0,n-1),q=rInt(0,n-1);
+    /* q non è usato, ma il tiro va mantenuto: toglierlo cambierebbe gli enigmi generati dagli stessi semi */
+    const p=rInt(0,n-1),q=rInt(0,n-1);// eslint-disable-line no-unused-vars
     const v1=sol[c1][p];
     if(t==="same"){const v2=sol[c2][p];return{t,c1,v1,c2,v2}}
     if(t==="not"){const v2=sol[c2][(p+1+rInt(0,n-2))%n];return{t,c1,v1,c2,v2}}

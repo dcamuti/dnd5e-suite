@@ -568,9 +568,8 @@ function encMult(n){
   return steps[i];
 }
 function renderTh(){
-  const t=partyTh(),lv=partyLevels();
+  const t=partyTh();
   $("thBoxes").innerHTML=t.map((x,i)=>`<div class="th-box d${i+1}"><div class="tl">${DIFF_N[i]}</div><div class="tv">${x.toLocaleString("it-IT")} XP</div></div>`).join("");
-  const daily=lv.reduce((s,l)=>s+[300,600,1200,1700,3500,4000,5000,6000,7500,9000,10500,11500,13500,15000,18000,20000,25000,27000,30000,40000][l-1],0);
 }
 
 /* ================= BESTIARIO: dataset ================= */
