@@ -110,6 +110,16 @@ label.f{display:block; font-size:.74rem; color:var(--muted); margin:8px 0 3px; l
 .obj .warn{position:absolute; right:-3px; top:-5px; font-size:12px; pointer-events:none; filter:drop-shadow(0 1px 1px #000)}
 .refbox{border-top:1px solid var(--border); margin-top:10px; padding-top:8px; font-size:.8rem}
 .refbox a{color:var(--gold-l)}
+#cvFog{pointer-events:none}
+.fogtools{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px}
+.fogtools .btn{padding:6px 4px; font-size:.72rem}
+.chk{display:flex; gap:6px; align-items:center; font-size:.78rem; color:var(--ink); margin-top:8px; cursor:pointer}
+.chk input{width:auto}
+body.pv{background:#000}
+body.pv .app-header,body.pv .suite-nav,body.pv .side,body.pv .zoombar,body.pv .status,body.pv #toast{display:none !important}
+body.pv .layout{display:block; max-width:none; padding:0; margin:0}
+body.pv .vp{height:100vh; min-height:0; border:none; border-radius:0; background:#000; cursor:none}
+body.pv .obj{cursor:none}
 .credits{font-size:.68rem; color:var(--muted); margin-top:14px; line-height:1.4}
 .credits a{color:var(--muted)}
 @media (max-width:1100px){
@@ -159,6 +169,22 @@ label.f{display:block; font-size:.74rem; color:var(--muted); margin:8px 0 3px; l
       <button class="btn small" data-sz="2" onclick="setBrush(2)">2</button>
       <button class="btn small" data-sz="3" onclick="setBrush(3)">3</button>
     </div>
+    <h2>Nebbia e giocatori</h2>
+    <div class="fogtools">
+      <button class="btn" id="fogOn" onclick="setFogOn(!M.fog.on)" style="grid-column:1/-1">🌫 Nebbia spenta</button>
+      <button class="btn fogtool" data-m="reveal" onclick="setMode('reveal')" title="Rivela a pennello (usa la dimensione del pennello)">✨ Rivela</button>
+      <button class="btn fogtool" data-m="cover" onclick="setMode('cover')" title="Copri a pennello">🌫 Copri</button>
+      <button class="btn fogtool" data-m="revrect" onclick="setMode('revrect')" title="Rivela un rettangolo">▭ Rivela area</button>
+      <button class="btn fogtool" data-m="revroom" onclick="setMode('revroom')" title="Rivela la stanza fino a muri e porte">🚪 Rivela stanza</button>
+      <button class="btn fogtool" onclick="fogAll(true)">☀ Rivela tutto</button>
+      <button class="btn fogtool" onclick="fogAll(false)">🌑 Copri tutto</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="pcHp" onchange="setPcHp(this.checked)"> Mostra ai giocatori i PF dei PG</label>
+    <div class="fogtools">
+      <button class="btn gold" onclick="openPlayers()" style="grid-column:1/-1">📺 Apri vista giocatori</button>
+      <button class="btn" onclick="pvShowHere()" title="Inquadra nella vista giocatori la zona che stai guardando">📍 Mostra qui</button>
+      <button class="btn" onclick="pvAuto()" title="La vista giocatori torna ad adattarsi all'area rivelata">⤢ Adatta</button>
+    </div>
     <h2>Terreno</h2>
     <div class="terr" id="terrBtns"></div>
     <div class="empty" id="terrName" style="margin-top:6px"></div>
@@ -177,6 +203,7 @@ label.f{display:block; font-size:.74rem; color:var(--muted); margin:8px 0 3px; l
       <div class="stage" id="stage">
         <canvas id="cv"></canvas>
         <canvas id="cvGrid"></canvas>
+        <canvas id="cvFog"></canvas>
         <div id="rectPrev"></div>
         <div id="objs"></div>
         <svg id="ruler"></svg>
@@ -520,7 +547,8 @@ function normalizeMap(m){
     notes:typeof m.notes==="string"?m.notes:"",created:m.created||new Date().toISOString(),updated:m.updated||new Date().toISOString()};
   if(m.src&&typeof m.src==="object"&&m.src.t&&m.src.id)out.src={t:String(m.src.t),id:String(m.src.id)};
   if(m.bg&&typeof m.bg==="object")out.bg=m.bg;
-  return out}
+  out.players={pcHp:!(m.players&&m.players.pcHp===false)};
+  return fogNorm(out)}
 function blankMap(name,w,h,start){
   const pal=DEF_PALETTE(),ix=k=>CH[pal.findIndex(p=>p.k===k)];
   const terrain=[];for(let y=0;y<h;y++){let r="";for(let x=0;x<w;x++){
@@ -535,15 +563,15 @@ function saveNow(){if(!M)return;clearTimeout(SAVE_T);SAVE_T=null;M.updated=new D
   const all=dbGet("maps",[]);const list=Array.isArray(all)?all:[];const i=list.findIndex(x=>x&&x.id===M.id);
   if(i>=0)list[i]=M;else list.unshift(M);
   if(dbSet("maps",list))DIRTY=false;renderInfo()}
-function saveSoon(){DIRTY=true;clearTimeout(SAVE_T);SAVE_T=setTimeout(saveNow,400)}
+function saveSoon(){DIRTY=true;clearTimeout(SAVE_T);SAVE_T=setTimeout(saveNow,400);pvSend()}
 window.addEventListener("beforeunload",()=>{if(DIRTY)saveNow()});
 
 /* ---- annulla / ripeti ---- */
 let UNDO=[],REDO=[];
-function snap(){if(!M)return;UNDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid}));if(UNDO.length>60)UNDO.shift();REDO=[];updUndo()}
-function restoreSnap(s){const o=JSON.parse(s);M.terrain=o.terrain;M.objects=o.objects;M.grid=o.grid;SEL=null;buildStage();renderObjs();renderSel();renderMapForm();saveSoon()}
-function undo(){if(!UNDO.length)return;REDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid}));restoreSnap(UNDO.pop());updUndo()}
-function redo(){if(!REDO.length)return;UNDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid}));restoreSnap(REDO.pop());updUndo()}
+function snap(){if(!M)return;UNDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog}));if(UNDO.length>60)UNDO.shift();REDO=[];updUndo()}
+function restoreSnap(s){const o=JSON.parse(s);M.terrain=o.terrain;M.objects=o.objects;M.grid=o.grid;if(o.fog)M.fog=o.fog;fogNorm(M);renderFogUI();SEL=null;buildStage();renderObjs();renderSel();renderMapForm();saveSoon()}
+function undo(){if(!UNDO.length)return;REDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog}));restoreSnap(UNDO.pop());updUndo()}
+function redo(){if(!REDO.length)return;UNDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog}));restoreSnap(REDO.pop());updUndo()}
 function updUndo(){$("bUndo").disabled=!UNDO.length;$("bRedo").disabled=!REDO.length}
 /* ================= DISEGNO DEL TERRENO =================
    pattern interni generati in canvas, con variazioni deterministiche per casella (stessa mappa = stesso aspetto) */
@@ -597,13 +625,14 @@ function buildStage(){const w=M.grid.w,h=M.grid.h,W=w*C,H=h*C;
   ["cv","cvGrid"].forEach(id=>{const c=$(id);c.width=W;c.height=H;c.style.width=W+"px";c.style.height=H+"px"});
   $("stage").style.width=W+"px";$("stage").style.height=H+"px";$("objs").style.width=W+"px";$("objs").style.height=H+"px";
   const ctx=$("cv").getContext("2d");ctx.clearRect(0,0,W,H);for(let y=0;y<h;y++)for(let x=0;x<w;x++)drawCell(ctx,x,y);
-  const g=$("cvGrid").getContext("2d");g.clearRect(0,0,W,H);drawGrid(g,w,h,.16);applyView()}
+  const g=$("cvGrid").getContext("2d");g.clearRect(0,0,W,H);drawGrid(g,w,h,.16);drawFog();applyView()}
 
 /* ================= ELEMENTI ================= */
 let SEL=null;
 const objVis=o=>o.vis||(o.secret?"dm":OBJ_TYPES[o.type].vis);
 function hpBar(i){if(!i||!i.live||!i.hpM)return"";const p=Math.max(0,Math.min(100,Math.round(i.hp/i.hpM*100)));return`<span class="hpb"><i class="${p<=25?"low":p<=50?"mid":""}" style="width:${p}%"></i></span>`}
-function renderObjs(){REFC=null;$("objs").innerHTML=M.objects.map(o=>{const s=o.size*C,t=OBJ_TYPES[o.type],hid=objVis(o)!=="all",info=refInfo(o),nm=dispName(o);
+function renderObjs(){REFC=null;const list=PVMODE?M.objects.filter(pvVisible):M.objects;$("objs").innerHTML=list.map(o=>{const s=o.size*C,t=OBJ_TYPES[o.type],hid=!PVMODE&&objVis(o)!=="all",info=refInfo(o),nm=dispName(o);
+  if(PVMODE)return`<div class="obj t-${o.type}" style="left:${o.x*C}px;top:${o.y*C}px;width:${s}px;height:${s}px"><div class="ic">${iconSvg(o.icon,t.col)}</div>${M.players.pcHp!==false?hpBar(info):""}${nm&&o.type!=="note"?`<span class="lbl">${esc(nm)}</span>`:""}</div>`;
   const tip=[nm||t.n,info&&!info.missing?[info.sub,info.ac?"CA "+info.ac:"",info.hp!==""&&info.hp!=null?("PF "+(info.live?info.hp+"/"+info.hpM:info.hp)):""].filter(Boolean).join(" · "):"",
     info&&info.missing?"⚠ elemento originale non più presente":"",hid?"nascosto ai giocatori":""].filter(Boolean).join(" — ");
   return`<div class="obj t-${o.type} vis-${objVis(o)} ${hid?"hid":""} ${SEL===o.id?"sel":""}" data-id="${o.id}" style="left:${o.x*C}px;top:${o.y*C}px;width:${s}px;height:${s}px"
@@ -652,8 +681,8 @@ const inMap=c=>M&&c.x>=0&&c.y>=0&&c.x<M.grid.w&&c.y<M.grid.h;
 const TOOLS=[["select","🖐 Seleziona","V"],["paint","🖌 Pennello","B"],["rect","▭ Rettangolo","R"],["fill","🪣 Riempi","F"],["erase","🧽 Gomma","E"],["ruler","📏 Righello","M"]];
 let MODE="select",BRUSH=1,TERR=1,ARMED=null;
 function setMode(m){MODE=m;ARMED=null;ARMED_S=null;document.querySelectorAll(".pal .it,.sitem").forEach(x=>x.classList.remove("armed"));
-  document.querySelectorAll("#toolBtns .btn").forEach(b=>b.classList.toggle("on",b.dataset.m===m));
-  $("vp").className="vp m-"+m;$("sizeRow").style.opacity=(m==="paint"||m==="erase")?1:.45;if(m!=="ruler")$("ruler").innerHTML=""}
+  document.querySelectorAll("[data-m]").forEach(b=>b.classList.toggle("on",b.dataset.m===m));
+  $("vp").className="vp m-"+m;$("sizeRow").style.opacity=(m==="paint"||m==="erase"||m==="reveal"||m==="cover")?1:.45;$("vp").classList.toggle("m-paint",m==="reveal"||m==="cover"||m==="revrect"||m==="revroom");if(m!=="ruler")$("ruler").innerHTML=""}
 function setBrush(n){BRUSH=n;document.querySelectorAll("#sizeRow .btn").forEach(b=>b.classList.toggle("on",+b.dataset.sz===n))}
 function setTerr(i){TERR=i;document.querySelectorAll("#terrBtns button").forEach((b,j)=>b.classList.toggle("on",j===i));
   const p=M&&M.palette[i];$("terrName").textContent=p?(TERR_BY_K[p.k]?TERR_BY_K[p.k].n:p.k):"";if(MODE!=="paint"&&MODE!=="rect"&&MODE!=="fill")setMode("paint")}
@@ -706,18 +735,25 @@ function onDown(e){if(!M)return;$("vp").focus({preventScroll:true});const c=cell
   if(MODE==="paint"||MODE==="erase"){snap();const ch=MODE==="erase"?"0":CH[TERR];paintAt(c.x,c.y,ch);PTR={kind:"paint",last:c,ch};$("vp").setPointerCapture(e.pointerId);return}
   if(MODE==="rect"){PTR={kind:"rect",a:c};showRect(c,c);$("vp").setPointerCapture(e.pointerId);return}
   if(MODE==="fill"){snap();floodFill(c,CH[TERR]);saveSoon();return}
-  if(MODE==="ruler"){PTR={kind:"ruler",a:c};drawRuler(c,c);$("vp").setPointerCapture(e.pointerId);return}}
+  if(MODE==="ruler"){PTR={kind:"ruler",a:c};drawRuler(c,c);$("vp").setPointerCapture(e.pointerId);return}
+  if(!M.fog.on)return;
+  if(MODE==="reveal"||MODE==="cover"){snap();const v=MODE==="reveal";fogBrush(c.x,c.y,v);drawFog();PTR={kind:"fog",last:c,v};$("vp").setPointerCapture(e.pointerId);return}
+  if(MODE==="revrect"){PTR={kind:"fogrect",a:c};showRect(c,c);$("vp").setPointerCapture(e.pointerId);return}
+  if(MODE==="revroom"){snap();const n=fogRoom(c);drawFog();renderObjs();saveSoon();$("status").textContent=`🚪 Rivelate ${n} caselle`;return}}
 function onMove(e){if(!M)return;const c=cellOf(e);
   if(!PTR){$("status").textContent=inMap(c)?`Casella ${c.x+1}, ${c.y+1} · ${(TERR_BY_K[(palAt(c.x,c.y)||{}).k]||{n:"—"}).n}`:`${M.grid.w}×${M.grid.h} caselle · 1 casella = ${M.grid.cell} ft`;return}
   if(PTR.kind==="pan"){VIEW.x=PTR.vx+e.clientX-PTR.sx;VIEW.y=PTR.vy+e.clientY-PTR.sy;applyView();return}
   if(PTR.kind==="paint"){const cc={x:Math.max(0,Math.min(M.grid.w-1,c.x)),y:Math.max(0,Math.min(M.grid.h-1,c.y))};if(cc.x!==PTR.last.x||cc.y!==PTR.last.y){paintLine(PTR.last,cc,PTR.ch);PTR.last=cc}return}
-  if(PTR.kind==="rect"){showRect(PTR.a,c);return}
+  if(PTR.kind==="rect"||PTR.kind==="fogrect"){showRect(PTR.a,c);return}
+  if(PTR.kind==="fog"){const cc={x:Math.max(0,Math.min(M.grid.w-1,c.x)),y:Math.max(0,Math.min(M.grid.h-1,c.y))};if(cc.x!==PTR.last.x||cc.y!==PTR.last.y){if(fogLine(PTR.last,cc,PTR.v))drawFog();PTR.last=cc}return}
   if(PTR.kind==="ruler"){drawRuler(PTR.a,c);return}
   if(PTR.kind==="move"){const o=M.objects.find(x=>x.id===PTR.id);if(!o)return;const el=document.querySelector(`.obj[data-id="${o.id}"]`);
     const nx=Math.max(0,Math.min(M.grid.w-o.size,Math.round(c.fx-PTR.ox))),ny=Math.max(0,Math.min(M.grid.h-o.size,Math.round(c.fy-PTR.oy)));
     if(nx!==o.x||ny!==o.y){if(!PTR.moved){snap();PTR.moved=true}o.x=nx;o.y=ny;if(el){el.style.left=nx*C+"px";el.style.top=ny*C+"px";el.classList.add("drag")}}}}
 function onUp(e){if(!PTR)return;const p=PTR;PTR=null;$("vp").classList.remove("panning");
   if(p.kind==="paint")saveSoon();
+  if(p.kind==="fog"){renderObjs();saveSoon()}
+  if(p.kind==="fogrect"){$("rectPrev").style.display="none";snap();fogRect(p.a,cellOf(e));drawFog();renderObjs();saveSoon()}
   if(p.kind==="rect"){$("rectPrev").style.display="none";snap();fillRect(p.a,cellOf(e),CH[TERR]);saveSoon()}
   if(p.kind==="move"){if(p.moved){renderObjs();renderSel();saveSoon()}}}
 function showRect(a,b){const r=$("rectPrev"),x0=Math.max(0,Math.min(a.x,b.x)),y0=Math.max(0,Math.min(a.y,b.y)),x1=Math.min(M.grid.w-1,Math.max(a.x,b.x)),y1=Math.min(M.grid.h-1,Math.max(a.y,b.y));
@@ -736,9 +772,9 @@ function applySize(){if(!M)return;const w=clampInt($("mW").value,GRID_MIN,GRID_M
   let lostCells=0;M.terrain.forEach((r,y)=>{for(let x=0;x<r.length;x++)if((x>=w||y>=h)&&r[x]!=="0")lostCells++});
   if((lostObj||lostCells)&&!confirm(`Riducendo la mappa si perdono ${lostCells} caselle disegnate${lostObj?` e ${lostObj} elementi fuori dai nuovi bordi`:""}. Continuare?`)){renderMapForm();return}
   snap();M.terrain=Array.from({length:h},(_,y)=>(M.terrain[y]||"").slice(0,w).padEnd(w,"0"));M.grid.w=w;M.grid.h=h;
-  M.objects=M.objects.filter(o=>o.x+o.size<=w&&o.y+o.size<=h);if(SEL&&!selObj())SEL=null;
+  M.objects=M.objects.filter(o=>o.x+o.size<=w&&o.y+o.size<=h);if(SEL&&!selObj())SEL=null;fogNorm(M);
   buildStage();renderObjs();renderSel();renderMapForm();fitView();saveSoon()}
-function openMap(m){if(DIRTY)saveNow();M=normalizeMap(m);SEL=null;UNDO=[];REDO=[];updUndo();renderToolUI();buildStage();renderObjs();renderSel();renderMapForm();
+function openMap(m){if(DIRTY)saveNow();M=normalizeMap(m);SEL=null;UNDO=[];REDO=[];updUndo();renderToolUI();buildStage();renderObjs();renderSel();renderMapForm();renderFogUI();pvSend();
   document.title="🗺 "+M.name+" · Mappe D&D 5E";requestAnimationFrame(fitView)}
 function openMd(id){$(id).style.display="flex"}
 function closeMd(id){$(id).style.display="none"}
@@ -774,7 +810,8 @@ function importJson(file){const rd=new FileReader();rd.onload=()=>{try{const d=s
 const PATHS={};function iconPath(n){if(!PATHS[n])PATHS[n]=new Path2D((ICONS[n]||ICONS["position-marker"]).d);return PATHS[n]}
 function exportPng(dm){if(!M)return;const W=M.grid.w*C,H=M.grid.h*C,sc=2;const cv=document.createElement("canvas");cv.width=W*sc;cv.height=H*sc;const ctx=cv.getContext("2d");
   ctx.scale(sc,sc);ctx.fillStyle="#0b0805";ctx.fillRect(0,0,W,H);ctx.drawImage($("cv"),0,0,W,H);if(SHOW_GRID)drawGrid(ctx,M.grid.w,M.grid.h,.18);
-  M.objects.filter(o=>dm||objVis(o)==="all").forEach(o=>{const s=o.size*C,t=OBJ_TYPES[o.type],x=o.x*C,y=o.y*C;ctx.save();
+  if(!dm&&M.fog.on){ctx.fillStyle="#000";for(let y=0;y<M.grid.h;y++)for(let x=0;x<M.grid.w;x++)if(!fogShown(x,y))ctx.fillRect(x*C,y*C,C,C)}
+  M.objects.filter(o=>dm||pvVisible(o)).forEach(o=>{const s=o.size*C,t=OBJ_TYPES[o.type],x=o.x*C,y=o.y*C;ctx.save();
     if(o.type==="token"){ctx.beginPath();ctx.arc(x+s/2,y+s/2,s*.41,0,7);const g=ctx.createRadialGradient(x+s*.35,y+s*.3,1,x+s/2,y+s/2,s*.45);g.addColorStop(0,"#4a3a26");g.addColorStop(1,"#1c140b");
       ctx.fillStyle=g;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=objVis(o)==="all"?"#c9a227":"#8b2e2e";ctx.stroke()}
     const pad=o.type==="token"?s*.22:s*.09,is=s-2*pad;ctx.translate(x+pad,y+pad);ctx.scale(is/512,is/512);ctx.shadowColor="rgba(0,0,0,.8)";ctx.shadowBlur=3;ctx.fillStyle=t.col;ctx.fill(iconPath(o.icon));ctx.restore();
@@ -857,8 +894,78 @@ let ARMED_S=null;
 function suiteArm(el){const was=el.classList.contains("armed");setMode("select");if(was)return;ARMED_S=[el.dataset.k,el.dataset.key];el.classList.add("armed");$("vp").className="vp m-place";
   toast("Clicca sulla mappa per posizionare (Esc per annullare)")}
 
+/* ================= NEBBIA DI GUERRA =================
+   M.fog = {on, shown:[righe "0"/"1", 1 = rivelata]}: spenta di default; accendendola la mappa parte tutta coperta.
+   Il master vede le caselle coperte scurite; la vista giocatori le vede nere. */
+function fogNorm(m){const w=m.grid.w,h=m.grid.h,f=m.fog||{on:false,shown:[]};
+  f.shown=Array.from({length:h},(_,y)=>{const r=typeof f.shown[y]==="string"?f.shown[y]:"";return r.slice(0,w).replace(/[^01]/g,"0").padEnd(w,"0")});f.on=!!f.on;m.fog=f;return m}
+const fogShown=(x,y)=>!M.fog.on||(M.fog.shown[y]&&M.fog.shown[y][x]==="1");
+function fogSet(x,y,v){if(x<0||y<0||x>=M.grid.w||y>=M.grid.h)return false;const r=M.fog.shown[y],ch=v?"1":"0";if(r[x]===ch)return false;M.fog.shown[y]=r.slice(0,x)+ch+r.slice(x+1);return true}
+function drawFog(){const cv=$("cvFog"),W=M.grid.w*C,H=M.grid.h*C;if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;cv.style.width=W+"px";cv.style.height=H+"px"}
+  const ctx=cv.getContext("2d");ctx.clearRect(0,0,W,H);if(!M.fog.on)return;
+  ctx.fillStyle=PVMODE?"#000":"rgba(4,3,2,.62)";for(let y=0;y<M.grid.h;y++){const r=M.fog.shown[y];for(let x=0;x<M.grid.w;x++)if(r[x]!=="1")ctx.fillRect(x*C,y*C,C,C)}
+  if(!PVMODE){ctx.strokeStyle="rgba(160,140,110,.18)";ctx.lineWidth=1;ctx.beginPath();for(let y=0;y<M.grid.h;y++){const r=M.fog.shown[y];for(let x=0;x<M.grid.w;x++)if(r[x]!=="1"){ctx.moveTo(x*C+2,y*C+C-2);ctx.lineTo(x*C+C-2,y*C+2)}}ctx.stroke()}}
+function setFogOn(on){if(!M)return;snap();if(on&&!M.fog.on&&!M.fog.shown.some(r=>r.includes("1")))M.fog.shown=M.fog.shown.map(r=>"0".repeat(r.length));
+  M.fog.on=on;drawFog();renderObjs();renderFogUI();saveSoon();if(on&&MODE==="select")setMode("reveal")}
+function fogAll(v){if(!M||!M.fog.on)return;snap();M.fog.shown=M.fog.shown.map(r=>(v?"1":"0").repeat(r.length));drawFog();renderObjs();saveSoon()}
+function fogBrush(cx,cy,v){const o=Math.floor((BRUSH-1)/2);let ch=false;for(let y=cy-o;y<cy-o+BRUSH;y++)for(let x=cx-o;x<cx-o+BRUSH;x++)ch=fogSet(x,y,v)||ch;return ch}
+function fogLine(a,b,v){let x0=a.x,y0=a.y;const dx=Math.abs(b.x-x0),dy=-Math.abs(b.y-y0),sx=x0<b.x?1:-1,sy=y0<b.y?1:-1;let err=dx+dy,ch=false;
+  for(let n=0;n<500;n++){ch=fogBrush(x0,y0,v)||ch;if(x0===b.x&&y0===b.y)break;const e2=2*err;if(e2>=dy){err+=dy;x0+=sx}if(e2<=dx){err+=dx;y0+=sy}}return ch}
+function fogRect(a,b){const x0=Math.max(0,Math.min(a.x,b.x)),x1=Math.min(M.grid.w-1,Math.max(a.x,b.x)),y0=Math.max(0,Math.min(a.y,b.y)),y1=Math.min(M.grid.h-1,Math.max(a.y,b.y));
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)fogSet(x,y,true)}
+/* rivela la stanza: area connessa fino ai muri (rivelati ma non attraversati); le porte e il vuoto fanno da confine come i muri */
+function fogRoom(c){const doors=new Set();M.objects.filter(o=>o.type==="door").forEach(o=>{for(let j=0;j<o.size;j++)for(let i=0;i<o.size;i++)doors.add((o.x+i)+","+(o.y+j))});
+  const stop=(x,y)=>{const p=palAt(x,y);return!p||p.k==="wall"||p.pattern==="none"||doors.has(x+","+y)};
+  const seen=new Set(),st=[[c.x,c.y]];let n=0;
+  if(stop(c.x,c.y)){fogBrush(c.x,c.y,true);return 1}
+  while(st.length&&n<GRID_MAX*GRID_MAX){const [x,y]=st.pop(),k=x+","+y;if(seen.has(k)||x<0||y<0||x>=M.grid.w||y>=M.grid.h)continue;seen.add(k);
+    fogSet(x,y,true);n++;
+    /* anche le caselle di confine in diagonale, così gli angoli dei muri si vedono */
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=M.grid.w||ny>=M.grid.h)continue;
+      if(stop(nx,ny))fogSet(nx,ny,true);else if(!dx||!dy)st.push([nx,ny])}}
+  return n}
+function setPcHp(v){if(!M)return;M.players=M.players||{};M.players.pcHp=!!v;saveSoon()}
+function renderFogUI(){if(!M||!$("fogOn"))return;$("fogOn").classList.toggle("on",M.fog.on);$("fogOn").textContent=M.fog.on?"🌫 Nebbia attiva":"🌫 Nebbia spenta";
+  document.querySelectorAll(".fogtool").forEach(b=>b.disabled=!M.fog.on);$("pcHp").checked=!M.players||M.players.pcHp!==false}
+
+/* ================= VISTA GIOCATORI =================
+   seconda finestra in sola lettura (maps/index.html#view=<id>), aggiornata dal master con BroadcastChannel
+   (o, se non disponibile, dallo storage). Gli spostamenti arrivano quando il token viene rilasciato. */
+let PVMODE=false,PVCH=null,PV_LOCK=null,PV_SEND_T=null;
+try{PVCH=new BroadcastChannel("dnd5e-maps")}catch(e){PVCH=null}
+function pvPost(msg){if(PVCH)try{PVCH.postMessage(msg)}catch(e){}}
+function pvSend(){if(PVMODE||!M)return;clearTimeout(PV_SEND_T);PV_SEND_T=setTimeout(()=>pvPost({t:"map",map:M}),60)}
+function openPlayers(){if(!M)return;if(DIRTY)saveNow();const w=window.open("index.html#view="+encodeURIComponent(M.id),"dnd5e_pv","width=1100,height=760");
+  if(!w){alert("Il browser ha bloccato la finestra: consenti i popup per questa pagina, oppure apri a mano l'indirizzo della mappa aggiungendo  #view="+M.id);return}
+  setTimeout(pvSend,400);toast("📺 Vista giocatori aperta: spostala sulla TV o sul secondo schermo")}
+/* centra la vista giocatori sulla zona inquadrata dal master; «Adatta» torna all'inquadratura automatica */
+function pvShowHere(){if(!M)return;const r=$("vp").getBoundingClientRect();const x0=(-VIEW.x)/VIEW.z/C,y0=(-VIEW.y)/VIEW.z/C;
+  pvPost({t:"view",id:M.id,x:x0,y:y0,w:r.width/VIEW.z/C,h:r.height/VIEW.z/C});toast("📺 Vista giocatori centrata qui")}
+function pvAuto(){if(M)pvPost({t:"view",id:M.id,auto:true});toast("📺 Vista giocatori adattata all'area rivelata")}
+/* --- lato giocatori --- */
+function pvVisible(o){if(objVis(o)!=="all")return false;if(!M.fog.on)return true;
+  for(let j=0;j<o.size;j++)for(let i=0;i<o.size;i++)if(fogShown(o.x+i,o.y+j))return true;return false}
+function pvFit(){if(!M)return;const r=$("vp").getBoundingClientRect();let x0=0,y0=0,x1=M.grid.w,y1=M.grid.h;
+  if(PV_LOCK){x0=PV_LOCK.x;y0=PV_LOCK.y;x1=x0+PV_LOCK.w;y1=y0+PV_LOCK.h}
+  else if(M.fog.on){let a=[1e9,1e9,-1,-1];M.fog.shown.forEach((row,y)=>{for(let x=0;x<row.length;x++)if(row[x]==="1"){a=[Math.min(a[0],x),Math.min(a[1],y),Math.max(a[2],x),Math.max(a[3],y)]}});
+    if(a[2]>=0){x0=Math.max(0,a[0]-1);y0=Math.max(0,a[1]-1);x1=Math.min(M.grid.w,a[2]+2);y1=Math.min(M.grid.h,a[3]+2)}}
+  const W=(x1-x0)*C,H=(y1-y0)*C;VIEW.z=Math.max(.15,Math.min(3,Math.min(r.width/W,r.height/H)));
+  VIEW.x=(r.width-W*VIEW.z)/2-x0*C*VIEW.z;VIEW.y=(r.height-H*VIEW.z)/2-y0*C*VIEW.z;applyView()}
+function pvRender(m){M=fogNorm(normalizeMap(m));if(!M.players)M.players={pcHp:true};document.title="📺 "+M.name+" · Vista giocatori";
+  $("cvGrid").style.display="";buildStage();drawFog();renderObjs();pvFit()}
+function pvStart(id){PVMODE=true;document.body.classList.add("pv");
+  const m=mapsAll().find(x=>x.id===id);if(!m){document.body.innerHTML='<p style="padding:40px;color:#a89878;font-family:Georgia">Mappa non trovata.</p>';return}
+  pvRender(m);
+  if(PVCH)PVCH.onmessage=e=>{const d=e.data||{};if(d.t==="map"&&d.map){if(d.map.id!==M.id)PV_LOCK=null;pvRender(d.map)}
+    else if(d.t==="view"&&d.id===M.id){PV_LOCK=d.auto?null:{x:d.x,y:d.y,w:d.w,h:d.h};pvFit()}};
+  window.addEventListener("storage",e=>{if(e.key!==dbKey("maps"))return;const n=mapsAll().find(x=>x.id===M.id);if(n&&n.updated!==M.updated)pvRender(n)});
+  window.addEventListener("resize",pvFit);
+  pvPost({t:"hello",id})}
+
 /* ================= AVVIO ================= */
 (function(){
+  if(location.hash.indexOf("#view=")===0){pvStart(decodeURIComponent(location.hash.slice(6)));return}
+  if(PVCH)PVCH.onmessage=e=>{const d=e.data||{};if(d.t==="hello")pvSend()};
   const vp=$("vp");
   vp.addEventListener("pointerdown",onDown);vp.addEventListener("pointermove",onMove);vp.addEventListener("pointerup",onUp);vp.addEventListener("pointercancel",onUp);
   vp.addEventListener("wheel",e=>{e.preventDefault();const r=vp.getBoundingClientRect();zoomAt(e.deltaY<0?1.12:1/1.12,e.clientX-r.left,e.clientY-r.top)},{passive:false});
