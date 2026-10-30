@@ -64,7 +64,9 @@ label.f{display:block; font-size:.74rem; color:var(--muted); margin:8px 0 3px; l
 .stage canvas{position:absolute; left:0; top:0; image-rendering:auto}
 #cvGrid{pointer-events:none}
 #objs{position:absolute; left:0; top:0}
-.obj{position:absolute; display:flex; align-items:center; justify-content:center; cursor:pointer; touch-action:none}
+.obj{position:absolute; display:flex; align-items:center; justify-content:center; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none}
+.obj.drag{cursor:grabbing}
+.obj img,.obj svg{-webkit-user-drag:none; user-select:none; pointer-events:none}
 .obj .ic{width:82%; height:82%; display:flex; align-items:center; justify-content:center; border-radius:6px}
 .obj .ic svg{width:100%; height:100%; filter:drop-shadow(0 1px 1px rgba(0,0,0,.8))}
 .obj.t-token .ic{border-radius:50%; background:radial-gradient(circle at 35% 30%,#4a3a26,#1c140b); border:2px solid #c9a227; padding:9%}
@@ -327,7 +329,7 @@ select,input,textarea,.fld{max-width:100%}
   </section>
   <aside class="side">
     <h2>Selezione</h2>
-    <div id="selBox"><div class="empty">Nessun elemento selezionato. Con 🖐 Seleziona clicca un elemento per modificarlo; trascinalo per spostarlo.</div></div>
+    <div id="selBox"><div class="empty">Nessun elemento selezionato. Clicca un elemento per modificarlo; trascinalo per spostarlo (con qualunque strumento; tieni premuto Alt per lavorare sulla casella sotto).</div></div>
     <h2>Mappa</h2>
     <label class="f">Nome</label><input type="text" id="mName" oninput="setMapName(this.value)">
     <div class="row2">
@@ -928,7 +930,7 @@ function addObject(def,x,y){if(!M)return;const [type,icon,label,extra]=def;const
   M.objects.push(o);SEL=o.id;renderObjs();renderSel();saveSoon()}
 function selObj(){return M&&SEL?M.objects.find(o=>o.id===SEL):null}
 function renderSel(){const o=selObj(),b=$("selBox");
-  if(!o){b.innerHTML='<div class="empty">Nessun elemento selezionato. Con 🖐 Seleziona clicca un elemento per modificarlo; trascinalo per spostarlo.</div>';return}
+  if(!o){b.innerHTML='<div class="empty">Nessun elemento selezionato. Clicca un elemento per modificarlo; trascinalo per spostarlo (con qualunque strumento; tieni premuto Alt per lavorare sulla casella sotto).</div>';return}
   const t=OBJ_TYPES[o.type],v=objVis(o);
   b.innerHTML=`<div class="selcard"><div class="head"><div class="sw">${iconSvg(o.icon,t.col)}</div><div><b style="color:var(--gold-l);font-family:var(--font-display)">${esc(t.n)}${o.secret?" segreta":""}</b><br><span class="empty">Casella ${o.x+1}, ${o.y+1}</span></div></div>
    ${o.ref?refPanel(o):`<label class="f">Etichetta</label><input type="text" id="sLabel" value="${esc(o.label)}" oninput="setObj('label',this.value)">`}
@@ -1018,6 +1020,9 @@ function onDown(e){if(!M)return;$("vp").focus({preventScroll:true});const c=cell
   if(ARMED){if(inMap(c))addObject(ARMED,c.x,c.y);setMode("select");return}
   if(ARMED_S){const a=ARMED_S;setMode("select");if(inMap(c))addSuite(a[0],a[1],c.x,c.y);return}
   const objEl=e.target.closest(".obj");
+  /* un elemento si prende e si sposta con qualunque strumento (con Alt premuto si lavora invece sulla casella sotto) */
+  if(objEl&&MODE!=="ruler"&&!e.altKey){const o=M.objects.find(x=>x.id===objEl.dataset.id);if(o){SEL=o.id;OBJ_EDIT_SNAP=false;renderObjs();renderSel();
+      PTR={kind:"move",id:o.id,ox:c.fx-o.x,oy:c.fy-o.y,start:{x:o.x,y:o.y},moved:false};$("vp").setPointerCapture(e.pointerId);return}}
   if(MODE==="select"){
     if(objEl){const o=M.objects.find(x=>x.id===objEl.dataset.id);SEL=o.id;OBJ_EDIT_SNAP=false;renderObjs();renderSel();
       PTR={kind:"move",id:o.id,ox:c.fx-o.x,oy:c.fy-o.y,start:{x:o.x,y:o.y},moved:false};$("vp").setPointerCapture(e.pointerId);return}
@@ -1037,11 +1042,11 @@ function onMove(e){if(!M)return;const c=cellOf(e);
   if(PTR.kind==="pan"){VIEW.x=PTR.vx+e.clientX-PTR.sx;VIEW.y=PTR.vy+e.clientY-PTR.sy;applyView();return}
   if(PTR.kind==="paint"){const cc={x:Math.max(0,Math.min(M.grid.w-1,c.x)),y:Math.max(0,Math.min(M.grid.h-1,c.y))};if(cc.x!==PTR.last.x||cc.y!==PTR.last.y){paintLine(PTR.last,cc,PTR.ch);PTR.last=cc}return}
   if(PTR.kind==="rect"||PTR.kind==="fogrect"){showRect(PTR.a,c);return}
-  if(PTR.kind==="fog"){const cc={x:Math.max(0,Math.min(M.grid.w-1,c.x)),y:Math.max(0,Math.min(M.grid.h-1,c.y))};if(cc.x!==PTR.last.x||cc.y!==PTR.last.y){if(fogLine(PTR.last,cc,PTR.v))drawFog();PTR.last=cc}return}
+  if(PTR.kind==="fog"){const cc={x:Math.max(0,Math.min(M.grid.w-1,c.x)),y:Math.max(0,Math.min(M.grid.h-1,c.y))};if(cc.x!==PTR.last.x||cc.y!==PTR.last.y){if(fogLine(PTR.last,cc,PTR.v)){drawFog();pvLive({t:"fog",id:M.id,shown:M.fog.shown})}PTR.last=cc}return}
   if(PTR.kind==="ruler"){drawRuler(PTR.a,c);return}
   if(PTR.kind==="move"){const o=M.objects.find(x=>x.id===PTR.id);if(!o)return;const el=document.querySelector(`.obj[data-id="${o.id}"]`);
     const nx=Math.max(0,Math.min(M.grid.w-o.size,Math.round(c.fx-PTR.ox))),ny=Math.max(0,Math.min(M.grid.h-o.size,Math.round(c.fy-PTR.oy)));
-    if(nx!==o.x||ny!==o.y){if(!PTR.moved){snap();PTR.moved=true}o.x=nx;o.y=ny;if(el){el.style.left=nx*C+"px";el.style.top=ny*C+"px";el.classList.add("drag")}}}}
+    if(nx!==o.x||ny!==o.y){if(!PTR.moved){snap();PTR.moved=true}o.x=nx;o.y=ny;if(el){el.style.left=nx*C+"px";el.style.top=ny*C+"px";el.classList.add("drag")}pvLive({t:"mv",id:M.id,o:o.id,x:nx,y:ny})}}}
 function onUp(e){if(!PTR)return;const p=PTR;PTR=null;$("vp").classList.remove("panning");
   if(p.kind==="paint")saveSoon();
   if(p.kind==="fog"){renderObjs();saveSoon()}
@@ -1364,6 +1369,10 @@ let PVMODE=false,PVCH=null,PV_LOCK=null,PV_SEND_T=null;
 try{PVCH=new BroadcastChannel("dnd5e-maps")}catch(e){PVCH=null}
 function pvPost(msg){if(PVCH)try{PVCH.postMessage(msg)}catch(e){}}
 function pvSend(){if(PVMODE||!M)return;clearTimeout(PV_SEND_T);PV_SEND_T=setTimeout(()=>pvPost({t:"map",map:M}),60)}
+/* aggiornamenti leggeri durante i gesti (al massimo ~25 al secondo); al rilascio arriva comunque la mappa completa */
+let PV_LIVE_T=0,PV_LIVE_Q=null;
+function pvLive(msg){if(PVMODE)return;PV_LIVE_Q=msg;const now=Date.now();if(now-PV_LIVE_T>=40){PV_LIVE_T=now;pvPost(PV_LIVE_Q);PV_LIVE_Q=null}
+  else if(!pvLive.t)pvLive.t=setTimeout(()=>{pvLive.t=null;if(PV_LIVE_Q){PV_LIVE_T=Date.now();pvPost(PV_LIVE_Q);PV_LIVE_Q=null}},40)}
 function openPlayers(){if(!M)return;if(DIRTY)saveNow();const w=window.open("index.html#view="+encodeURIComponent(M.id),"dnd5e_pv","width=1100,height=760");
   if(!w){uiAlert("Il browser ha bloccato la finestra: consenti i popup per questa pagina, oppure apri a mano l'indirizzo della mappa aggiungendo  #view="+M.id);return}
   setTimeout(pvSend,400);toast("📺 Vista giocatori aperta: spostala sulla TV o sul secondo schermo")}
@@ -1387,6 +1396,8 @@ function pvStart(id){PVMODE=true;document.body.classList.add("pv");
   pvRender(m);
   if(PVCH)PVCH.onmessage=e=>{const d=e.data||{};if(d.t==="map"&&d.map){if(d.map.id!==M.id)PV_LOCK=null;pvRender(d.map)}
     else if(d.t==="view"&&d.id===M.id){PV_LOCK=d.auto?null:{x:d.x,y:d.y,w:d.w,h:d.h};pvFit()}
+    else if(d.t==="mv"&&d.id===M.id){const o=M.objects.find(x=>x.id===d.o);if(o){o.x=d.x;o.y=d.y;renderObjs()}}
+    else if(d.t==="fog"&&d.id===M.id&&Array.isArray(d.shown)){M.fog.shown=d.shown;fogNorm(M);drawFog();renderObjs();if(!PV_LOCK)pvFit()}
     else if(d.t==="assets")refreshImages()};
   window.addEventListener("storage",e=>{if(e.key!==dbKey("maps"))return;const n=mapsAll().find(x=>x.id===M.id);if(n&&n.updated!==M.updated)pvRender(n)});
   window.addEventListener("resize",pvFit);
