@@ -103,6 +103,10 @@ table.lst tr.mrow:hover{background:#2c2216}
 .trk-row .tn small{display:block; color:var(--muted); font-size:.68rem; font-family:Georgia,serif}
 .trk-row .tac{font-size:.85rem; color:var(--muted); text-align:center}
 .hpbar{display:flex; align-items:center; gap:5px}
+.trk-row .cadd{display:none; border-style:dashed}
+.cond-grid{display:grid; grid-template-columns:1fr 1fr; gap:4px 12px}
+.cond-grid label{display:flex; gap:8px; align-items:center; padding:6px 0; cursor:pointer}
+@media(max-width:760px){.trk-row .conds .chip:not(.sel):not(.cadd){display:none}.trk-row .conds .cadd{display:inline-block}}
 .hpbar input{width:52px; text-align:center; padding:4px 4px; background:#1a130b; color:var(--ink); border:1px solid var(--border-field,#7d6648); border-radius:6px; font-family:inherit}
 .hpbar .hx{color:var(--muted); font-size:.78rem}
 .hpbtn{cursor:pointer; border:1px solid var(--border); border-radius:6px; padding:2px 7px; font-size:.8rem; background:#241b10; user-select:none}
@@ -1740,7 +1744,7 @@ function uiDialog(o){return new Promise(res=>{
     <div class="ui-btns">${o.buttons.map((b,i)=>`<button type="button" class="btn ${b.kind||""}" data-i="${i}">${uiEsc(b.label)}</button>`).join("")}</div></div>`;
   document.body.appendChild(ov);
   const btns=[...ov.querySelectorAll(".ui-btns .btn")],ins=[...ov.querySelectorAll("input")];
-  const vals=()=>{const v={};ins.forEach(x=>v[x.dataset.k]=x.value);return v};
+  const vals=()=>{const v={};ins.forEach(x=>{if(x.dataset.k!=null)v[x.dataset.k]=x.type==="checkbox"?x.checked:x.value});return v};
   const pi=o.buttons.findIndex(b=>b.primary),ci=o.buttons.findIndex(b=>b.cancel);
   const close=i=>{ov.remove();document.removeEventListener("keydown",key,true);try{if(prev&&prev.focus&&document.contains(prev))prev.focus()}catch(e){}
     res({i,value:i>=0?o.buttons[i].value:null,fields:vals()})};
@@ -1806,6 +1810,23 @@ function renderDataMenu(){const i=document.getElementById("snDataInfo");if(!i)re
   const quando=d===null?"<b>mai</b>":d===0?"<b>oggi</b>":d===1?"<b>ieri</b>":`<b>${d} giorni fa</b>`;
   i.innerHTML=`Ultimo backup: ${quando}`+(suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS)?" · è consigliato farne uno":"")}
 dataBadge();
+/* ================= CONTROLLI CLICCABILI ACCESSIBILI (uguale in tutti i tool) =================
+   Gli elementi con onclick che non sono già pulsanti o link diventano raggiungibili con Tab e attivabili con Invio o Spazio;
+   quelli fatti di sola icona ricevono un nome leggibile dagli screen reader. Vale anche per i contenuti creati dopo. */
+const A11Y_ICON={"✕":"Rimuovi","×":"Rimuovi","🗑":"Elimina","👁":"Nascondi ai giocatori","🙈":"Mostra ai giocatori","↗":"Apri l'originale","⧉":"Duplica",
+  "−":"Diminuisci","-":"Diminuisci","+":"Aumenta","＋":"Aumenta","🎲":"Rigenera","ⓘ":"Informazioni","ℹ":"Informazioni","✎":"Modifica","✏️":"Modifica"};
+const A11Y_SKIP=/^(BUTTON|A|INPUT|SELECT|TEXTAREA|LABEL|OPTION|BODY|HTML|SUMMARY)$/;
+function a11yFix(root){if(!root||!root.querySelectorAll)return;
+  const list=root.matches&&root.matches("[onclick]")?[root,...root.querySelectorAll("[onclick]")]:[...root.querySelectorAll("[onclick]")];
+  list.forEach(el=>{if(A11Y_SKIP.test(el.tagName)||el.dataset.a11y)return;el.dataset.a11y="1";
+    if(el.querySelector("button,input,select,textarea,a[href],[onclick]"))return;
+    if(!/^(TR|TD|TH|LI)$/.test(el.tagName)&&!el.hasAttribute("role"))el.setAttribute("role","button");
+    if(!el.hasAttribute("tabindex"))el.tabIndex=0;
+    const t=(el.textContent||"").trim();if(!el.getAttribute("aria-label")&&[...t].length<=2){const l=el.title||A11Y_ICON[t];if(l)el.setAttribute("aria-label",l)}})}
+document.addEventListener("keydown",e=>{const el=e.target;if(e.key!=="Enter"&&e.key!==" ")return;
+  if(!el||!el.dataset||el.dataset.a11y!=="1"||A11Y_SKIP.test(el.tagName))return;e.preventDefault();el.click()});
+a11yFix(document.body);
+new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes)if(n.nodeType===1)a11yFix(n)}).observe(document.body,{childList:true,subtree:true});
 /* su schermi stretti la barra dei tool scorre: il tool attivo viene portato in vista */
 (function(){const w=document.querySelector(".sn-tools"),on=w&&w.querySelector("a.on");if(w&&on&&w.scrollWidth>w.clientWidth)w.scrollLeft=Math.max(0,on.offsetLeft-w.offsetLeft-60)})();
 /* ================= TRACKER ================= */
@@ -2132,6 +2153,12 @@ function dmg(id,v){
 }
 function setHp(id,v){const u=TRK.list.find(x=>x.id===id);if(u){snap();u.hp=Math.max(0,parseInt(v,10)||0);if(u.hp>0){u.dsS=0;u.dsF=0}trkSave();renderTrk()}}
 function setInit(id,v){const u=TRK.list.find(x=>x.id===id);if(u){u.init=parseInt(v,10)||0;trkSave()}}
+/* su schermi stretti: le condizioni si scelgono da un elenco invece che da 14 bottoncini per riga */
+async function pickCond(id){const u=TRK.list.find(x=>x.id===id);if(!u)return;
+  const r=await uiDialog({title:"Condizioni · "+u.name,html:`<div class="cond-grid">${CONDS.map(c=>`<label class="chk"><input type="checkbox" data-k="${uiEsc(c)}" ${u.cond.includes(c)?"checked":""}> ${uiEsc(c)}</label>`).join("")}</div>`,
+    buttons:[{label:"Annulla",value:null,cancel:true},{label:"Applica",value:"ok",primary:true,kind:"gold"}]});
+  if(r.value!=="ok")return;const u2=TRK.list.find(x=>x.id===id);if(!u2)return;
+  u2.cond=u2.cond.filter(c=>!CONDS.includes(c)).concat(CONDS.filter(c=>r.fields[c]));trkSave();renderTrk()}
 function toggleCond(id,c){
   const u=TRK.list.find(x=>x.id===id);if(!u)return;
   const i=u.cond.indexOf(c);if(i>=0)u.cond.splice(i,1);else u.cond.push(c);
@@ -2179,7 +2206,7 @@ function renderTrk(){
        <input value="${u.hp}" onchange="setHp('${u.id}',this.value)"><span class="hx">/${u.hpMax}</span>
        <span class="hpbtn" onclick="dmg('${u.id}',1)">+1</span>
        <input class="thp" value="${u.thp||""}" placeholder="+T" title="PF temporanei (assorbono i danni per primi)" onchange="setThp('${u.id}',this.value)" style="width:38px;${u.thp?"color:#7ec4e0;border-color:#3f7f99":""}">${u.pc&&u.hp===0?" "+dsPips(u):""}`:'<span class="hx">—</span>'}</span>
-     <span>${CONDS.map(c=>`<span class="chip tiny ${u.cond.includes(c)?"sel":""}" title="${COND_DESC[c]||c}" onclick="toggleCond('${u.id}','${c}')">${c}</span>`).join("")}</span>
+     <span class="conds">${CONDS.map(c=>`<span class="chip tiny ${u.cond.includes(c)?"sel":""}" title="${COND_DESC[c]||c}" aria-pressed="${u.cond.includes(c)}" onclick="toggleCond('${u.id}','${c}')">${c}</span>`).join("")}<button type="button" class="chip tiny cadd" onclick="pickCond('${u.id}')">＋ Condizione</button></span>
      <span class="xbtn" onclick="rmU('${u.id}')">✕</span></div>`}).join("")
    :'<p style="color:var(--muted)">Il tracker è vuoto. Genera un incontro e usa «Invia al tracker», oppure aggiungi i PG.</p>';
   if(PV&&!PV.closed)pvRender();
