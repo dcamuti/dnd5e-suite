@@ -202,7 +202,16 @@ label.fld span{display:block; font-size:.72rem; color:var(--muted); margin-botto
   .sheet{box-shadow:none; border-radius:0; padding:8px; font-size:12px}
   .sh-cols{grid-template-columns:170px 1fr 1fr}
   .spell-cols{max-height:none}
+  /* impaginazione: i riquadri non si spezzano tra due pagine; quelli più alti di una pagina (incantesimi, privilegi ai
+     livelli alti) si dividono solo tra una voce e l'altra, con il bordo ridisegnato su ogni pagina */
+  .sheet{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  .sh-head{break-inside:avoid; break-after:avoid}
+  .sh-box,.sh-abil .box,.sh-combat,.sh-combat .cbox{break-inside:avoid}
+  .sh-box.sh-long,.sh-box.sh-spells{break-inside:auto; box-decoration-break:clone; -webkit-box-decoration-break:clone}
+  .sh-box h3,.sh-spells .lvlblock h4{break-after:avoid}
+  .sh-list li,.sh-trait,.sh-spells .sp-row,.ft-desc{break-inside:avoid}
 }
+@page{size:A4; margin:10mm}
 /* ==== BASE UX COMUNE: focus visibile, bordi dei campi, controlli touch (uguale in tutti i tool) ==== */
 :root{--border-field:#7d6648}
 input[type=text],input[type=number],input[type=date],input[type=search],select,textarea{border-color:var(--border-field)}
@@ -3298,6 +3307,11 @@ function featureList(){
     out.push(`<b>Aumento di caratteristica</b> <i>(${asiLabel(slot)})</i><div class="ft-desc">${txt} (già applicato ai punteggi)</div>`)});
   return out;
 }
+/* riquadri che in stampa supererebbero una pagina A4: possono dividersi (tra una voce e l'altra) invece di essere
+   spostati interi alla pagina dopo o tagliati. Stima: altezza a schermo × rapporto tra testo di stampa (12 px) e schermo. */
+function markLongBoxes(){const sh=$("sheet");if(!sh||!sh.offsetParent)return;const fs=parseFloat(getComputedStyle(sh).fontSize)||16,k=12/fs,page=1000;
+  sh.querySelectorAll(".sh-box").forEach(b=>b.classList.toggle("sh-long",b.offsetHeight*k>page*.85))}
+window.addEventListener("beforeprint",markLongBoxes);
 function buildSheet(){
   const _sy=window.scrollY,_wasSheet=$("sheetWrap").style.display==="block";
   const f=finalScores(),c=clsObj(),r=raceObj(),s=subObj(),bg=bgObj(),pb=prof(totLevel());
@@ -3430,6 +3444,7 @@ function buildSheet(){
   }
   $("sheet").innerHTML=h;
   $("homeView").style.display="none";$("wizardView").style.display="none";$("sheetWrap").style.display="block";
+  markLongBoxes();
   const db=$("diceBar");if(db)db.style.display=PLAY?"flex":"none";
   const pbn=$("playBtn");if(pbn){pbn.textContent=PLAY?"📄 Modalità stampa":"🎲 Modalità gioco";pbn.classList.toggle("gold",PLAY)}
   if(!_wasSheet)window.scrollTo(0,0);
