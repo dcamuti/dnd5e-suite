@@ -218,6 +218,14 @@ select,input,textarea,.fld{max-width:100%}
 .ui-undo{position:fixed; left:50%; bottom:22px; transform:translateX(-50%); display:flex; gap:12px; align-items:center; background:#2a1f12; border:1px solid var(--gold); color:var(--ink); padding:8px 10px 8px 16px; border-radius:12px; z-index:210; box-shadow:0 8px 24px rgba(0,0,0,.55); font-size:.9rem; max-width:calc(100% - 24px)}
 .ui-undo .btn{flex:none}
 @media (max-width:520px){.ui-btns .btn{flex:1 1 auto}}
+/* ==== SEZIONI COMPRIMIBILI ==== */
+[data-collapse]>.cl-head{cursor:pointer; user-select:none; -webkit-user-select:none}
+[data-collapse]>.cl-head .cl-ind{display:inline-block; margin-left:10px; font-size:.8em; color:var(--muted); transition:transform .2s; vertical-align:middle}
+[data-collapse].collapsed>.cl-head .cl-ind{transform:rotate(-90deg)}
+[data-collapse].collapsed>:not(.cl-head){display:none !important}
+[data-collapse].collapsed{padding-bottom:12px}
+[data-collapse].collapsed>.cl-head{margin-bottom:0}
+@media print{[data-collapse].collapsed>:not(.cl-head){display:revert !important}.cl-ind{display:none !important}}
 </style>
 </head>
 <body>
@@ -716,6 +724,17 @@ dataBadge();
 /* preferenze di interfaccia (sezioni aperte, schede scelte…): una sola chiave, dnd5e_ui */
 function uiPrefGet(k,d){const o=dbGet("ui",{})||{};return Object.prototype.hasOwnProperty.call(o,k)?o[k]:d}
 function uiPrefSet(k,v){const o=dbGet("ui",{})||{};o[k]=v;dbSet("ui",o)}
+/* ================= SEZIONI COMPRIMIBILI (uguale in tutti i tool) =================
+   Un contenitore con data-collapse="chiave" si apre e chiude cliccando il suo titolo (h2); lo stato resta in dnd5e_ui. */
+function collapseInit(){const st=uiPrefGet("collapsed",{})||{},page=(location.pathname.split("/").filter(Boolean).slice(-2,-1)[0])||"home";
+  document.querySelectorAll("[data-collapse]").forEach(sec=>{const h=sec.querySelector(":scope>h2");if(!h||h.dataset.cl)return;h.dataset.cl="1";
+    const key=page+":"+sec.dataset.collapse;h.classList.add("cl-head");h.setAttribute("role","button");h.tabIndex=0;
+    const ind=document.createElement("span");ind.className="cl-ind";ind.setAttribute("aria-hidden","true");ind.textContent="▾";h.appendChild(ind);
+    const set=c=>{sec.classList.toggle("collapsed",c);h.setAttribute("aria-expanded",String(!c));h.title=c?"Mostra la sezione":"Nascondi la sezione"};set(!!st[key]);
+    const tog=()=>{const c=!sec.classList.contains("collapsed");set(c);const s2=uiPrefGet("collapsed",{})||{};if(c)s2[key]=1;else delete s2[key];uiPrefSet("collapsed",s2)};
+    h.addEventListener("click",e=>{if(e.target.closest("a,button,input,select,label"))return;tog()});
+    h.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();tog()}})})}
+collapseInit();
 /* ================= CONTROLLI CLICCABILI ACCESSIBILI (uguale in tutti i tool) =================
    Gli elementi con onclick che non sono già pulsanti o link diventano raggiungibili con Tab e attivabili con Invio o Spazio;
    quelli fatti di sola icona ricevono un nome leggibile dagli screen reader. Vale anche per i contenuti creati dopo. */

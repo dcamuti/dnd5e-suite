@@ -137,6 +137,14 @@ select,input,textarea,.fld{max-width:100%}
 .ui-undo{position:fixed; left:50%; bottom:22px; transform:translateX(-50%); display:flex; gap:12px; align-items:center; background:#2a1f12; border:1px solid var(--gold); color:var(--ink); padding:8px 10px 8px 16px; border-radius:12px; z-index:210; box-shadow:0 8px 24px rgba(0,0,0,.55); font-size:.9rem; max-width:calc(100% - 24px)}
 .ui-undo .btn{flex:none}
 @media (max-width:520px){.ui-btns .btn{flex:1 1 auto}}
+/* ==== SEZIONI COMPRIMIBILI ==== */
+[data-collapse]>.cl-head{cursor:pointer; user-select:none; -webkit-user-select:none}
+[data-collapse]>.cl-head .cl-ind{display:inline-block; margin-left:10px; font-size:.8em; color:var(--muted); transition:transform .2s; vertical-align:middle}
+[data-collapse].collapsed>.cl-head .cl-ind{transform:rotate(-90deg)}
+[data-collapse].collapsed>:not(.cl-head){display:none !important}
+[data-collapse].collapsed{padding-bottom:12px}
+[data-collapse].collapsed>.cl-head{margin-bottom:0}
+@media print{[data-collapse].collapsed>:not(.cl-head){display:revert !important}.cl-ind{display:none !important}}
 </style>
 </head>
 <body>
@@ -158,17 +166,17 @@ select,input,textarea,.fld{max-width:100%}
   <div class="hmenu sn-data" id="snData"><button class="btn" onclick="hmToggle(this,event)" aria-haspopup="true" aria-expanded="false" title="Backup e ripristino di tutti i dati della suite">⚙ <span class="lbl">Dati</span></button><div class="hmenu-list" role="menu"><div class="mi-note" id="snDataInfo"></div><button class="mi-it" role="menuitem" onclick="backupSuite()" title="Salva in un file tutti i dati di tutti i tool">🗄 Backup suite</button><label class="mi-it" role="menuitem" tabindex="0" onkeydown="hmFileKey(event,this)">⬆ Ripristina backup<input type="file" id="bkFile" accept=".json" style="display:none" onchange="if(this.files[0])restoreSuite(this.files[0]);this.value=''"></label><div class="mi-note">Il backup salva in un file i dati di tutti i tool. Il ripristino sostituisce i dati di questo browser; le immagini vengono aggiunte alla libreria.</div></div></div>
 </nav>
 <main>
-  <div class="panel">
+  <div class="panel" data-collapse="profilo">
     <h2>🧭 Profilo della campagna</h2>
     <div class="hint">Orienta tutti i generatori della suite (NPC, Mondo, enigmi, dungeon): nomi, luoghi, eventi e toni pescano di preferenza ciò che è adatto a questo profilo.</div>
     <div class="toolbar" id="profBox"></div>
   </div>
-  <div class="panel">
+  <div class="panel" data-collapse="panoramica">
     <h2>🧭 Panoramica campagna</h2>
     <div class="hint">Dati letti in automatico dagli altri tool della suite (stesso browser e stessa origine). <a onclick="overview()" style="color:var(--gold-l);cursor:pointer;text-decoration:underline">↻ Aggiorna</a></div>
     <div id="ovBody"></div>
   </div>
-  <div class="panel">
+  <div class="panel" data-collapse="xp">
     <h2>⭐ Progressione del party</h2>
     <div class="toolbar" style="margin-top:6px">
       <span style="font-size:.85rem;color:var(--muted)">Modalità:</span>
@@ -180,25 +188,25 @@ select,input,textarea,.fld{max-width:100%}
     <div id="xpForm"></div>
     <div id="xpLog" style="margin-top:10px"></div>
   </div>
-  <div class="panel">
+  <div class="panel" data-collapse="sessioni">
     <h2>📜 Sessioni</h2>
     <div class="hint">Il racconto della campagna, sessione per sessione. Tutto si salva da solo mentre scrivi.</div>
     <button class="btn gold" onclick="addSess()">➕ Nuova sessione</button>
     <div id="sessList" style="margin-top:12px"></div>
   </div>
-  <div class="panel">
+  <div class="panel" data-collapse="png">
     <h2>🎭 PNG incontrati</h2>
     <div class="hint">Chi è, dove sta, cosa vuole — e come la pensa sul party.</div>
     <button class="btn small gold" onclick="addRow('npcs')">➕ Aggiungi PNG</button>
     <div id="npcList" style="margin-top:10px"></div>
   </div>
-  <div class="panel">
+  <div class="panel" data-collapse="luoghi">
     <h2>🗺 Luoghi</h2>
     <div class="hint">Città, dungeon, rovine e taverne memorabili.</div>
     <button class="btn small gold" onclick="addRow('places')">➕ Aggiungi luogo</button>
     <div id="placeList" style="margin-top:10px"></div>
   </div>
-  <div class="panel">
+  <div class="panel" data-collapse="agganci">
     <h2>🪝 Agganci aperti</h2>
     <div class="hint">Promesse, misteri e debiti: spunta quelli risolti.</div>
     <button class="btn small gold" onclick="addRow('hooks')">➕ Aggiungi aggancio</button>
@@ -783,6 +791,17 @@ dataBadge();
 /* preferenze di interfaccia (sezioni aperte, schede scelte…): una sola chiave, dnd5e_ui */
 function uiPrefGet(k,d){const o=dbGet("ui",{})||{};return Object.prototype.hasOwnProperty.call(o,k)?o[k]:d}
 function uiPrefSet(k,v){const o=dbGet("ui",{})||{};o[k]=v;dbSet("ui",o)}
+/* ================= SEZIONI COMPRIMIBILI (uguale in tutti i tool) =================
+   Un contenitore con data-collapse="chiave" si apre e chiude cliccando il suo titolo (h2); lo stato resta in dnd5e_ui. */
+function collapseInit(){const st=uiPrefGet("collapsed",{})||{},page=(location.pathname.split("/").filter(Boolean).slice(-2,-1)[0])||"home";
+  document.querySelectorAll("[data-collapse]").forEach(sec=>{const h=sec.querySelector(":scope>h2");if(!h||h.dataset.cl)return;h.dataset.cl="1";
+    const key=page+":"+sec.dataset.collapse;h.classList.add("cl-head");h.setAttribute("role","button");h.tabIndex=0;
+    const ind=document.createElement("span");ind.className="cl-ind";ind.setAttribute("aria-hidden","true");ind.textContent="▾";h.appendChild(ind);
+    const set=c=>{sec.classList.toggle("collapsed",c);h.setAttribute("aria-expanded",String(!c));h.title=c?"Mostra la sezione":"Nascondi la sezione"};set(!!st[key]);
+    const tog=()=>{const c=!sec.classList.contains("collapsed");set(c);const s2=uiPrefGet("collapsed",{})||{};if(c)s2[key]=1;else delete s2[key];uiPrefSet("collapsed",s2)};
+    h.addEventListener("click",e=>{if(e.target.closest("a,button,input,select,label"))return;tog()});
+    h.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();tog()}})})}
+collapseInit();
 /* ================= CONTROLLI CLICCABILI ACCESSIBILI (uguale in tutti i tool) =================
    Gli elementi con onclick che non sono già pulsanti o link diventano raggiungibili con Tab e attivabili con Invio o Spazio;
    quelli fatti di sola icona ricevono un nome leggibile dagli screen reader. Vale anche per i contenuti creati dopo. */
