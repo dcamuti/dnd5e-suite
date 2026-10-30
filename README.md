@@ -18,3 +18,5 @@ Ogni tool è un singolo `index.html` autonomo. I tool condividono i dati tramite
 Questo repository unifica i precedenti repo `dnd5e-tool-*`, di cui conserva la storia.
 
 Le icone dell'editor di mappe provengono da [game-icons.net](https://game-icons.net) (autori Lorc, Delapouite, Skoll) e sono distribuite con licenza [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Le icone dei comandi dell'interfaccia provengono da [Lucide](https://lucide.dev) e sono distribuite con licenza ISC (© Lucide Contributors; parti © Cole Bemis, Feather, licenza MIT). Le icone dei tool provengono da [game-icons.net](https://game-icons.net) (autori Lorc, Delapouite), licenza [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
