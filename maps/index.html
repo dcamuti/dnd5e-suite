@@ -126,6 +126,14 @@ body.pv .obj{cursor:none}
 /* vista giocatori: nomi leggibili sulla TV, circa 20 px sullo schermo a qualunque zoom */
 body.pv .obj .lbl{font-size:calc(20px * var(--inv,1)); padding:calc(1px * var(--inv,1)) calc(6px * var(--inv,1)); border-radius:calc(5px * var(--inv,1));
   border-width:calc(1px * var(--inv,1)); top:calc(100% + 2px * var(--inv,1)); max-width:none; background:rgba(16,11,6,.88); font-weight:bold; letter-spacing:.2px}
+.ltabs{display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin:-4px -4px 10px; position:sticky; top:-14px; z-index:2; background:linear-gradient(170deg,#241b12,#1e160d); padding:4px 0 6px}
+.ltabs button{background:#1a130b; color:var(--muted); border:1px solid var(--border); border-radius:8px; padding:7px 4px; font-family:var(--font-display); font-size:.74rem; cursor:pointer}
+.ltabs button[aria-selected=true]{background:linear-gradient(180deg,#a13636,#7a2626); border-color:#c95454; color:#fff}
+.ltab{display:none}.ltab.on{display:block}
+.ltab>h2:first-child{margin-top:4px}
+.ftools{display:none; position:absolute; left:8px; top:8px; right:150px; gap:4px; flex-wrap:wrap; z-index:3}
+.ftools .btn{padding:6px 9px; font-size:.95rem; background:rgba(38,29,17,.94)}
+@media (max-width:1100px){.ftools{display:flex}}
 .credits{font-size:.68rem; color:var(--muted); margin-top:14px; line-height:1.4}
 .credits a{color:var(--muted)}
 @media (max-width:1100px){
@@ -231,7 +239,9 @@ select,input,textarea,.fld{max-width:100%}
   <div class="hmenu sn-data" id="snData"><button class="btn" onclick="hmToggle(this,event)" aria-haspopup="true" aria-expanded="false" title="Backup e ripristino di tutti i dati della suite">⚙ <span class="lbl">Dati</span></button><div class="hmenu-list" role="menu"><div class="mi-note" id="snDataInfo"></div><button class="mi-it" role="menuitem" onclick="backupSuite()" title="Salva in un file tutti i dati di tutti i tool">🗄 Backup suite</button><label class="mi-it" role="menuitem" tabindex="0" onkeydown="hmFileKey(event,this)">⬆ Ripristina backup<input type="file" id="bkFile" accept=".json" style="display:none" onchange="if(this.files[0])restoreSuite(this.files[0]);this.value=''"></label><div class="mi-note">Il backup salva in un file i dati di tutti i tool. Il ripristino sostituisce i dati di questo browser; le immagini vengono aggiunte alla libreria.</div></div></div>
 </nav>
 <div class="layout">
-  <aside class="side">
+  <aside class="side" id="leftSide">
+    <div class="ltabs" role="tablist" aria-label="Pannelli dell'editor"><button type="button" role="tab" data-lt="draw" onclick="setLTab('draw')">🖌 Disegna</button><button type="button" role="tab" data-lt="elem" onclick="setLTab('elem')">🧩 Elementi</button><button type="button" role="tab" data-lt="play" onclick="setLTab('play')">🌫 Giocatori</button></div>
+    <div class="ltab" role="tabpanel" data-lt="draw">
     <h2>Strumenti</h2>
     <div class="tools" id="toolBtns"></div>
     <div class="sizes" id="sizeRow">Pennello
@@ -239,28 +249,12 @@ select,input,textarea,.fld{max-width:100%}
       <button class="btn small" data-sz="2" onclick="setBrush(2)">2</button>
       <button class="btn small" data-sz="3" onclick="setBrush(3)">3</button>
     </div>
-    <h2>Nebbia e giocatori</h2>
-    <div class="fogtools">
-      <button class="btn" id="fogOn" onclick="setFogOn(!M.fog.on)" style="grid-column:1/-1">🌫 Nebbia spenta</button>
-      <button class="btn fogtool" data-m="reveal" onclick="setMode('reveal')" title="Rivela a pennello (usa la dimensione del pennello)">✨ Rivela</button>
-      <button class="btn fogtool" data-m="cover" onclick="setMode('cover')" title="Copri a pennello">🌫 Copri</button>
-      <button class="btn fogtool" data-m="revrect" onclick="setMode('revrect')" title="Rivela un rettangolo">▭ Rivela area</button>
-      <button class="btn fogtool" data-m="revroom" onclick="setMode('revroom')" title="Rivela la stanza fino a muri e porte">🚪 Rivela stanza</button>
-      <button class="btn fogtool" onclick="fogAll(true)">☀ Rivela tutto</button>
-      <button class="btn fogtool" onclick="fogAll(false)">🌑 Copri tutto</button>
-    </div>
-    <label class="chk"><input type="checkbox" id="pcHp" onchange="setPcHp(this.checked)"> Mostra ai giocatori i PF dei PG</label>
-    <label class="f" for="pvNames">Nomi sui token nella vista giocatori</label>
-    <select id="pvNames" onchange="setPvNames(this.value)"><option value="all">Tutti</option><option value="pc">Solo i PG</option><option value="none">Nessuno</option></select>
-    <div class="fogtools">
-      <button class="btn gold" onclick="openPlayers()" style="grid-column:1/-1">📺 Apri vista giocatori</button>
-      <button class="btn" onclick="pvShowHere()" title="Inquadra nella vista giocatori la zona che stai guardando">📍 Mostra qui</button>
-      <button class="btn" onclick="pvAuto()" title="La vista giocatori torna ad adattarsi all'area rivelata">⤢ Adatta</button>
-    </div>
     <h2>Terreno</h2>
     <div class="terr" id="terrBtns"></div>
     <div class="empty" id="terrName" style="margin-top:6px"></div>
     <div class="toolbar" style="margin-top:6px"><button class="btn small" onclick="openTerr()">⚙ Texture e terreni</button></div>
+    </div>
+    <div class="ltab" role="tabpanel" data-lt="elem">
     <h2>Dalla suite</h2>
     <div class="hintbox" style="margin-top:0">PG, NPC e mostri restano collegati all'originale: nome, CA e PF si leggono dal loro tool.</div>
     <div class="stabs" id="sTabs" style="margin-top:6px"></div>
@@ -270,6 +264,28 @@ select,input,textarea,.fld{max-width:100%}
     <div class="hintbox" style="margin-top:0">Trascina un elemento sulla mappa, oppure cliccalo e poi clicca dove posizionarlo.</div>
     <div id="palette"></div>
     <div class="credits">Icone di <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> (Lorc, Delapouite, Skoll), licenza <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>.</div>
+    </div>
+    <div class="ltab" role="tabpanel" data-lt="play">
+    <h2>Nebbia</h2>
+    <div class="fogtools">
+      <button class="btn" id="fogOn" onclick="setFogOn(!M.fog.on)" style="grid-column:1/-1">🌫 Nebbia spenta</button>
+      <button class="btn fogtool" data-m="reveal" onclick="setMode('reveal')" title="Rivela a pennello (usa la dimensione del pennello)">✨ Rivela</button>
+      <button class="btn fogtool" data-m="cover" onclick="setMode('cover')" title="Copri a pennello">🌫 Copri</button>
+      <button class="btn fogtool" data-m="revrect" onclick="setMode('revrect')" title="Rivela un rettangolo">▭ Rivela area</button>
+      <button class="btn fogtool" data-m="revroom" onclick="setMode('revroom')" title="Rivela la stanza fino a muri e porte">🚪 Rivela stanza</button>
+      <button class="btn fogtool" onclick="fogAll(true)">☀ Rivela tutto</button>
+      <button class="btn fogtool" onclick="fogAll(false)">🌑 Copri tutto</button>
+    </div>
+    <h2>Vista giocatori</h2>
+    <label class="chk"><input type="checkbox" id="pcHp" onchange="setPcHp(this.checked)"> Mostra ai giocatori i PF dei PG</label>
+    <label class="f" for="pvNames">Nomi sui token nella vista giocatori</label>
+    <select id="pvNames" onchange="setPvNames(this.value)"><option value="all">Tutti</option><option value="pc">Solo i PG</option><option value="none">Nessuno</option></select>
+    <div class="fogtools">
+      <button class="btn gold" onclick="openPlayers()" style="grid-column:1/-1">📺 Apri vista giocatori</button>
+      <button class="btn" onclick="pvShowHere()" title="Inquadra nella vista giocatori la zona che stai guardando">📍 Mostra qui</button>
+      <button class="btn" onclick="pvAuto()" title="La vista giocatori torna ad adattarsi all'area rivelata">⤢ Adatta</button>
+    </div>
+    </div>
   </aside>
   <section class="vpwrap">
     <div class="vp" id="vp" tabindex="0">
@@ -282,6 +298,7 @@ select,input,textarea,.fld{max-width:100%}
         <div id="objs"></div>
         <svg id="ruler"></svg>
       </div>
+      <div class="ftools" id="fTools" role="toolbar" aria-label="Strumenti"></div>
       <div class="zoombar">
         <button class="btn" onclick="zoomBy(1.25)" title="Ingrandisci">＋</button>
         <button class="btn" onclick="zoomBy(0.8)" title="Riduci">－</button>
@@ -350,7 +367,7 @@ select,input,textarea,.fld{max-width:100%}
    La versione dello schema è in dnd5e_schema; dbMigrate() applica le migrazioni mancanti all'apertura di qualunque tool. */
 const STORE={chars:"dnd5e_chars",draft:"dnd5e_draft",lang:"dnd5e_lang",homebrew:"dnd5e_homebrew",npcs:"dnd5e_npcs",
   encSrc:"dnd5e_enc_src",encSaved:"dnd5e_enc_saved",encTrk:"dnd5e_enc_trk",encHb:"dnd5e_enc_hb",
-  diary:"dnd5e_diary",puzzles:"dnd5e_puzzles",profile:"dnd5e_profile",world:"dnd5e_world",maps:"dnd5e_maps",lastBackup:"dnd5e_last_backup"};
+  diary:"dnd5e_diary",puzzles:"dnd5e_puzzles",profile:"dnd5e_profile",world:"dnd5e_world",maps:"dnd5e_maps",lastBackup:"dnd5e_last_backup",ui:"dnd5e_ui"};
 const STORE_RAW=["lang","lastBackup"];/* testo semplice, non JSON */
 const DB_SCHEMA=2,DB_SCHEMA_KEY="dnd5e_schema";
 /* chiavi delle versioni precedenti → chiave attuale (migrazione 1→2 e ripristino di backup vecchi) */
@@ -696,6 +713,9 @@ function renderDataMenu(){const i=document.getElementById("snDataInfo");if(!i)re
   const quando=d===null?"<b>mai</b>":d===0?"<b>oggi</b>":d===1?"<b>ieri</b>":`<b>${d} giorni fa</b>`;
   i.innerHTML=`Ultimo backup: ${quando}`+(suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS)?" · è consigliato farne uno":"")}
 dataBadge();
+/* preferenze di interfaccia (sezioni aperte, schede scelte…): una sola chiave, dnd5e_ui */
+function uiPrefGet(k,d){const o=dbGet("ui",{})||{};return Object.prototype.hasOwnProperty.call(o,k)?o[k]:d}
+function uiPrefSet(k,v){const o=dbGet("ui",{})||{};o[k]=v;dbSet("ui",o)}
 /* ================= CONTROLLI CLICCABILI ACCESSIBILI (uguale in tutti i tool) =================
    Gli elementi con onclick che non sono già pulsanti o link diventano raggiungibili con Tab e attivabili con Invio o Spazio;
    quelli fatti di sola icona ricevono un nome leggibile dagli screen reader. Vale anche per i contenuti creati dopo. */
@@ -918,7 +938,10 @@ const inMap=c=>M&&c.x>=0&&c.y>=0&&c.x<M.grid.w&&c.y<M.grid.h;
 /* ================= STRUMENTI ================= */
 const TOOLS=[["select","🖐 Seleziona","V"],["paint","🖌 Pennello","B"],["rect","▭ Rettangolo","R"],["fill","🪣 Riempi","F"],["erase","🧽 Gomma","E"],["ruler","📏 Righello","M"]];
 let MODE="select",BRUSH=1,TERR=1,ARMED=null;
-function setMode(m){MODE=m;ARMED=null;ARMED_S=null;document.querySelectorAll(".pal .it,.sitem").forEach(x=>x.classList.remove("armed"));
+/* schede del pannello sinistro: l'ultima scelta resta tra una visita e l'altra */
+function setLTab(t){document.querySelectorAll(".ltabs [data-lt]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.lt===t)));
+  document.querySelectorAll(".ltab").forEach(p=>p.classList.toggle("on",p.dataset.lt===t));uiPrefSet("mapsTab",t)}
+function setMode(m){MODE=m;ARMED=null;ARMED_S=null;{const tb={paint:"draw",rect:"draw",fill:"draw",erase:"draw",reveal:"play",cover:"play",revrect:"play",revroom:"play"}[m];if(tb&&!PVMODE)setLTab(tb)}document.querySelectorAll(".pal .it,.sitem").forEach(x=>x.classList.remove("armed"));
   document.querySelectorAll("[data-m]").forEach(b=>b.classList.toggle("on",b.dataset.m===m));
   $("vp").className="vp m-"+m;$("sizeRow").style.opacity=(m==="paint"||m==="erase"||m==="reveal"||m==="cover")?1:.45;$("vp").classList.toggle("m-paint",m==="reveal"||m==="cover"||m==="revrect"||m==="revroom");if(m!=="ruler")$("ruler").innerHTML=""}
 function setBrush(n){BRUSH=n;document.querySelectorAll("#sizeRow .btn").forEach(b=>b.classList.toggle("on",+b.dataset.sz===n))}
@@ -926,6 +949,9 @@ function setTerr(i){TERR=i;document.querySelectorAll("#terrBtns button").forEach
   const p=M&&M.palette[i];$("terrName").textContent=p?palName(p):"";if(MODE!=="paint"&&MODE!=="rect"&&MODE!=="fill")setMode("paint")}
 function renderToolUI(){
   $("toolBtns").innerHTML=TOOLS.map(([m,l,k])=>`<button class="btn" data-m="${m}" onclick="setMode('${m}')" title="${l} (${k})">${l}</button>`).join("");
+  /* su schermi stretti gli strumenti stanno anche sopra la mappa */
+  $("fTools").innerHTML=TOOLS.map(([m,l])=>`<button class="btn" data-m="${m}" onclick="setMode('${m}')" title="${l.slice(l.indexOf(" ")+1)}" aria-label="${l.slice(l.indexOf(" ")+1)}">${l.split(" ")[0]}</button>`).join("")+
+    '<button class="btn" onclick="undo()" title="Annulla" aria-label="Annulla">↶</button><button class="btn" onclick="redo()" title="Ripeti" aria-label="Ripeti">↷</button>';
   $("terrBtns").innerHTML=(M?M.palette:DEF_PALETTE()).map((p,i)=>`<button title="${esc(palName(p))}" onclick="setTerr(${i})"><canvas width="32" height="32" data-i="${i}"></canvas></button>`).join("");
   document.querySelectorAll("#terrBtns canvas").forEach(cv=>{const p=(M?M.palette:DEF_PALETTE())[+cv.dataset.i];const ctx=cv.getContext("2d");
     drawSwatch(ctx,p,32,+cv.dataset.i)});
@@ -997,6 +1023,27 @@ function onUp(e){if(!PTR)return;const p=PTR;PTR=null;$("vp").classList.remove("p
 function showRect(a,b){const r=$("rectPrev"),x0=Math.max(0,Math.min(a.x,b.x)),y0=Math.max(0,Math.min(a.y,b.y)),x1=Math.min(M.grid.w-1,Math.max(a.x,b.x)),y1=Math.min(M.grid.h-1,Math.max(a.y,b.y));
   Object.assign(r.style,{display:"block",left:x0*C+"px",top:y0*C+"px",width:(x1-x0+1)*C+"px",height:(y1-y0+1)*C+"px"});$("status").textContent=`▭ ${x1-x0+1}×${y1-y0+1} caselle`}
 let SPACE=false;
+const TOUCH=new Map();let GEST=null,TPEND=null;
+function gestStart(){const [a,b]=[...TOUCH.values()],r=$("vp").getBoundingClientRect();
+  GEST={d:Math.hypot(a.x-b.x,a.y-b.y)||1,cx:(a.x+b.x)/2-r.left,cy:(a.y+b.y)/2-r.top,z:VIEW.z,vx:VIEW.x,vy:VIEW.y}}
+function gestMove(){const [a,b]=[...TOUCH.values()],r=$("vp").getBoundingClientRect(),d=Math.hypot(a.x-b.x,a.y-b.y)||1,cx=(a.x+b.x)/2-r.left,cy=(a.y+b.y)/2-r.top;
+  const z=Math.max(.2,Math.min(4,GEST.z*d/GEST.d)),px=(GEST.cx-GEST.vx)/GEST.z,py=(GEST.cy-GEST.vy)/GEST.z;VIEW.z=z;VIEW.x=cx-px*z;VIEW.y=cy-py*z;applyView()}
+const tCopy=e=>({clientX:e.clientX,clientY:e.clientY,button:0,target:e.target,pointerId:e.pointerId,pointerType:"touch",preventDefault(){}});
+function vpDown(e){if(e.pointerType!=="touch"){onDown(e);return}
+  TOUCH.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(TOUCH.size===2){if(TPEND){clearTimeout(TPEND.t);TPEND=null}
+    if(PTR){if((PTR.kind==="paint"||PTR.kind==="fog")&&UNDO.length){restoreSnap(UNDO.pop());updUndo()}PTR=null;$("rectPrev").style.display="none";$("vp").classList.remove("panning")}
+    gestStart();return}
+  if(TOUCH.size>2)return;
+  const c=tCopy(e);TPEND={e:c,x:e.clientX,y:e.clientY,t:setTimeout(()=>{if(TPEND&&TPEND.e===c){TPEND=null;onDown(c)}},90)}}
+function vpMove(e){if(e.pointerType==="touch"&&TOUCH.has(e.pointerId))TOUCH.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(GEST&&TOUCH.size>=2){gestMove();return}
+  if(TPEND&&e.pointerType==="touch"){if(Math.hypot(e.clientX-TPEND.x,e.clientY-TPEND.y)<8)return;const p=TPEND;clearTimeout(p.t);TPEND=null;onDown(p.e)}
+  onMove(e)}
+function vpUp(e){if(e.pointerType==="touch"){TOUCH.delete(e.pointerId);
+    if(GEST){if(TOUCH.size<2)GEST=null;return}
+    if(TPEND){const p=TPEND;clearTimeout(p.t);TPEND=null;onDown(p.e)}}
+  onUp(e)}
 /* ================= MAPPA: impostazioni, elenco, nuova ================= */
 function renderMapForm(){if(!M)return;$("mName").value=M.name;$("mW").value=M.grid.w;$("mH").value=M.grid.h;$("mCell").value=M.grid.cell;$("mNotes").value=M.notes;renderInfo()}
 function renderInfo(){if(!M)return;const kb=Math.round((JSON.stringify(dbGet("maps",[])||[]).length)/1024);
@@ -1322,7 +1369,7 @@ function pvStart(id){PVMODE=true;document.body.classList.add("pv");
   if(location.hash.indexOf("#view=")===0){const id=decodeURIComponent(location.hash.slice(6));loadLibrary().then(()=>pvStart(id));return}
   if(PVCH)PVCH.onmessage=e=>{const d=e.data||{};if(d.t==="hello")pvSend();if(d.t==="assets")refreshImages()};
   const vp=$("vp");
-  vp.addEventListener("pointerdown",onDown);vp.addEventListener("pointermove",onMove);vp.addEventListener("pointerup",onUp);vp.addEventListener("pointercancel",onUp);
+  vp.addEventListener("pointerdown",vpDown);vp.addEventListener("pointermove",vpMove);vp.addEventListener("pointerup",vpUp);vp.addEventListener("pointercancel",vpUp);
   vp.addEventListener("wheel",e=>{e.preventDefault();const r=vp.getBoundingClientRect();zoomAt(e.deltaY<0?1.12:1/1.12,e.clientX-r.left,e.clientY-r.top)},{passive:false});
   vp.addEventListener("contextmenu",e=>e.preventDefault());
   vp.addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer.dropEffect="copy"});
@@ -1353,7 +1400,7 @@ function pvStart(id){PVMODE=true;document.body.classList.add("pv");
     start=all.find(m=>m.id===id);if(!start)uiAlert("Mappa non trovata: potrebbe essere stata eliminata.")}
   if(!start&&all.length)start=all.sort((a,b)=>(b.updated||"").localeCompare(a.updated||""))[0];
   if(start)openMap(start);else{openMap(blankMap("La mia prima mappa",30,20,"room"));saveNow()}
-  $("bGrid").classList.add("on");updUndo();
+  $("bGrid").classList.add("on");updUndo();setLTab(uiPrefGet("mapsTab","draw"));
   loadLibrary().then(()=>{if(M){buildStage();renderObjs();renderSel();renderBgForm();renderToolUI()}});
 })();
 </script>

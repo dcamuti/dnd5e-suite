@@ -267,7 +267,7 @@ select,input,textarea,.fld{max-width:100%}
    La versione dello schema è in dnd5e_schema; dbMigrate() applica le migrazioni mancanti all'apertura di qualunque tool. */
 const STORE={chars:"dnd5e_chars",draft:"dnd5e_draft",lang:"dnd5e_lang",homebrew:"dnd5e_homebrew",npcs:"dnd5e_npcs",
   encSrc:"dnd5e_enc_src",encSaved:"dnd5e_enc_saved",encTrk:"dnd5e_enc_trk",encHb:"dnd5e_enc_hb",
-  diary:"dnd5e_diary",puzzles:"dnd5e_puzzles",profile:"dnd5e_profile",world:"dnd5e_world",maps:"dnd5e_maps",lastBackup:"dnd5e_last_backup"};
+  diary:"dnd5e_diary",puzzles:"dnd5e_puzzles",profile:"dnd5e_profile",world:"dnd5e_world",maps:"dnd5e_maps",lastBackup:"dnd5e_last_backup",ui:"dnd5e_ui"};
 const STORE_RAW=["lang","lastBackup"];/* testo semplice, non JSON */
 const DB_SCHEMA=2,DB_SCHEMA_KEY="dnd5e_schema";
 /* chiavi delle versioni precedenti → chiave attuale (migrazione 1→2 e ripristino di backup vecchi) */
@@ -611,6 +611,9 @@ function renderDataMenu(){const i=document.getElementById("snDataInfo");if(!i)re
   const quando=d===null?"<b>mai</b>":d===0?"<b>oggi</b>":d===1?"<b>ieri</b>":`<b>${d} giorni fa</b>`;
   i.innerHTML=`Ultimo backup: ${quando}`+(suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS)?" · è consigliato farne uno":"")}
 dataBadge();
+/* preferenze di interfaccia (sezioni aperte, schede scelte…): una sola chiave, dnd5e_ui */
+function uiPrefGet(k,d){const o=dbGet("ui",{})||{};return Object.prototype.hasOwnProperty.call(o,k)?o[k]:d}
+function uiPrefSet(k,v){const o=dbGet("ui",{})||{};o[k]=v;dbSet("ui",o)}
 /* ================= CONTROLLI CLICCABILI ACCESSIBILI (uguale in tutti i tool) =================
    Gli elementi con onclick che non sono già pulsanti o link diventano raggiungibili con Tab e attivabili con Invio o Spazio;
    quelli fatti di sola icona ricevono un nome leggibile dagli screen reader. Vale anche per i contenuti creati dopo. */
