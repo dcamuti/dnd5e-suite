@@ -123,6 +123,9 @@ body.pv .app-header,body.pv .suite-nav,body.pv .side,body.pv .zoombar,body.pv .s
 body.pv .layout{display:block; max-width:none; padding:0; margin:0}
 body.pv .vp{height:100vh; min-height:0; border:none; border-radius:0; background:#000; cursor:none}
 body.pv .obj{cursor:none}
+/* vista giocatori: nomi leggibili sulla TV, circa 20 px sullo schermo a qualunque zoom */
+body.pv .obj .lbl{font-size:calc(20px * var(--inv,1)); padding:calc(1px * var(--inv,1)) calc(6px * var(--inv,1)); border-radius:calc(5px * var(--inv,1));
+  border-width:calc(1px * var(--inv,1)); top:calc(100% + 2px * var(--inv,1)); max-width:none; background:rgba(16,11,6,.88); font-weight:bold; letter-spacing:.2px}
 .credits{font-size:.68rem; color:var(--muted); margin-top:14px; line-height:1.4}
 .credits a{color:var(--muted)}
 @media (max-width:1100px){
@@ -247,6 +250,8 @@ select,input,textarea,.fld{max-width:100%}
       <button class="btn fogtool" onclick="fogAll(false)">🌑 Copri tutto</button>
     </div>
     <label class="chk"><input type="checkbox" id="pcHp" onchange="setPcHp(this.checked)"> Mostra ai giocatori i PF dei PG</label>
+    <label class="f" for="pvNames">Nomi sui token nella vista giocatori</label>
+    <select id="pvNames" onchange="setPvNames(this.value)"><option value="all">Tutti</option><option value="pc">Solo i PG</option><option value="none">Nessuno</option></select>
     <div class="fogtools">
       <button class="btn gold" onclick="openPlayers()" style="grid-column:1/-1">📺 Apri vista giocatori</button>
       <button class="btn" onclick="pvShowHere()" title="Inquadra nella vista giocatori la zona che stai guardando">📍 Mostra qui</button>
@@ -756,7 +761,7 @@ function normalizeMap(m){
     notes:typeof m.notes==="string"?m.notes:"",created:m.created||new Date().toISOString(),updated:m.updated||new Date().toISOString()};
   if(m.src&&typeof m.src==="object"&&m.src.t&&m.src.id)out.src={t:String(m.src.t),id:String(m.src.id)};
   if(m.bg&&typeof m.bg==="object"&&/^[\w-]+$/.test(m.bg.img||""))out.bg={img:m.bg.img,x:Math.max(-200,Math.min(200,+m.bg.x||0)),y:Math.max(-200,Math.min(200,+m.bg.y||0)),wc:Math.max(1,Math.min(200,+m.bg.wc||w)),op:Math.max(.1,Math.min(1,+m.bg.op||1))};
-  out.players={pcHp:!(m.players&&m.players.pcHp===false)};
+  out.players={pcHp:!(m.players&&m.players.pcHp===false),names:m.players&&["all","pc","none"].includes(m.players.names)?m.players.names:"all"};
   return fogNorm(out)}
 function blankMap(name,w,h,start){
   const pal=DEF_PALETTE(),ix=k=>CH[pal.findIndex(p=>p.k===k)];
@@ -842,9 +847,12 @@ function buildStage(){const w=M.grid.w,h=M.grid.h,W=w*C,H=h*C;
 let SEL=null;
 const objVis=o=>o.vis||(o.secret?"dm":OBJ_TYPES[o.type].vis);
 function objIcon(o,t){return o.img&&imgOk(o.img)?`<div class="ic has-img"><img src="${IMG.get(o.img).url}" alt=""></div>`:`<div class="ic">${iconSvg(o.icon,t.col)}</div>`}
+/* nella vista giocatori i nomi dei token seguono l'opzione della mappa (tutti / solo PG / nessuno); note mai */
+function pvLabel(o,nm){if(!nm||o.type==="note")return"";if(o.type!=="token")return nm;const n=(M.players&&M.players.names)||"all";
+  if(n==="none")return"";if(n==="pc")return o.ref&&o.ref.t==="pc"?nm:"";return nm}
 function hpBar(i){if(!i||!i.live||!i.hpM)return"";const p=Math.max(0,Math.min(100,Math.round(i.hp/i.hpM*100)));return`<span class="hpb"><i class="${p<=25?"low":p<=50?"mid":""}" style="width:${p}%"></i></span>`}
 function renderObjs(){REFC=null;const list=PVMODE?M.objects.filter(pvVisible):M.objects;$("objs").innerHTML=list.map(o=>{const s=o.size*C,t=OBJ_TYPES[o.type],hid=!PVMODE&&objVis(o)!=="all",info=refInfo(o),nm=dispName(o);
-  if(PVMODE)return`<div class="obj t-${o.type}" style="left:${o.x*C}px;top:${o.y*C}px;width:${s}px;height:${s}px">${objIcon(o,t)}${M.players.pcHp!==false?hpBar(info):""}${nm&&o.type!=="note"?`<span class="lbl">${esc(nm)}</span>`:""}</div>`;
+  if(PVMODE)return`<div class="obj t-${o.type}" style="left:${o.x*C}px;top:${o.y*C}px;width:${s}px;height:${s}px">${objIcon(o,t)}${M.players.pcHp!==false?hpBar(info):""}${pvLabel(o,nm)?`<span class="lbl">${esc(pvLabel(o,nm))}</span>`:""}</div>`;
   const tip=[nm||t.n,info&&!info.missing?[info.sub,info.ac?"CA "+info.ac:"",info.hp!==""&&info.hp!=null?("PF "+(info.live?info.hp+"/"+info.hpM:info.hp)):""].filter(Boolean).join(" · "):"",
     info&&info.missing?"⚠ elemento originale non più presente":"",hid?"nascosto ai giocatori":""].filter(Boolean).join(" — ");
   return`<div class="obj t-${o.type} vis-${objVis(o)} ${hid?"hid":""} ${SEL===o.id?"sel":""}" data-id="${o.id}" style="left:${o.x*C}px;top:${o.y*C}px;width:${s}px;height:${s}px"
@@ -881,7 +889,7 @@ function dupObj(){const o=selObj();if(!o)return;snap();const c=JSON.parse(JSON.s
 function delObj(){const o=selObj();if(!o)return;snap();M.objects=M.objects.filter(x=>x.id!==o.id);SEL=null;renderObjs();renderSel();saveSoon()}
 /* ================= VISTA: zoom e spostamento ================= */
 const VIEW={z:1,x:20,y:20};
-function applyView(){$("stage").style.transform=`translate(${VIEW.x}px,${VIEW.y}px) scale(${VIEW.z})`}
+function applyView(){$("stage").style.transform=`translate(${VIEW.x}px,${VIEW.y}px) scale(${VIEW.z})`;if(PVMODE)$("stage").style.setProperty("--inv",(1/VIEW.z).toFixed(4))}
 function zoomAt(f,cx,cy){const z=Math.max(.2,Math.min(4,VIEW.z*f));const k=z/VIEW.z;VIEW.x=cx-(cx-VIEW.x)*k;VIEW.y=cy-(cy-VIEW.y)*k;VIEW.z=z;applyView()}
 function zoomBy(f){const r=$("vp").getBoundingClientRect();zoomAt(f,r.width/2,r.height/2)}
 function fitView(){if(!M)return;const r=$("vp").getBoundingClientRect(),W=M.grid.w*C,H=M.grid.h*C;
@@ -1037,8 +1045,8 @@ function exportPng(dm){if(!M)return;const W=M.grid.w*C,H=M.grid.h*C,sc=2;const c
       ctx.fillStyle=g;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=objVis(o)==="all"?"#c9a227":"#8b2e2e";ctx.stroke()}
     if(o.img&&imgOk(o.img)){ctx.save();ctx.beginPath();ctx.arc(x+s/2,y+s/2,s*.39,0,7);ctx.clip();ctx.drawImage(IMG.get(o.img).el,x+s*.11,y+s*.11,s*.78,s*.78);ctx.restore();ctx.restore()}
     else{const pad=o.type==="token"?s*.22:s*.09,is=s-2*pad;ctx.translate(x+pad,y+pad);ctx.scale(is/512,is/512);ctx.shadowColor="rgba(0,0,0,.8)";ctx.shadowBlur=3;ctx.fillStyle=t.col;ctx.fill(iconPath(o.icon));ctx.restore()}
-    const lab=dispName(o);if(lab&&(dm||o.type!=="note")){ctx.save();ctx.font="10px Georgia";const tw=Math.min(170,ctx.measureText(lab).width)+8;const lx=x+s/2-tw/2,ly=y+s-4;
-      ctx.fillStyle="rgba(16,11,6,.85)";ctx.fillRect(lx,ly,tw,13);ctx.fillStyle="#f4ead6";ctx.fillText(lab,lx+4,ly+10,170);ctx.restore()}});
+    const lab=dm?dispName(o):pvLabel(o,dispName(o));if(lab&&(dm||o.type!=="note")){ctx.save();ctx.font=dm?"10px Georgia":"bold 12px Georgia";const tw=Math.min(170,ctx.measureText(lab).width)+8;const lx=x+s/2-tw/2,ly=y+s-4;
+      const fh=dm?13:16;ctx.fillStyle="rgba(16,11,6,.85)";ctx.fillRect(lx,ly,tw,fh);ctx.fillStyle="#f4ead6";ctx.fillText(lab,lx+4,ly+(dm?10:12.5),170);ctx.restore()}});
   cv.toBlob(b=>{if(b)download("mappa_"+fileName(M.name)+(dm?"_master":"_giocatori")+".png",b)},"image/png")}
 
 /* ================= DALLA SUITE: PG, NPC, mostri, incontri salvati =================
@@ -1253,8 +1261,9 @@ function fogRoom(c){const doors=new Set();M.objects.filter(o=>o.type==="door").f
       if(stop(nx,ny))fogSet(nx,ny,true);else if(!dx||!dy)st.push([nx,ny])}}
   return n}
 function setPcHp(v){if(!M)return;M.players=M.players||{};M.players.pcHp=!!v;saveSoon()}
+function setPvNames(v){if(!M||!["all","pc","none"].includes(v))return;M.players=M.players||{};M.players.names=v;saveSoon()}
 function renderFogUI(){if(!M||!$("fogOn"))return;$("fogOn").classList.toggle("on",M.fog.on);$("fogOn").textContent=M.fog.on?"🌫 Nebbia attiva":"🌫 Nebbia spenta";
-  document.querySelectorAll(".fogtool").forEach(b=>b.disabled=!M.fog.on);$("pcHp").checked=!M.players||M.players.pcHp!==false}
+  document.querySelectorAll(".fogtool").forEach(b=>b.disabled=!M.fog.on);$("pcHp").checked=!M.players||M.players.pcHp!==false;$("pvNames").value=(M.players&&M.players.names)||"all"}
 
 /* ================= VISTA GIOCATORI =================
    seconda finestra in sola lettura (maps/index.html#view=<id>), aggiornata dal master con BroadcastChannel
