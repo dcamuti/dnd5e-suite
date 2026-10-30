@@ -276,7 +276,7 @@ function dbKey(n){const k=STORE[n];if(!k)throw new Error("Dato di storage sconos
 function dbGet(n,d){try{const v=localStorage.getItem(dbKey(n));if(v==null)return d;return STORE_RAW.includes(n)?v:JSON.parse(v)}catch(e){return d}}
 let DB_WARNED=false;
 function dbSet(n,v){try{localStorage.setItem(dbKey(n),STORE_RAW.includes(n)?String(v):JSON.stringify(v));return true}
-  catch(e){if(!DB_WARNED){DB_WARNED=true;alert("⚠ Spazio di salvataggio del browser pieno: le ultime modifiche non sono state salvate.\n\nFai un 🗄 Backup suite e libera spazio, per esempio eliminando elementi salvati che non usi più.")}return false}}
+  catch(e){if(!DB_WARNED){DB_WARNED=true;uiAlert("⚠ Spazio di salvataggio del browser pieno: le ultime modifiche non sono state salvate.\n\nFai un 🗄 Backup suite e libera spazio, per esempio eliminando elementi salvati che non usi più.")}return false}}
 function dbDel(n){try{localStorage.removeItem(dbKey(n))}catch(e){}}
 function dbSchema(){const v=parseInt(localStorage.getItem(DB_SCHEMA_KEY),10);return v>0?v:1}
 const DB_MIGRATIONS={
@@ -496,7 +496,7 @@ async function backupSuite(){
   let n=0;SUITE_KEYS.forEach(k=>{try{const v=localStorage.getItem(k);if(v!=null){data.store[k]=v;n++}}catch(e){}});
   /* immagini della libreria: facoltative, perché possono pesare molto */
   let imgs=[];try{imgs=await assetAll()}catch(e){}
-  if(!n&&!imgs.length){alert("Nulla da salvare.");return}
+  if(!n&&!imgs.length){uiAlert("Nulla da salvare.");return}
   if(imgs.length){const mb=imgs.reduce((s,a)=>s+(a.size||(a.blob&&a.blob.size)||0),0)/1048576;
     const r=await uiDialog({title:"🗄 Backup suite",text:`Nella libreria ci sono ${imgs.length} ${imgs.length===1?"immagine":"immagini"} (${mb.toFixed(1).replace(".",",")} MB). Vuoi includerle nel backup?`,
       buttons:[{label:"Annulla",value:null,cancel:true},{label:"Solo i dati",value:"data"},{label:`Backup completo (${mb.toFixed(1).replace(".",",")} MB)`,value:"all",primary:true,kind:"gold"}]});
@@ -513,7 +513,7 @@ function restoreSuite(file){
     const d=JSON.parse(rd.result);
     if(d.type!=="dnd5e_suite_backup"||!d.store||typeof d.store!=="object")throw 0;
     const bs=parseInt(d.schema,10)>0?parseInt(d.schema,10):1;
-    if(bs>DB_SCHEMA){alert("Questo backup è stato creato da una versione più recente della suite e non può essere ripristinato qui.\n\nAggiorna la pagina (o la suite) e riprova.");return}
+    if(bs>DB_SCHEMA){uiAlert("Questo backup è stato creato da una versione più recente della suite e non può essere ripristinato qui.\n\nAggiorna la pagina (o la suite) e riprova.");return}
     /* backup vecchi: le chiavi precedenti (es. enc_trk) vengono tradotte nei nomi attuali; se ci sono entrambe vale quella attuale */
     const st={};Object.keys(d.store).forEach(k=>{const nk=STORE_LEGACY[k]||k;if(SUITE_KEYS.includes(nk)&&typeof d.store[k]==="string"&&(!(nk in st)||nk===k))st[nk]=d.store[k]});
     const keys=Object.keys(st);if(!keys.length)throw 0;
@@ -528,9 +528,9 @@ function restoreSuite(file){
     Object.keys(STORE_LEGACY).forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
     try{localStorage.setItem(DB_SCHEMA_KEY,String(Math.max(bs,1)));}catch(e){}
     dbMigrate();
-    if(fail){alert("⚠ Ripristino incompleto: "+fail+" dati non sono stati scritti, probabilmente per spazio del browser insufficiente.\nLibera spazio e riprova.");return}
-    alert("✅ Backup ripristinato."+(imgFail?"\n⚠ Le immagini non sono state ripristinate (libreria immagini non disponibile in questo browser).":"")+" La pagina verrà ricaricata.");location.reload();
-  }catch(err){alert("File di backup non valido.")}};
+    if(fail){uiAlert("⚠ Ripristino incompleto: "+fail+" dati non sono stati scritti, probabilmente per spazio del browser insufficiente.\nLibera spazio e riprova.");return}
+    await uiAlert("I dati della suite sono stati sostituiti da quelli del file."+(imgFail?"\n\n⚠ Le immagini non sono state ripristinate (libreria immagini non disponibile in questo browser).":"")+"\n\nLa pagina verrà ricaricata.",{title:"✅ Backup ripristinato",ok:"Ricarica la pagina"});location.reload();
+  }catch(err){uiAlert("File di backup non valido.")}};
   rd.readAsText(file);
 }
 /* ================= FINESTRE DELLA SUITE (al posto di confirm/prompt del browser) =================
@@ -564,6 +564,7 @@ async function uiPrompt(text,def,o={}){const r=await uiDialog({title:o.title,tex
   buttons:[{label:"Annulla",value:null,cancel:true},{label:o.yes||"OK",value:"ok",primary:true,kind:"gold"}]});return r.value==="ok"?r.fields.v:null}
 async function uiForm(title,fields,o={}){const r=await uiDialog({title,text:o.text,fields,buttons:[{label:"Annulla",value:null,cancel:true},{label:o.yes||"OK",value:"ok",primary:true,kind:"gold"}]});
   return r.value==="ok"?r.fields:null}
+function uiAlert(text,o={}){return uiDialog({title:o.title,text,buttons:[{label:o.ok||"Ho capito",value:true,primary:true,cancel:true,kind:"gold"}]})}
 /* link da copiare quando gli appunti del browser non sono disponibili */
 async function uiCopy(url,title){const r=await uiDialog({title:title||"🔗 Link da copiare",text:"Copia il link e incollalo dove ti serve.",fields:[{k:"u",label:"",value:url,readonly:true}],
   buttons:[{label:"Chiudi",value:null,cancel:true},{label:"📋 Copia",value:"copy",primary:true,kind:"gold"}]});
@@ -572,9 +573,12 @@ async function uiCopy(url,title){const r=await uiDialog({title:title||"🔗 Link
   if(!ok){const t=document.createElement("textarea");t.value=url;t.style.position="fixed";t.style.opacity="0";document.body.appendChild(t);t.select();try{ok=document.execCommand("copy")}catch(e){}t.remove()}
   uiNote(ok?"🔗 Link copiato negli appunti":"Copia non riuscita: seleziona il link e copialo a mano")}
 /* avviso breve in basso (usato da «Annulla» e dalle copie) */
-function uiNote(msg,ms){const old=document.getElementById("uiUndo");if(old)old.remove();clearTimeout(UI_UNDO_T);
-  const d=document.createElement("div");d.id="uiUndo";d.className="ui-undo";d.setAttribute("role","status");uiPlace(d);d.innerHTML=`<span>${uiEsc(msg)}</span>`;
-  document.body.appendChild(d);UI_UNDO_T=setTimeout(()=>d.remove(),ms||2600)}
+/* gli esiti non toccano un eventuale «Annulla» ancora attivo: compaiono sopra di esso; restano visibili in proporzione alla lunghezza */
+let UI_NOTE_T=null;
+function uiNote(msg,ms){const old=document.getElementById("uiNote");if(old)old.remove();clearTimeout(UI_NOTE_T);msg=String(msg);
+  const d=document.createElement("div");d.id="uiNote";d.className="ui-undo";d.setAttribute("role","status");uiPlace(d);
+  const u=document.getElementById("uiUndo");if(u)d.style.bottom=(parseInt(u.style.bottom,10)||22)+u.offsetHeight+10+"px";
+  d.innerHTML=`<span>${uiEsc(msg)}</span>`;document.body.appendChild(d);UI_NOTE_T=setTimeout(()=>d.remove(),Math.max(ms||0,2600,msg.length*45))}
 /* l'avviso sta sopra eventuali barre fisse in basso (es. i dadi degli Incontri) e sostituisce il toast del tool */
 function uiPlace(d){const t=document.getElementById("toast");if(t)t.style.display="none";const tb=document.getElementById("toastBox");if(tb)tb.className="";
   const bar=document.getElementById("dbar"),cs=bar&&getComputedStyle(bar);d.style.bottom=(cs&&cs.display!=="none"&&cs.position==="fixed"?bar.offsetHeight+14:22)+"px"}
@@ -961,7 +965,7 @@ function showTab(t){["set","inn","rov","tra","eve","fz"].forEach(x=>{$("view-"+x
     history.replaceState(null,"",location.pathname+location.search);
     if((W.saved||[]).some(x=>x&&x.id===id))loadSaved(id);
     else if((W.factions||[]).some(f=>f&&f.id===id)){showTab("fz");const el=document.getElementById("fz-"+id);if(el){el.scrollIntoView({block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),2500)}}
-    else alert("Elemento non trovato nel Mondo: potrebbe essere stato eliminato.")}
+    else uiAlert("Elemento non trovato nel Mondo: potrebbe essere stato eliminato.")}
   /* membri delle fazioni aggiornati se gli NPC cambiano in un'altra finestra */
   window.addEventListener("storage",e=>{if(e.key===dbKey("npcs")||e.key===dbKey("world"))renderFactions()});
 })();

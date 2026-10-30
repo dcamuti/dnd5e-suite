@@ -504,7 +504,7 @@ function dbKey(n){const k=STORE[n];if(!k)throw new Error("Dato di storage sconos
 function dbGet(n,d){try{const v=localStorage.getItem(dbKey(n));if(v==null)return d;return STORE_RAW.includes(n)?v:JSON.parse(v)}catch(e){return d}}
 let DB_WARNED=false;
 function dbSet(n,v){try{localStorage.setItem(dbKey(n),STORE_RAW.includes(n)?String(v):JSON.stringify(v));return true}
-  catch(e){if(!DB_WARNED){DB_WARNED=true;alert("⚠ Spazio di salvataggio del browser pieno: le ultime modifiche non sono state salvate.\n\nFai un 🗄 Backup suite e libera spazio, per esempio eliminando elementi salvati che non usi più.")}return false}}
+  catch(e){if(!DB_WARNED){DB_WARNED=true;uiAlert("⚠ Spazio di salvataggio del browser pieno: le ultime modifiche non sono state salvate.\n\nFai un 🗄 Backup suite e libera spazio, per esempio eliminando elementi salvati che non usi più.")}return false}}
 function dbDel(n){try{localStorage.removeItem(dbKey(n))}catch(e){}}
 function dbSchema(){const v=parseInt(localStorage.getItem(DB_SCHEMA_KEY),10);return v>0?v:1}
 const DB_MIGRATIONS={
@@ -2032,7 +2032,7 @@ function forPlayers(t,o){if(!o||visOf(t,o)!=="all")return null;const c=JSON.pars
 function roster(){return dbGet("chars",[])}
 function autosave(){if(C&&(C.race||C.cls))dbSet("draft",C)}
 function saveChar(){
-  if(!C||!C.race||!C.cls){alert("Crea prima un personaggio (almeno razza e classe).");return}
+  if(!C||!C.race||!C.cls){uiAlert("Crea prima un personaggio (almeno razza e classe).");return}
   if(!C.id)C.id=newId("pc");
   const list=roster().filter(x=>x.id!==C.id);
   const prevE=roster().find(x=>x.id===C.id);
@@ -2041,7 +2041,7 @@ function saveChar(){
   if(LVUP&&LVUP.id===C.id&&totLevel()>LVUP.from)LVUP=null;
   dbSet("chars",list.slice(0,60));
   const cm=document.getElementById("charModal");
-  if(cm&&cm.style.display==="flex")renderCharModal();else alert("💾 Personaggio salvato: "+(C.name||"Senza nome"));
+  if(cm&&cm.style.display==="flex")renderCharModal();else uiNote("💾 Personaggio salvato: "+(C.name||"Senza nome"),3400);
 }
 function loadChar(id){const it=roster().find(x=>x.id===id);if(!it)return;
   C=JSON.parse(JSON.stringify(it.data));C._syncTs=it.syncTs||0;sanitizeChar();closeCharModal();
@@ -2064,7 +2064,7 @@ function importChar(inp){const f=inp.files&&inp.files[0];if(!f)return;
       if(typeof d!=="object"||(!d.cls&&!d.race))throw new Error("shape");
       d.id=newId("pc");C=d;sanitizeChar();saveChar();
       if(C.race&&C.cls){closeCharModal();buildSheet()}else{closeCharModal();startWizard(true)}
-    }catch(e){alert("File non valido: non è un personaggio esportato da questo tool.")}};
+    }catch(e){uiAlert("File non valido: non è un personaggio esportato da questo tool.")}};
   rd.readAsText(f);inp.value="";
 }
 function openCharModal(){renderCharModal();document.getElementById("charModal").style.display="flex"}
@@ -2118,24 +2118,24 @@ function openHbModal(){
 }
 function closeHbModal(){document.getElementById("hbModal").style.display="none";sanitizeChar();refreshView()}
 function hbAddRace(){
-  const n=document.getElementById("hbrName").value.trim();if(!n)return alert("Inserisci il nome della razza.");
-  if(RACES.some(r=>r.n===n))return alert("Esiste già una razza con questo nome.");
+  const n=document.getElementById("hbrName").value.trim();if(!n)return uiAlert("Inserisci il nome della razza.");
+  if(RACES.some(r=>r.n===n))return uiAlert("Esiste già una razza con questo nome.");
   const asi={};ABILS.forEach(a=>{const v=+document.getElementById("hbr_"+a).value;if(v)asi[a]=v});
   const traits=document.getElementById("hbrTraits").value.split("\n").map(t=>t.trim()).filter(Boolean);
   HB.races.push({n,size:document.getElementById("hbrSize").value,spd:+document.getElementById("hbrSpd").value||30,dv:+document.getElementById("hbrDv").value||0,asi,traits});
   document.getElementById("hbrName").value="";hbSave();
 }
 function hbAddSpell(){
-  const n=document.getElementById("hbsName").value.trim();if(!n)return alert("Inserisci il nome dell'incantesimo.");
-  if(SPELLS.some(s=>s[0]===n))return alert("Esiste già un incantesimo con questo nome.");
+  const n=document.getElementById("hbsName").value.trim();if(!n)return uiAlert("Inserisci il nome dell'incantesimo.");
+  if(SPELLS.some(s=>s[0]===n))return uiAlert("Esiste già un incantesimo con questo nome.");
   let classes="";document.querySelectorAll(".hbsC:checked").forEach(x=>classes+=x.value);
-  if(!classes)return alert("Seleziona almeno una classe.");
+  if(!classes)return uiAlert("Seleziona almeno una classe.");
   HB.spells.push({n,it:document.getElementById("hbsIt").value.trim(),lv:+document.getElementById("hbsLv").value,school:document.getElementById("hbsSch").value,classes,det:document.getElementById("hbsDet").value.trim()});
   document.getElementById("hbsName").value="";hbSave();
 }
 function hbAddFeat(){
-  const n=document.getElementById("hbfName").value.trim();if(!n)return alert("Inserisci il nome del talento.");
-  if(FEATS.some(ft=>ft[0]===n))return alert("Esiste già un talento con questo nome.");
+  const n=document.getElementById("hbfName").value.trim();if(!n)return uiAlert("Inserisci il nome del talento.");
+  if(FEATS.some(ft=>ft[0]===n))return uiAlert("Esiste già un talento con questo nome.");
   const asi=[];document.querySelectorAll(".hbfA:checked").forEach(x=>asi.push(x.value));
   HB.feats.push({n,it:document.getElementById("hbfIt").value.trim(),desc:document.getElementById("hbfDesc").value.trim(),asi});
   document.getElementById("hbfName").value="";hbSave();
@@ -2148,11 +2148,11 @@ function hbwUI(){
 function hbAddWeapon(){
   const g=id=>document.getElementById(id);
   const n=g("hbwName").value.trim();
-  if(!n)return alert("Inserisci il nome dell'arma.");
-  if(WEAPONS.some(w=>w[0]===n||w[1]===n))return alert("Esiste già un'arma con questo nome.");
+  if(!n)return uiAlert("Inserisci il nome dell'arma.");
+  if(WEAPONS.some(w=>w[0]===n||w[1]===n))return uiAlert("Esiste già un'arma con questo nome.");
   const rng=g("hbwRng").value==="r";
   const range=g("hbwRange").value.trim();
-  if(rng&&!range)return alert("Per un'arma a distanza indica la gittata (es. 24/96).");
+  if(rng&&!range)return uiAlert("Per un'arma a distanza indica la gittata (es. 24/96).");
   const props=[];
   if(g("hbwFin").checked)props.push("accurata");
   if(g("hbwLight").checked)props.push("leggera");
@@ -2173,7 +2173,7 @@ function hbAddWeapon(){
   ["hbwName","hbwIt","hbwRange","hbwBonus","hbwNote"].forEach(id=>g(id).value="");
   ["hbwFin","hbwLight","hbwHeavy","hbwTwo","hbwReach","hbwLoad","hbwVers"].forEach(id=>g(id).checked=false);
   hbSave();
-  alert("⚔ Arma aggiunta: la trovi tra le armi equipaggiabili nel passo «Dettagli».");
+  uiNote("⚔ Arma aggiunta: la trovi tra le armi equipaggiabili nel passo «Dettagli».",3400);
 }
 function hbaUI(){
   const row=document.getElementById("hbaMaxRow");
@@ -2182,35 +2182,35 @@ function hbaUI(){
 function hbAddArmor(){
   const g=id=>document.getElementById(id);
   const n=g("hbaName").value.trim();
-  if(!n)return alert("Inserisci il nome dell'armatura.");
-  if(ARMORS.some(a=>a[0]===n||a[1]===n))return alert("Esiste già un'armatura con questo nome.");
+  if(!n)return uiAlert("Inserisci il nome dell'armatura.");
+  if(ARMORS.some(a=>a[0]===n||a[1]===n))return uiAlert("Esiste già un'armatura con questo nome.");
   const ac=parseInt(g("hbaAc").value,10);
-  if(isNaN(ac)||ac<8||ac>20)return alert("La CA base deve essere un numero tra 8 e 20.");
+  if(isNaN(ac)||ac<8||ac>20)return uiAlert("La CA base deve essere un numero tra 8 e 20.");
   HB.armors.push({n,it:g("hbaIt").value.trim()||n,cat:g("hbaCat").value,ac,
     maxDex:parseInt(g("hbaMax").value,10)||2,str:parseInt(g("hbaStr").value,10)||0,
     stealth:g("hbaStealth").checked,note:g("hbaNote").value.trim()});
   ["hbaName","hbaIt","hbaNote"].forEach(id=>g(id).value="");
   g("hbaStealth").checked=false;
   hbSave();
-  alert("🛡 Armatura aggiunta: la trovi nell'elenco del passo «Dettagli».");
+  uiNote("🛡 Armatura aggiunta: la trovi nell'elenco del passo «Dettagli».",3400);
 }
 function hbAddShield(){
   const g=id=>document.getElementById(id);
   const n=g("hbshName").value.trim();
-  if(!n)return alert("Inserisci il nome dello scudo.");
-  if(SHIELDS.some(s=>s[0]===n||s[1]===n))return alert("Esiste già uno scudo con questo nome.");
+  if(!n)return uiAlert("Inserisci il nome dello scudo.");
+  if(SHIELDS.some(s=>s[0]===n||s[1]===n))return uiAlert("Esiste già uno scudo con questo nome.");
   const b=parseInt(g("hbshBonus").value,10);
-  if(isNaN(b)||b<0||b>6)return alert("Il bonus alla CA deve essere un numero tra 0 e 6.");
+  if(isNaN(b)||b<0||b>6)return uiAlert("Il bonus alla CA deve essere un numero tra 0 e 6.");
   HB.shields.push({n,it:g("hbshIt").value.trim()||n,bonus:b,note:g("hbshNote").value.trim()});
   ["hbshName","hbshIt","hbshNote"].forEach(id=>g(id).value="");
   hbSave();
-  alert("🛡 Scudo aggiunto: lo trovi nel selettore del passo «Dettagli».");
+  uiNote("🛡 Scudo aggiunto: lo trovi nel selettore del passo «Dettagli».",3400);
 }
 function hbAddBg(){
-  const n=document.getElementById("hbbName").value.trim();if(!n)return alert("Inserisci il nome del background.");
-  if(BACKGROUNDS.some(b=>b.n===n))return alert("Esiste già un background con questo nome.");
+  const n=document.getElementById("hbbName").value.trim();if(!n)return uiAlert("Inserisci il nome del background.");
+  if(BACKGROUNDS.some(b=>b.n===n))return uiAlert("Esiste già un background con questo nome.");
   const s1=document.getElementById("hbbSk1").value,s2=document.getElementById("hbbSk2").value;
-  if(s1===s2)return alert("Scegli due abilità diverse.");
+  if(s1===s2)return uiAlert("Scegli due abilità diverse.");
   HB.bgs.push({n,sk:[s1,s2],x:document.getElementById("hbbX").value.trim()});
   document.getElementById("hbbName").value="";hbSave();
 }
@@ -2240,7 +2240,7 @@ function hbImport(inp){const fl=inp.files&&inp.files[0];if(!fl)return;
       ["races","spells","feats","bgs","weapons","armors","shields"].forEach(k=>{if(!Array.isArray(HB[k]))HB[k]=[];(d[k]||[]).forEach(item=>{
         if(item&&item.n&&!HB[k].some(x=>x.n===item.n))HB[k].push(item)})});
       hbSave();
-    }catch(e){alert("File homebrew non valido.")}};
+    }catch(e){uiAlert("File homebrew non valido.")}};
   rd.readAsText(fl);inp.value="";
 }
 /* ---- vista party (dal roster salvato) ---- */
@@ -2277,7 +2277,7 @@ function openParty(){
 function closeParty(){document.getElementById("partyModal").style.display="none"}
 function exportParty(){
   const list=roster();
-  if(!list.length){alert("Nessun personaggio salvato.");return}
+  if(!list.length){uiAlert("Nessun personaggio salvato.");return}
   const pcs=list.map(it=>{const s=partyStats(it.data);
     return{name:s.name,race:s.race,cls:s.cls,ac:s.ac,hpM:s.hpM,hpC:s.hpC,init:parseInt(s.init,10)||0,pp:s.pp,dc:s.dc,spd:s.spd}});
   const blob=new Blob([JSON.stringify({type:"dnd5e_party",exported:new Date().toISOString(),pcs},null,1)],{type:"application/json"});
@@ -3484,7 +3484,7 @@ async function backupSuite(){
   let n=0;SUITE_KEYS.forEach(k=>{try{const v=localStorage.getItem(k);if(v!=null){data.store[k]=v;n++}}catch(e){}});
   /* immagini della libreria: facoltative, perché possono pesare molto */
   let imgs=[];try{imgs=await assetAll()}catch(e){}
-  if(!n&&!imgs.length){alert("Nulla da salvare.");return}
+  if(!n&&!imgs.length){uiAlert("Nulla da salvare.");return}
   if(imgs.length){const mb=imgs.reduce((s,a)=>s+(a.size||(a.blob&&a.blob.size)||0),0)/1048576;
     const r=await uiDialog({title:"🗄 Backup suite",text:`Nella libreria ci sono ${imgs.length} ${imgs.length===1?"immagine":"immagini"} (${mb.toFixed(1).replace(".",",")} MB). Vuoi includerle nel backup?`,
       buttons:[{label:"Annulla",value:null,cancel:true},{label:"Solo i dati",value:"data"},{label:`Backup completo (${mb.toFixed(1).replace(".",",")} MB)`,value:"all",primary:true,kind:"gold"}]});
@@ -3501,7 +3501,7 @@ function restoreSuite(file){
     const d=JSON.parse(rd.result);
     if(d.type!=="dnd5e_suite_backup"||!d.store||typeof d.store!=="object")throw 0;
     const bs=parseInt(d.schema,10)>0?parseInt(d.schema,10):1;
-    if(bs>DB_SCHEMA){alert("Questo backup è stato creato da una versione più recente della suite e non può essere ripristinato qui.\n\nAggiorna la pagina (o la suite) e riprova.");return}
+    if(bs>DB_SCHEMA){uiAlert("Questo backup è stato creato da una versione più recente della suite e non può essere ripristinato qui.\n\nAggiorna la pagina (o la suite) e riprova.");return}
     /* backup vecchi: le chiavi precedenti (es. enc_trk) vengono tradotte nei nomi attuali; se ci sono entrambe vale quella attuale */
     const st={};Object.keys(d.store).forEach(k=>{const nk=STORE_LEGACY[k]||k;if(SUITE_KEYS.includes(nk)&&typeof d.store[k]==="string"&&(!(nk in st)||nk===k))st[nk]=d.store[k]});
     const keys=Object.keys(st);if(!keys.length)throw 0;
@@ -3516,9 +3516,9 @@ function restoreSuite(file){
     Object.keys(STORE_LEGACY).forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
     try{localStorage.setItem(DB_SCHEMA_KEY,String(Math.max(bs,1)));}catch(e){}
     dbMigrate();
-    if(fail){alert("⚠ Ripristino incompleto: "+fail+" dati non sono stati scritti, probabilmente per spazio del browser insufficiente.\nLibera spazio e riprova.");return}
-    alert("✅ Backup ripristinato."+(imgFail?"\n⚠ Le immagini non sono state ripristinate (libreria immagini non disponibile in questo browser).":"")+" La pagina verrà ricaricata.");location.reload();
-  }catch(err){alert("File di backup non valido.")}};
+    if(fail){uiAlert("⚠ Ripristino incompleto: "+fail+" dati non sono stati scritti, probabilmente per spazio del browser insufficiente.\nLibera spazio e riprova.");return}
+    await uiAlert("I dati della suite sono stati sostituiti da quelli del file."+(imgFail?"\n\n⚠ Le immagini non sono state ripristinate (libreria immagini non disponibile in questo browser).":"")+"\n\nLa pagina verrà ricaricata.",{title:"✅ Backup ripristinato",ok:"Ricarica la pagina"});location.reload();
+  }catch(err){uiAlert("File di backup non valido.")}};
   rd.readAsText(file);
 }
 /* ================= FINESTRE DELLA SUITE (al posto di confirm/prompt del browser) =================
@@ -3552,6 +3552,7 @@ async function uiPrompt(text,def,o={}){const r=await uiDialog({title:o.title,tex
   buttons:[{label:"Annulla",value:null,cancel:true},{label:o.yes||"OK",value:"ok",primary:true,kind:"gold"}]});return r.value==="ok"?r.fields.v:null}
 async function uiForm(title,fields,o={}){const r=await uiDialog({title,text:o.text,fields,buttons:[{label:"Annulla",value:null,cancel:true},{label:o.yes||"OK",value:"ok",primary:true,kind:"gold"}]});
   return r.value==="ok"?r.fields:null}
+function uiAlert(text,o={}){return uiDialog({title:o.title,text,buttons:[{label:o.ok||"Ho capito",value:true,primary:true,cancel:true,kind:"gold"}]})}
 /* link da copiare quando gli appunti del browser non sono disponibili */
 async function uiCopy(url,title){const r=await uiDialog({title:title||"🔗 Link da copiare",text:"Copia il link e incollalo dove ti serve.",fields:[{k:"u",label:"",value:url,readonly:true}],
   buttons:[{label:"Chiudi",value:null,cancel:true},{label:"📋 Copia",value:"copy",primary:true,kind:"gold"}]});
@@ -3560,9 +3561,12 @@ async function uiCopy(url,title){const r=await uiDialog({title:title||"🔗 Link
   if(!ok){const t=document.createElement("textarea");t.value=url;t.style.position="fixed";t.style.opacity="0";document.body.appendChild(t);t.select();try{ok=document.execCommand("copy")}catch(e){}t.remove()}
   uiNote(ok?"🔗 Link copiato negli appunti":"Copia non riuscita: seleziona il link e copialo a mano")}
 /* avviso breve in basso (usato da «Annulla» e dalle copie) */
-function uiNote(msg,ms){const old=document.getElementById("uiUndo");if(old)old.remove();clearTimeout(UI_UNDO_T);
-  const d=document.createElement("div");d.id="uiUndo";d.className="ui-undo";d.setAttribute("role","status");uiPlace(d);d.innerHTML=`<span>${uiEsc(msg)}</span>`;
-  document.body.appendChild(d);UI_UNDO_T=setTimeout(()=>d.remove(),ms||2600)}
+/* gli esiti non toccano un eventuale «Annulla» ancora attivo: compaiono sopra di esso; restano visibili in proporzione alla lunghezza */
+let UI_NOTE_T=null;
+function uiNote(msg,ms){const old=document.getElementById("uiNote");if(old)old.remove();clearTimeout(UI_NOTE_T);msg=String(msg);
+  const d=document.createElement("div");d.id="uiNote";d.className="ui-undo";d.setAttribute("role","status");uiPlace(d);
+  const u=document.getElementById("uiUndo");if(u)d.style.bottom=(parseInt(u.style.bottom,10)||22)+u.offsetHeight+10+"px";
+  d.innerHTML=`<span>${uiEsc(msg)}</span>`;document.body.appendChild(d);UI_NOTE_T=setTimeout(()=>d.remove(),Math.max(ms||0,2600,msg.length*45))}
 /* l'avviso sta sopra eventuali barre fisse in basso (es. i dadi degli Incontri) e sostituisce il toast del tool */
 function uiPlace(d){const t=document.getElementById("toast");if(t)t.style.display="none";const tb=document.getElementById("toastBox");if(tb)tb.className="";
   const bar=document.getElementById("dbar"),cs=bar&&getComputedStyle(bar);d.style.bottom=(cs&&cs.display!=="none"&&cs.position==="fixed"?bar.offsetHeight+14:22)+"px"}
@@ -3621,7 +3625,7 @@ function lvupBanner(){if(!LVUP||!C||C.id!==LVUP.id)return"";
    <span style="color:var(--muted);font-size:.85rem">Aumenta il livello qui sotto (o aggiungi una classe), completa le scelte e alla fine premi <b>💾 Salva</b>.</span></div>`}
 function checkLvupHash(){const m=/^#lvup=([\w-]+)(?:&to=(\d+))?/.exec(location.hash);if(!m)return;
   history.replaceState(null,"",location.pathname+location.search);
-  const it=roster().find(x=>x.id===m[1]);if(!it){alert("Personaggio non trovato tra quelli salvati in questo browser.");return}
+  const it=roster().find(x=>x.id===m[1]);if(!it){uiAlert("Personaggio non trovato tra quelli salvati in questo browser.");return}
   loadChar(it.id);LVUP={id:it.id,from:totLevel(),to:parseInt(m[2],10)||totLevel()+1};
   startWizard(true);step=1;renderStep()}
 (function(){const b=$("langBadge");if(b)b.textContent=LANG.toUpperCase()})();
@@ -3631,7 +3635,7 @@ function checkLvupHash(){const m=/^#lvup=([\w-]+)(?:&to=(\d+))?/.exec(location.h
     pullPlaySync()}})();
 /* aperto da un collegamento ↗ (es. un token sulla mappa): mostra la scheda del PG */
 function checkOpenHash(){const m=/^#open=([\w-]+)/.exec(location.hash);if(!m)return;history.replaceState(null,"",location.pathname+location.search);
-  const it=roster().find(x=>x.id===m[1]);if(!it){alert("Personaggio non trovato tra quelli salvati in questo browser.");return}loadChar(it.id)}
+  const it=roster().find(x=>x.id===m[1]);if(!it){uiAlert("Personaggio non trovato tra quelli salvati in questo browser.");return}loadChar(it.id)}
 checkLvupHash();checkOpenHash();
 
 </script>

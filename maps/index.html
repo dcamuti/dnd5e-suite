@@ -354,7 +354,7 @@ function dbKey(n){const k=STORE[n];if(!k)throw new Error("Dato di storage sconos
 function dbGet(n,d){try{const v=localStorage.getItem(dbKey(n));if(v==null)return d;return STORE_RAW.includes(n)?v:JSON.parse(v)}catch(e){return d}}
 let DB_WARNED=false;
 function dbSet(n,v){try{localStorage.setItem(dbKey(n),STORE_RAW.includes(n)?String(v):JSON.stringify(v));return true}
-  catch(e){if(!DB_WARNED){DB_WARNED=true;alert("⚠ Spazio di salvataggio del browser pieno: le ultime modifiche non sono state salvate.\n\nFai un 🗄 Backup suite e libera spazio, per esempio eliminando elementi salvati che non usi più.")}return false}}
+  catch(e){if(!DB_WARNED){DB_WARNED=true;uiAlert("⚠ Spazio di salvataggio del browser pieno: le ultime modifiche non sono state salvate.\n\nFai un 🗄 Backup suite e libera spazio, per esempio eliminando elementi salvati che non usi più.")}return false}}
 function dbDel(n){try{localStorage.removeItem(dbKey(n))}catch(e){}}
 function dbSchema(){const v=parseInt(localStorage.getItem(DB_SCHEMA_KEY),10);return v>0?v:1}
 const DB_MIGRATIONS={
@@ -576,7 +576,7 @@ async function backupSuite(){
   let n=0;SUITE_KEYS.forEach(k=>{try{const v=localStorage.getItem(k);if(v!=null){data.store[k]=v;n++}}catch(e){}});
   /* immagini della libreria: facoltative, perché possono pesare molto */
   let imgs=[];try{imgs=await assetAll()}catch(e){}
-  if(!n&&!imgs.length){alert("Nulla da salvare.");return}
+  if(!n&&!imgs.length){uiAlert("Nulla da salvare.");return}
   if(imgs.length){const mb=imgs.reduce((s,a)=>s+(a.size||(a.blob&&a.blob.size)||0),0)/1048576;
     const r=await uiDialog({title:"🗄 Backup suite",text:`Nella libreria ci sono ${imgs.length} ${imgs.length===1?"immagine":"immagini"} (${mb.toFixed(1).replace(".",",")} MB). Vuoi includerle nel backup?`,
       buttons:[{label:"Annulla",value:null,cancel:true},{label:"Solo i dati",value:"data"},{label:`Backup completo (${mb.toFixed(1).replace(".",",")} MB)`,value:"all",primary:true,kind:"gold"}]});
@@ -593,7 +593,7 @@ function restoreSuite(file){
     const d=JSON.parse(rd.result);
     if(d.type!=="dnd5e_suite_backup"||!d.store||typeof d.store!=="object")throw 0;
     const bs=parseInt(d.schema,10)>0?parseInt(d.schema,10):1;
-    if(bs>DB_SCHEMA){alert("Questo backup è stato creato da una versione più recente della suite e non può essere ripristinato qui.\n\nAggiorna la pagina (o la suite) e riprova.");return}
+    if(bs>DB_SCHEMA){uiAlert("Questo backup è stato creato da una versione più recente della suite e non può essere ripristinato qui.\n\nAggiorna la pagina (o la suite) e riprova.");return}
     /* backup vecchi: le chiavi precedenti (es. enc_trk) vengono tradotte nei nomi attuali; se ci sono entrambe vale quella attuale */
     const st={};Object.keys(d.store).forEach(k=>{const nk=STORE_LEGACY[k]||k;if(SUITE_KEYS.includes(nk)&&typeof d.store[k]==="string"&&(!(nk in st)||nk===k))st[nk]=d.store[k]});
     const keys=Object.keys(st);if(!keys.length)throw 0;
@@ -608,9 +608,9 @@ function restoreSuite(file){
     Object.keys(STORE_LEGACY).forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
     try{localStorage.setItem(DB_SCHEMA_KEY,String(Math.max(bs,1)));}catch(e){}
     dbMigrate();
-    if(fail){alert("⚠ Ripristino incompleto: "+fail+" dati non sono stati scritti, probabilmente per spazio del browser insufficiente.\nLibera spazio e riprova.");return}
-    alert("✅ Backup ripristinato."+(imgFail?"\n⚠ Le immagini non sono state ripristinate (libreria immagini non disponibile in questo browser).":"")+" La pagina verrà ricaricata.");location.reload();
-  }catch(err){alert("File di backup non valido.")}};
+    if(fail){uiAlert("⚠ Ripristino incompleto: "+fail+" dati non sono stati scritti, probabilmente per spazio del browser insufficiente.\nLibera spazio e riprova.");return}
+    await uiAlert("I dati della suite sono stati sostituiti da quelli del file."+(imgFail?"\n\n⚠ Le immagini non sono state ripristinate (libreria immagini non disponibile in questo browser).":"")+"\n\nLa pagina verrà ricaricata.",{title:"✅ Backup ripristinato",ok:"Ricarica la pagina"});location.reload();
+  }catch(err){uiAlert("File di backup non valido.")}};
   rd.readAsText(file);
 }
 /* ================= FINESTRE DELLA SUITE (al posto di confirm/prompt del browser) =================
@@ -644,6 +644,7 @@ async function uiPrompt(text,def,o={}){const r=await uiDialog({title:o.title,tex
   buttons:[{label:"Annulla",value:null,cancel:true},{label:o.yes||"OK",value:"ok",primary:true,kind:"gold"}]});return r.value==="ok"?r.fields.v:null}
 async function uiForm(title,fields,o={}){const r=await uiDialog({title,text:o.text,fields,buttons:[{label:"Annulla",value:null,cancel:true},{label:o.yes||"OK",value:"ok",primary:true,kind:"gold"}]});
   return r.value==="ok"?r.fields:null}
+function uiAlert(text,o={}){return uiDialog({title:o.title,text,buttons:[{label:o.ok||"Ho capito",value:true,primary:true,cancel:true,kind:"gold"}]})}
 /* link da copiare quando gli appunti del browser non sono disponibili */
 async function uiCopy(url,title){const r=await uiDialog({title:title||"🔗 Link da copiare",text:"Copia il link e incollalo dove ti serve.",fields:[{k:"u",label:"",value:url,readonly:true}],
   buttons:[{label:"Chiudi",value:null,cancel:true},{label:"📋 Copia",value:"copy",primary:true,kind:"gold"}]});
@@ -652,9 +653,12 @@ async function uiCopy(url,title){const r=await uiDialog({title:title||"🔗 Link
   if(!ok){const t=document.createElement("textarea");t.value=url;t.style.position="fixed";t.style.opacity="0";document.body.appendChild(t);t.select();try{ok=document.execCommand("copy")}catch(e){}t.remove()}
   uiNote(ok?"🔗 Link copiato negli appunti":"Copia non riuscita: seleziona il link e copialo a mano")}
 /* avviso breve in basso (usato da «Annulla» e dalle copie) */
-function uiNote(msg,ms){const old=document.getElementById("uiUndo");if(old)old.remove();clearTimeout(UI_UNDO_T);
-  const d=document.createElement("div");d.id="uiUndo";d.className="ui-undo";d.setAttribute("role","status");uiPlace(d);d.innerHTML=`<span>${uiEsc(msg)}</span>`;
-  document.body.appendChild(d);UI_UNDO_T=setTimeout(()=>d.remove(),ms||2600)}
+/* gli esiti non toccano un eventuale «Annulla» ancora attivo: compaiono sopra di esso; restano visibili in proporzione alla lunghezza */
+let UI_NOTE_T=null;
+function uiNote(msg,ms){const old=document.getElementById("uiNote");if(old)old.remove();clearTimeout(UI_NOTE_T);msg=String(msg);
+  const d=document.createElement("div");d.id="uiNote";d.className="ui-undo";d.setAttribute("role","status");uiPlace(d);
+  const u=document.getElementById("uiUndo");if(u)d.style.bottom=(parseInt(u.style.bottom,10)||22)+u.offsetHeight+10+"px";
+  d.innerHTML=`<span>${uiEsc(msg)}</span>`;document.body.appendChild(d);UI_NOTE_T=setTimeout(()=>d.remove(),Math.max(ms||0,2600,msg.length*45))}
 /* l'avviso sta sopra eventuali barre fisse in basso (es. i dadi degli Incontri) e sostituisce il toast del tool */
 function uiPlace(d){const t=document.getElementById("toast");if(t)t.style.display="none";const tb=document.getElementById("toastBox");if(tb)tb.className="";
   const bar=document.getElementById("dbar"),cs=bar&&getComputedStyle(bar);d.style.bottom=(cs&&cs.display!=="none"&&cs.position==="fixed"?bar.offsetHeight+14:22)+"px"}
@@ -1016,11 +1020,11 @@ async function exportJson(id){if(DIRTY)saveNow();const m=id?mapsAll().find(x=>x.
 function importJson(file){const rd=new FileReader();rd.onload=async()=>{try{const raw=JSON.parse(rd.result);let imgMap={};
     if(raw&&Array.isArray(raw.assets)&&raw.assets.length){try{imgMap=await mergeAssets(raw.assets);await loadLibrary();pvPost({t:"assets"})}catch(e){}}
     const d=safeParse(remapAssetIds(JSON.stringify(raw),imgMap));
-    if(!d||d.type!=="dnd5e_map"||!d.map)throw 0;if((parseInt(d.v,10)||1)>MAP_V){alert("Questa mappa è stata creata da una versione più recente della suite.");return}
+    if(!d||d.type!=="dnd5e_map"||!d.map)throw 0;if((parseInt(d.v,10)||1)>MAP_V){uiAlert("Questa mappa è stata creata da una versione più recente della suite.");return}
     const m=normalizeMap(d.map);if(!m)throw 0;
     /* come per le altre entità: la mappa importata riceve ID nuovi */
     m.id=newId("map");m.objects.forEach(o=>o.id=newId("obj"));m.created=m.updated=new Date().toISOString();
-    openMap(m);saveNow();toast("⬆ Mappa importata: "+m.name)}catch(e){alert("File non valido: serve un file esportato da «⬇ Esporta mappa».")}};rd.readAsText(file)}
+    openMap(m);saveNow();toast("⬆ Mappa importata: "+m.name)}catch(e){uiAlert("File non valido: serve un file esportato da «⬇ Esporta mappa».")}};rd.readAsText(file)}
 /* PNG: versione master (tutto) o giocatori (senza gli elementi nascosti né le note) */
 const PATHS={};function iconPath(n){if(!PATHS[n])PATHS[n]=new Path2D((ICONS[n]||ICONS["position-marker"]).d);return PATHS[n]}
 function exportPng(dm){if(!M)return;const W=M.grid.w*C,H=M.grid.h*C,sc=2;const cv=document.createElement("canvas");cv.width=W*sc;cv.height=H*sc;const ctx=cv.getContext("2d");
@@ -1130,19 +1134,19 @@ function imgList(kind){return[...IMG.values()].map(x=>x.meta).filter(m=>!kind||m
 async function sha256Hex(buf){try{if(!(window.crypto&&crypto.subtle))return"";const h=await crypto.subtle.digest("SHA-256",buf);return[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,"0")).join("")}catch(e){return""}}
 /* caricamento: controlli, impronta (per non duplicare), ridimensionamento e conversione in WebP quando conviene */
 async function uploadImage(file,kind){
-  if(!file)return null;if(!ASSET_MIME.includes(file.type)){alert("Formato non supportato: usa PNG, JPEG, WebP o GIF.");return null}
-  if(file.size>20*1048576){alert("Immagine troppo grande: il limite è 20 MB per file.");return null}
+  if(!file)return null;if(!ASSET_MIME.includes(file.type)){uiAlert("Formato non supportato: usa PNG, JPEG, WebP o GIF.");return null}
+  if(file.size>20*1048576){uiAlert("Immagine troppo grande: il limite è 20 MB per file.");return null}
   const buf=await file.arrayBuffer(),kb=new TextEncoder().encode(kind+":"),all=new Uint8Array(kb.length+buf.byteLength);all.set(kb,0);all.set(new Uint8Array(buf),kb.length);
   const hash=await sha256Hex(all);
   if(hash){const ex=imgList(kind).find(m=>m.hash===hash);if(ex){toast("🖼 Immagine già presente nella libreria: riutilizzata");return ex.id}}
   let src;try{src=await createImageBitmap(file)}catch(e){src=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(file)}).catch(()=>null)}
-  if(!src){alert("Immagine non leggibile.");return null}
+  if(!src){uiAlert("Immagine non leggibile.");return null}
   const mx=IMG_MAX[kind]||512,k=Math.min(1,mx/Math.max(src.width,src.height)),w=Math.max(1,Math.round(src.width*k)),h=Math.max(1,Math.round(src.height*k));
   const cv=document.createElement("canvas");cv.width=w;cv.height=h;cv.getContext("2d").drawImage(src,0,0,w,h);
   let blob=await new Promise(r=>cv.toBlob(r,"image/webp",.86));if(!blob||blob.type!=="image/webp")blob=await new Promise(r=>cv.toBlob(r,"image/png"));
-  if(!blob){alert("Conversione dell'immagine non riuscita.");return null}
+  if(!blob){uiAlert("Conversione dell'immagine non riuscita.");return null}
   const rec={id:newId(IMG_PFX[kind]),name:file.name.replace(/\.[^.]+$/,"").replace(/[<>]/g,"").slice(0,80)||"immagine",kind,mime:blob.type,w,h,hash,size:blob.size,blob,created:new Date().toISOString()};
-  try{await assetPut(rec)}catch(e){alert("Salvataggio dell'immagine non riuscito: probabilmente lo spazio del browser è pieno.");return null}
+  try{await assetPut(rec)}catch(e){uiAlert("Salvataggio dell'immagine non riuscito: probabilmente lo spazio del browser è pieno.");return null}
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
   await loadLibrary();pvPost({t:"assets"});toast(`🖼 ${IMG_KIND[kind]} caricata (${Math.round(blob.size/1024)} KB)`);return rec.id}
 function pickFile(cb){const i=document.createElement("input");i.type="file";i.accept=ASSET_MIME.join(",");i.onchange=()=>{if(i.files[0])cb(i.files[0])};i.click()}
@@ -1260,7 +1264,7 @@ try{PVCH=new BroadcastChannel("dnd5e-maps")}catch(e){PVCH=null}
 function pvPost(msg){if(PVCH)try{PVCH.postMessage(msg)}catch(e){}}
 function pvSend(){if(PVMODE||!M)return;clearTimeout(PV_SEND_T);PV_SEND_T=setTimeout(()=>pvPost({t:"map",map:M}),60)}
 function openPlayers(){if(!M)return;if(DIRTY)saveNow();const w=window.open("index.html#view="+encodeURIComponent(M.id),"dnd5e_pv","width=1100,height=760");
-  if(!w){alert("Il browser ha bloccato la finestra: consenti i popup per questa pagina, oppure apri a mano l'indirizzo della mappa aggiungendo  #view="+M.id);return}
+  if(!w){uiAlert("Il browser ha bloccato la finestra: consenti i popup per questa pagina, oppure apri a mano l'indirizzo della mappa aggiungendo  #view="+M.id);return}
   setTimeout(pvSend,400);toast("📺 Vista giocatori aperta: spostala sulla TV o sul secondo schermo")}
 /* centra la vista giocatori sulla zona inquadrata dal master; «Adatta» torna all'inquadratura automatica */
 function pvShowHere(){if(!M)return;const r=$("vp").getBoundingClientRect();const x0=(-VIEW.x)/VIEW.z/C,y0=(-VIEW.y)/VIEW.z/C;
@@ -1320,7 +1324,7 @@ function pvStart(id){PVMODE=true;document.body.classList.add("pv");
   window.addEventListener("resize",()=>{});
   let all=mapsAll(),start=null;
   if(location.hash.indexOf("#open=")===0){const id=decodeURIComponent(location.hash.slice(6));history.replaceState(null,"",location.pathname+location.search);
-    start=all.find(m=>m.id===id);if(!start)alert("Mappa non trovata: potrebbe essere stata eliminata.")}
+    start=all.find(m=>m.id===id);if(!start)uiAlert("Mappa non trovata: potrebbe essere stata eliminata.")}
   if(!start&&all.length)start=all.sort((a,b)=>(b.updated||"").localeCompare(a.updated||""))[0];
   if(start)openMap(start);else{openMap(blankMap("La mia prima mappa",30,20,"room"));saveNow()}
   $("bGrid").classList.add("on");updUndo();
