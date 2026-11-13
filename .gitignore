@@ -1,0 +1,5 @@
+# dipendenze e risultati dei test (non servono al sito pubblicato)
+node_modules/
+test-results/
+playwright-report/
+blob-report/

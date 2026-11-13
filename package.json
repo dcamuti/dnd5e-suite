@@ -1,0 +1,14 @@
+{
+  "name": "dnd5e-suite",
+  "private": true,
+  "description": "Suite web D&D 5E: test automatici e strumenti di sviluppo (il sito pubblicato non dipende da questo file)",
+  "scripts": {
+    "test": "node tools/check-common.js && playwright test",
+    "test:browser": "playwright test",
+    "test:ui": "playwright test --ui",
+    "check": "node tools/check-common.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

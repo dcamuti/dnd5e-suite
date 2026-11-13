@@ -1,0 +1,36 @@
+# Test automatici della suite: controllo del codice comune e test nel browser (Playwright, Chromium).
+# Parte a ogni push su main, sulle pull request e a mano dalla scheda «Actions».
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Installa le dipendenze
+        run: npm ci
+      - name: Installa Chromium per i test
+        run: npx playwright install --with-deps chromium
+      - name: Controllo del codice comune e test nel browser
+        run: npm test
+      - name: Conserva il resoconto dei test
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: resoconto-test
+          path: playwright-report/
+          retention-days: 14
