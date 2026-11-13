@@ -17,9 +17,31 @@ Ogni tool è un singolo `index.html` autonomo. I tool condividono i dati tramite
 
 Questo repository unifica i precedenti repo `dnd5e-tool-*`, di cui conserva la storia.
 
+## Codice comune
+
+Storage, backup, finestre, menu e stile di base sono uguali in tutti i tool. La loro unica fonte è la cartella `common/`: uno script li copia dentro i 7 `index.html`, tra i marcatori `>>> COMUNE` e `<<< COMUNE`. I file pubblicati restano autonomi: `common/` non viene caricata dal sito.
+
+Per cambiare il codice comune:
+
+1. modificare il file in `common/` (mai il testo tra i marcatori: verrebbe sovrascritto);
+2. eseguire `node tools/build-common.js` (oppure `npm run build`), che aggiorna i 7 tool;
+3. fare il commit di `common/` e dei tool insieme.
+
+| Blocco | File in `common/` | Contenuto |
+|---|---|---|
+| `stile` | `stile-*.css` | focus e controlli touch, intestazione e menu, finestre, sezioni comprimibili, icone |
+| `storage` | `storage.js` | chiavi dei dati, lettura e scrittura, migrazioni |
+| `dati` | `dati-esterni.js`, `id-visibilita.js` | pulizia di ciò che viene importato, ID, visibilità e proprietà |
+| `motore` | `motore.js`, `diario.js` | generatore casuale, profilo di campagna, invio al Diario (assente nelle Schede PG) |
+| `interfaccia` | `immagini.js`, `backup.js`, `finestre.js`, `menu.js`, `interfaccia.js` | libreria immagini, backup e ripristino, finestre e Annulla, menu Dati, preferenze e accessibilità |
+
+Dove un tool deve differire, la variante è scritta nel file comune con righe `/*#if tool*/ … /*#else*/ … /*#endif*/`. Oggi sono due: negli Enigmi l'HTML importato è ammesso (e ripulito), negli Incontri c'è una regola in più per i pulsanti dei punti ferita.
+
+`tools/build-monster-index.js` funziona allo stesso modo per l'elenco dei mostri dell'editor di mappe, ricavato dal bestiario degli Incontri.
+
 ## Test automatici
 
-I test verificano tutti i tool in un browser vero (Chromium, tramite [Playwright](https://playwright.dev)) e controllano che il codice comune sia identico nei 7 tool. Su GitHub partono da soli a ogni push (scheda **Actions**).
+I test verificano tutti i tool in un browser vero (Chromium, tramite [Playwright](https://playwright.dev)) e controllano che il codice comune dei 7 tool corrisponda a `common/`. Su GitHub partono da soli a ogni push (scheda **Actions**).
 
 Per eseguirli sul proprio computer serve [Node.js](https://nodejs.org) 20 o successivo:
 
@@ -29,11 +51,12 @@ npx playwright install chromium     # una volta: scarica il browser per i test
 npm test                            # controllo del codice comune + tutti i test
 npm run test:ui                     # interfaccia grafica per eseguire e ispezionare i singoli test
 npm run check                       # solo il controllo del codice comune (veloce, senza browser)
+npm run build                       # copia common/ nei 7 tool dopo una modifica al codice comune
 ```
 
 | File | Cosa verifica |
 |---|---|
-| `tools/check-common.js` | codice comune identico nei 7 tool; nessun `alert`/`confirm`/`prompt` del browser |
+| `tools/check-common.js` | codice comune dei 7 tool uguale a `common/`; nessun `alert`/`confirm`/`prompt` del browser |
 | `tests/01-base` | ogni tool si apre senza errori, barra e menu Dati, smartphone, controlli raggiungibili da tastiera |
 | `tests/02-storage` | migrazione delle vecchie chiavi, ID, backup e ripristino (anche di backup vecchi) |
 | `tests/03-sicurezza` | testi con HTML o script in dati salvati e importati non vengono eseguiti |

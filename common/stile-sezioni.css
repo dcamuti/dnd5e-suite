@@ -1,0 +1,8 @@
+/* ==== SEZIONI COMPRIMIBILI ==== */
+[data-collapse]>.cl-head{cursor:pointer; user-select:none; -webkit-user-select:none}
+[data-collapse]>.cl-head .cl-ind{display:inline-block; margin-left:10px; font-size:.8em; color:var(--muted); transition:transform .2s; vertical-align:middle}
+[data-collapse].collapsed>.cl-head .cl-ind{transform:rotate(-90deg)}
+[data-collapse].collapsed>:not(.cl-head){display:none !important}
+[data-collapse].collapsed{padding-bottom:12px}
+[data-collapse].collapsed>.cl-head{margin-bottom:0}
+@media print{[data-collapse].collapsed>:not(.cl-head){display:revert !important}.cl-ind{display:none !important}}

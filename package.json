@@ -6,7 +6,8 @@
     "test": "node tools/check-common.js && playwright test",
     "test:browser": "playwright test",
     "test:ui": "playwright test --ui",
-    "check": "node tools/check-common.js"
+    "check": "node tools/check-common.js",
+    "build": "node tools/build-common.js"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0"

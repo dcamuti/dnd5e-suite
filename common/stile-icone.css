@@ -1,0 +1,9 @@
+/* ==== ICONE DELL'INTERFACCIA: game-icons.net (tool) e Lucide (comandi) ==== */
+.ico{width:1.1em; height:1.1em; vertical-align:-.18em; flex:none; display:inline-block}
+.btn .ico,.mi-it .ico{margin-right:3px}
+.ico-t{width:1.25em; height:1.25em; vertical-align:-.25em}
+.suite-nav a .ico-t{color:var(--gold-l); margin-right:3px}
+.suite-nav a.on .ico-t{color:#fff}
+.app-header h1 .ico-t{width:1.15em; height:1.15em; color:var(--gold-l); vertical-align:-.16em; margin-right:2px}
+.hdr-actions .btn.gold .ico{color:#1a1206}
+.hdr-actions input#q{padding-left:30px; background:#1a130b url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a89878' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat 9px 50%/15px}

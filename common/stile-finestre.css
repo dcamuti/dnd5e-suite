@@ -1,0 +1,16 @@
+/* ==== FINESTRE DELLA SUITE E «ANNULLA» (uguale in tutti i tool) ==== */
+.ui-ov{position:fixed; inset:0; background:rgba(0,0,0,.66); display:flex; align-items:center; justify-content:center; z-index:200; padding:16px}
+.ui-box{background:linear-gradient(170deg,#2a2015,#1e160d); border:1px solid var(--gold); border-radius:14px; padding:18px 20px; width:min(520px,100%); max-height:88vh; overflow:auto; box-shadow:0 20px 50px rgba(0,0,0,.6); color:var(--ink)}
+.ui-box h3{font-family:var(--font-display,'Cinzel',Georgia,serif); color:var(--gold-l); font-size:1.05rem; margin:0 0 10px}
+.ui-msg{font-size:.92rem; line-height:1.5; margin-bottom:12px; white-space:normal; overflow-wrap:anywhere}
+.ui-msg .ui-list{margin:8px 0 0; padding:8px 10px; background:#1a130b; border:1px solid var(--border); border-radius:8px; font-size:.84rem; color:var(--muted); white-space:pre-line; max-height:40vh; overflow:auto}
+.ui-f{display:block; margin-bottom:10px}
+.ui-f span{display:block; font-size:.74rem; color:var(--muted); letter-spacing:.5px; margin-bottom:3px}
+.ui-f input{width:100%; background:#1a130b; color:var(--ink); border:1px solid var(--border-field,#7d6648); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:.95rem}
+.ui-f input:focus{outline:none; border-color:var(--gold); box-shadow:0 0 0 2px rgba(201,162,39,.2)}
+.ui-btns{display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:4px}
+.btn.danger{background:linear-gradient(180deg,#a13636,#7a2626); border-color:#c95454; color:#fff}
+.btn.danger:hover{color:#fff; border-color:#e07a7a}
+.ui-undo{position:fixed; left:50%; bottom:22px; transform:translateX(-50%); display:flex; gap:12px; align-items:center; background:#2a1f12; border:1px solid var(--gold); color:var(--ink); padding:8px 10px 8px 16px; border-radius:12px; z-index:210; box-shadow:0 8px 24px rgba(0,0,0,.55); font-size:.9rem; max-width:calc(100% - 24px)}
+.ui-undo .btn{flex:none}
+@media (max-width:520px){.ui-btns .btn{flex:1 1 auto}}
