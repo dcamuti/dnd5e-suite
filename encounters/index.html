@@ -422,6 +422,7 @@ select,input,textarea,.fld{max-width:100%}
       <button class="btn" onclick="genDun()">↻ Rigenera</button>
       <button class="btn" onclick="printDun()">🖨 Stampa</button>
       <button class="btn" onclick="dunToDiary()">📖 Salva nel diario</button>
+      <button class="btn" onclick="dunToMap()" title="Disegna la pianta del dungeon e la apre nell'editor di mappe">🗺 Crea la mappa</button>
     </span>
     <div id="dunOut" style="margin-top:16px"></div>
   </div>
@@ -1617,6 +1618,86 @@ function dunTreasure(){
    <div style="margin-top:8px"><span class="sbroll" onclick="dunTreasure()" style="font-size:.85rem;padding:3px 10px">♻ Ritira</span></div></div>`;
   $("sbModal").style.display="flex";dbarVis();
 }
+/* ---- pianta del dungeon per l'editor di mappe ----
+   Le stanze occupano i riquadri di una griglia larga (un riquadro = DUN_SLOT caselle) e sono centrate nel proprio riquadro,
+   così i corridoi fra riquadri vicini sono dritti. Valori delle caselle: 0 vuoto, 1 pavimento, 2 muro, 3 terra, 4 detriti. */
+const DUN_SLOT=12,DUN_SPAN=7;
+function dunShape(forma){
+  const rect=(w,h,v)=>Array.from({length:h},()=>Array(w).fill(v||1));
+  const rot=g=>Math.random()<.5?g:g[0].map((_,x)=>g.map(r=>r[x]));
+  if(/6×6/.test(forma))return rect(4,4);
+  if(/9×9/.test(forma))return rect(6,6);
+  if(/rettangolare/.test(forma))return rot(rect(8,4));
+  if(/circolare/.test(forma))return rect(6,6).map((r,y)=>r.map((_,x)=>Math.hypot(x+.5-3,y+.5-3)<=3.05?1:0));
+  if(/ottagonale/.test(forma))return rect(6,6).map((r,y)=>r.map((_,x)=>Math.min(x,5-x)+Math.min(y,5-y)<2?0:1));
+  if(/galleria/.test(forma))return rot(rect(10,5).map((r,y)=>r.map((_,x)=>(y===1||y===3)&&x%3===1?2:1)));
+  if(/caverna/.test(forma)){const g=rect(8,7).map((r,y)=>r.map((_,x)=>((x+.5-4)/4)**2+((y+.5-3.5)/3.5)**2<=.8+Math.random()*.45?3:0));
+    /* resta solo la parte collegata al centro */
+    const keep=rect(8,7,0),st=[[4,3]];g[3][4]=3;while(st.length){const [x,y]=st.pop();if(x<0||y<0||x>7||y>6||keep[y][x]||!g[y][x])continue;keep[y][x]=3;st.push([x+1,y],[x-1,y],[x,y+1],[x,y-1])}return keep}
+  if(/due livelli/.test(forma))return rect(8,6);
+  if(/incrocio a T/.test(forma))return rect(7,6).map((r,y)=>r.map((_,x)=>y<2||(x>=2&&x<=4)?1:0));
+  if(/crollata/.test(forma)){const side=Math.random()<.5;return rect(6,6).map((r,y)=>r.map((_,x)=>(side?x>2:x<3)&&Math.random()<.7?4:1))}
+  return rect(5,5)}
+function dunLayout(){
+  const n=DUN.rooms.length,pos=[[0,0]],edges=[],key=p=>p[0]+","+p[1],at=new Map([["0,0",0]]),DIR=[[1,0],[-1,0],[0,1],[0,-1]];
+  const span=()=>{const xs=pos.map(p=>p[0]),ys=pos.map(p=>p[1]);return[Math.min(...xs),Math.max(...xs),Math.min(...ys),Math.max(...ys)]};
+  const free=i=>{const [x0,x1,y0,y1]=span();return DIR.map(d=>[pos[i][0]+d[0],pos[i][1]+d[1]]).filter(p=>!at.has(key(p))&&Math.max(x1,p[0])-Math.min(x0,p[0])<DUN_SPAN&&Math.max(y1,p[1])-Math.min(y0,p[1])<DUN_SPAN)};
+  for(let i=1;i<n;i++){
+    /* di preferenza si prosegue dalla stanza precedente, altrimenti da una qualunque che abbia spazio accanto */
+    let from=i-1,opts=free(from);if(!opts.length||Math.random()<.35){const c=pos.map((_,k)=>k).filter(k=>free(k).length);from=c[Math.floor(Math.random()*c.length)];opts=free(from)}
+    const p=opts[Math.floor(Math.random()*opts.length)];pos.push(p);at.set(key(p),i);edges.push([from,i])}
+  /* qualche passaggio in più fra stanze vicine, per non avere un solo percorso */
+  pos.forEach((p,i)=>[[1,0],[0,1]].forEach(d=>{const j=at.get(key([p[0]+d[0],p[1]+d[1]]));if(j!==undefined&&!edges.some(e=>(e[0]===i&&e[1]===j)||(e[0]===j&&e[1]===i))&&Math.random()<.2)edges.push([i,j])}));
+  const [x0,x1,y0,y1]=span();return{pos:pos.map(p=>[p[0]-x0,p[1]-y0]),edges,w:(x1-x0+1)*DUN_SLOT+2,h:(y1-y0+1)*DUN_SLOT+2}}
+function dunBuildMap(){
+  const L=dunLayout(),W=L.w,H=L.h,g=Array.from({length:H},()=>Array(W).fill(0)),own=Array.from({length:H},()=>Array(W).fill(-1)),objects=[];
+  const rooms=DUN.rooms.map((r,i)=>{const sh=dunShape(r.forma),cx=Math.floor(sh[0].length/2),cy=Math.floor(sh.length/2);
+    const ox=L.pos[i][0]*DUN_SLOT+1+DUN_SLOT/2-cx,oy=L.pos[i][1]*DUN_SLOT+1+DUN_SLOT/2-cy,cells=[];
+    sh.forEach((row,y)=>row.forEach((v,x)=>{if(!v)return;g[oy+y][ox+x]=v;if(v!==2){own[oy+y][ox+x]=i;cells.push([ox+x,oy+y])}}));
+    const c=[ox+cx,oy+cy];if(own[c[1]][c[0]]!==i){g[c[1]][c[0]]=1;own[c[1]][c[0]]=i;cells.push(c)}
+    cells.sort((a,b)=>Math.hypot(a[0]-c[0],a[1]-c[1])-Math.hypot(b[0]-c[0],b[1]-c[1]));return{r,c,cells,used:0}});
+  const obj=(type,icon,label,x,y,extra)=>objects.push(Object.assign({id:newId("obj"),type,x,y,size:1,icon,label,note:""},extra||{}));
+  /* corridoi dritti da centro a centro, con una porta dove si esce da ciascuna stanza */
+  const doors=new Set();
+  L.edges.forEach(([a,b])=>{const A=rooms[a].c,B=rooms[b].c,dx=Math.sign(B[0]-A[0]),dy=Math.sign(B[1]-A[1]),path=[];
+    for(let x=A[0],y=A[1];x!==B[0]||y!==B[1];x+=dx,y+=dy)path.push([x,y]);path.push(B);
+    path.forEach(([x,y])=>{if(!g[y][x]||g[y][x]===2)g[y][x]=1});
+    const d1=path.find(([x,y])=>own[y][x]!==a),d2=[...path].reverse().find(([x,y])=>own[y][x]!==b);
+    [d1,d2].forEach(d=>{if(!d||own[d[1]][d[0]]>=0||doors.has(d+""))return;doors.add(d+"");const k=Math.random(),boss=b===rooms.length-1&&d===d2;
+      if(boss)obj("door","closed-doors","Doppia porta",d[0],d[1]);else if(k<.15)obj("door","locked-door","Porta chiusa a chiave",d[0],d[1]);
+      else if(k<.23)obj("door","wooden-door","Porta segreta",d[0],d[1],{vis:"dm",secret:true});else obj("door","wooden-door","Porta",d[0],d[1])})});
+  /* muri attorno a tutto ciò che è calpestabile */
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){if(g[y][x])continue;let near=false;
+    for(let j=-1;j<=1&&!near;j++)for(let i=-1;i<=1;i++){const v=(g[y+j]||[])[x+i];if(v&&v!==2&&v!==5){near=true;break}}if(near)g[y][x]=5}
+  /* contenuto delle stanze: tutto nascosto ai giocatori, tranne l'ingresso */
+  const strip=t=>dunLabel(t).replace(/[⚔💰⚠◻🧩🎭👑] ?/g,"");
+  rooms.forEach((R_,i)=>{const r=R_.r,spot=()=>R_.cells[Math.min(R_.used++,R_.cells.length-1)],put=(type,icon,label,extra)=>{const [x,y]=spot();obj(type,icon,label,x,y,extra)};
+    if(r.tipo==="mostro"||r.tipo==="mostro+tesoro")put("poi","crossed-swords","Mostri");
+    if(r.tipo==="boss")put("poi","skull-crossed-bones","Boss");
+    if(r.tipo==="trappola")put("trap",/fossa|vasca/.test(r.det)?"spiky-pit":/filo/.test(r.det)?"tripwire":/glifo|gas/.test(r.det)?"trap-mask":"wolf-trap","Trappola",{note:r.det});
+    if(r.tipo==="enigma")put("poi","scroll-unfurled","Enigma",{note:r.det});
+    if(r.tipo==="png")put("token","hood","Incontro speciale",{note:r.det,vis:"dm"});
+    if(r.tipo==="tesoro"||r.tipo==="mostro+tesoro")put("treasure","chest",r.tipo==="tesoro"?"Tesoro custodito":"Tesoro");
+    if(r.tipo==="boss")put("treasure","crown","Tesoro accumulato");
+    if(/due livelli/.test(r.forma))put("poi","stairs","Gradinata");
+    if(i===0)put("poi","stairs","Ingresso",{vis:"all"});
+    const tl=R_.cells.slice().sort((a,b)=>a[1]-b[1]||a[0]-b[0])[0];
+    obj("note","pin","Stanza "+r.n,tl[0],tl[1],{note:`${cap1(r.forma)}; ${r.dress}.\n${strip(r.tipo)}${r.det?" — "+r.det:""}`})});
+  /* nebbia: all'inizio si vede solo la prima stanza, con i suoi muri e le sue porte */
+  const shown=Array.from({length:H},()=>Array(W).fill("0"));
+  rooms[0].cells.forEach(([x,y])=>{for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++)if(shown[y+j]&&shown[y+j][x+i]!==undefined)shown[y+j][x+i]="1"});
+  const CODE={0:"0",1:"1",2:"2",5:"2",3:"3",4:"4"},now=new Date().toISOString();
+  return{id:newId("map"),v:1,name:DUN.name,src:{t:"dun",id:DUN.id},grid:{type:"square",w:W,h:H,cell:5,unit:"ft"},
+    palette:[{k:"empty"},{k:"floor"},{k:"wall"},{k:"dirt"},{k:"rubble"}],terrain:g.map(r=>r.map(v=>CODE[v]).join("")),objects,fog:{on:true,shown:shown.map(r=>r.join(""))},
+    notes:DUN.hist?`Costruito da ${DUN.hist.chi} per ${DUN.hist.scopo}. Poi ${DUN.hist.sorte}. Oggi lo abitano ${DUN.hist.ora}. ${cap1(DUN.hist.eco)}.`:"",created:now,updated:now}}
+function dunToMap(){
+  if(!DUN)return;if(!DUN.id)DUN.id=newId("dun");
+  const m=dunBuildMap(),all=dbGet("maps",[]),list=Array.isArray(all)?all:[];
+  /* una mappa già creata da questo dungeon non viene toccata: se ne aggiunge un'altra con un nome distinto */
+  let name=m.name,k=1;while(list.some(x=>x&&x.name===name))name=m.name+" ("+(++k)+")";m.name=name;
+  list.push(m);dbSet("maps",list);
+  const w=window.open("../maps/index.html#open="+encodeURIComponent(m.id),"_blank");
+  uiNote(w?`🗺 Mappa «${name}» creata e aperta nell'editor.`:`🗺 Mappa «${name}» creata: la trovi in Mappe → Le mie mappe.`,5000)}
 function printDun(){
   if(!DUN)return;
   $("printArea").innerHTML=dunHTML();
