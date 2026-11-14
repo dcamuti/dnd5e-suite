@@ -1157,8 +1157,8 @@ function closeHb(){$("hbModal").style.display="none"}
 function renderHbList(){
   const hb=hbAll();
   $("hbList").innerHTML=hb.length?hb.map((m,k)=>`<div class="enc-row">
-    <span class="en" onclick="openSb(${BASE_COUNT+k})">${m.it}</span>
-    <span class="em">${m.n} · GS ${m.cr} · ${m.tp}</span>
+    <span class="en" onclick="openSb(${BASE_COUNT+k})">${esc(m.it)}</span>
+    <span class="em">${esc(m.n)} · GS ${esc(m.cr)} · ${esc(m.tp)}</span>
     <span style="margin-left:auto">
       <button class="btn small" onclick="hbEdit(${k})">✏️ Modifica</button>
       <button class="btn small" onclick="shareHb(${k})" title="Copia un link condivisibile di questo mostro">🔗</button>
@@ -1297,26 +1297,27 @@ function sbBtns(name,txt){
 /* ================= RENDERING STATBLOCK ================= */
 const AB=["FOR","DES","COS","INT","SAG","CAR"];
 const mod=v=>{const x=Math.floor((v-10)/2);return(x>=0?"+":"")+x};
+/* tutti i campi del mostro sono scritti come testo: un mostro homebrew può contenere qualunque carattere */
 function sbHTML(m){
-  let h=`<div class="mm"><div class="mname">${m.it}</div>
-   <div class="mtype">${m.tp} di taglia ${m.sz}, ${m.al} · <b>${m.n}</b> · ${m.src}</div><div class="rule"></div>
-   <div class="stat"><b>Classe Armatura</b> ${m.ac}</div>
-   <div class="stat"><b>Punti Ferita</b> ${m.hp}</div>
-   <div class="stat"><b>Velocità</b> ${m.spd}</div><div class="rule"></div>
-   <div class="abgrid">${m.ab.map((v,i)=>`<div class="aa"><b>${AB[i]}</b><span>${v} (${mod(v)})</span></div>`).join("")}</div><div class="rule"></div>`;
-  if(m.sv)h+=`<div class="stat"><b>Tiri Salvezza</b> ${m.sv}</div>`;
-  if(m.sk)h+=`<div class="stat"><b>Abilità</b> ${m.sk}</div>`;
-  if(m.vul)h+=`<div class="stat"><b>Vulnerabilità ai Danni</b> ${m.vul}</div>`;
-  if(m.res)h+=`<div class="stat"><b>Resistenze ai Danni</b> ${m.res}</div>`;
-  if(m.imm)h+=`<div class="stat"><b>Immunità ai Danni</b> ${m.imm}</div>`;
-  if(m.cim)h+=`<div class="stat"><b>Immunità alle Condizioni</b> ${m.cim}</div>`;
-  h+=`<div class="stat"><b>Sensi</b> ${m.sen||"Percezione passiva "+(10+Math.floor((m.ab[4]-10)/2))}</div>
-   <div class="stat"><b>Linguaggi</b> ${m.lg||"—"}</div>
-   <div class="stat"><b>Sfida</b> ${m.cr} (${XP[m.cr].toLocaleString("it-IT")} XP)</div><div class="rule"></div>`;
-  (m.tr||[]).forEach(t=>h+=`<div class="tr"><b><i>${t[0]}.</i></b> ${t[1]}</div>`);
-  if(m.act&&m.act.length){h+=`<h5>Azioni</h5>`;m.act.forEach(t=>h+=`<div class="tr"><b><i>${t[0]}.</i></b> ${t[1]} ${sbBtns(t[0],t[1])}</div>`)}
-  if(m.rea&&m.rea.length){h+=`<h5>Reazioni</h5>`;m.rea.forEach(t=>h+=`<div class="tr"><b><i>${t[0]}.</i></b> ${t[1]} ${sbBtns(t[0],t[1])}</div>`)}
-  if(m.leg&&m.leg.length){h+=`<h5>Azioni Leggendarie</h5><div class="tr" style="font-size:.8rem;color:#4a3f2e">Può compiere 3 azioni leggendarie, una alla volta, alla fine del turno di un'altra creatura. Le recupera all'inizio del proprio turno.</div>`;m.leg.forEach(t=>h+=`<div class="tr"><b><i>${t[0]}.</i></b> ${t[1]} ${sbBtns(t[0],t[1])}</div>`)}
+  let h=`<div class="mm"><div class="mname">${esc(m.it)}</div>
+   <div class="mtype">${esc(m.tp)} di taglia ${esc(m.sz)}, ${esc(m.al)} · <b>${esc(m.n)}</b> · ${esc(m.src)}</div><div class="rule"></div>
+   <div class="stat"><b>Classe Armatura</b> ${esc(m.ac)}</div>
+   <div class="stat"><b>Punti Ferita</b> ${esc(m.hp)}</div>
+   <div class="stat"><b>Velocità</b> ${esc(m.spd)}</div><div class="rule"></div>
+   <div class="abgrid">${m.ab.map((v,i)=>`<div class="aa"><b>${AB[i]}</b><span>${esc(v)} (${mod(v)})</span></div>`).join("")}</div><div class="rule"></div>`;
+  if(m.sv)h+=`<div class="stat"><b>Tiri Salvezza</b> ${esc(m.sv)}</div>`;
+  if(m.sk)h+=`<div class="stat"><b>Abilità</b> ${esc(m.sk)}</div>`;
+  if(m.vul)h+=`<div class="stat"><b>Vulnerabilità ai Danni</b> ${esc(m.vul)}</div>`;
+  if(m.res)h+=`<div class="stat"><b>Resistenze ai Danni</b> ${esc(m.res)}</div>`;
+  if(m.imm)h+=`<div class="stat"><b>Immunità ai Danni</b> ${esc(m.imm)}</div>`;
+  if(m.cim)h+=`<div class="stat"><b>Immunità alle Condizioni</b> ${esc(m.cim)}</div>`;
+  h+=`<div class="stat"><b>Sensi</b> ${esc(m.sen||"Percezione passiva "+(10+Math.floor((m.ab[4]-10)/2)))}</div>
+   <div class="stat"><b>Linguaggi</b> ${esc(m.lg||"—")}</div>
+   <div class="stat"><b>Sfida</b> ${esc(m.cr)} (${XP[m.cr].toLocaleString("it-IT")} XP)</div><div class="rule"></div>`;
+  (m.tr||[]).forEach(t=>h+=`<div class="tr"><b><i>${esc(t[0])}.</i></b> ${esc(t[1])}</div>`);
+  if(m.act&&m.act.length){h+=`<h5>Azioni</h5>`;m.act.forEach(t=>h+=`<div class="tr"><b><i>${esc(t[0])}.</i></b> ${esc(t[1])} ${sbBtns(t[0],t[1])}</div>`)}
+  if(m.rea&&m.rea.length){h+=`<h5>Reazioni</h5>`;m.rea.forEach(t=>h+=`<div class="tr"><b><i>${esc(t[0])}.</i></b> ${esc(t[1])} ${sbBtns(t[0],t[1])}</div>`)}
+  if(m.leg&&m.leg.length){h+=`<h5>Azioni Leggendarie</h5><div class="tr" style="font-size:.8rem;color:#4a3f2e">Può compiere 3 azioni leggendarie, una alla volta, alla fine del turno di un'altra creatura. Le recupera all'inizio del proprio turno.</div>`;m.leg.forEach(t=>h+=`<div class="tr"><b><i>${esc(t[0])}.</i></b> ${esc(t[1])} ${sbBtns(t[0],t[1])}</div>`)}
   h+=`</div>`;return h;
 }
 /* varianti élite / indebolita */
@@ -1361,7 +1362,7 @@ function renderBest(){
   $("bestCount").textContent=`${l.length} creature trovate (${pool().length} totali con le fonti attive).`;
   $("bList").innerHTML="<tr><th>GS</th><th>Creatura</th><th>Tipo</th><th>Taglia</th><th>PF</th><th>CA</th><th>Fonte</th><th></th></tr>"+
    l.map(m=>{const i=MONSTERS.indexOf(m);
-    return`<tr class="mrow" onclick="openSb(${i})"><td style="color:var(--gold-l);font-family:var(--font-display)">${m.cr}</td><td><b>${m.it}</b> <span style="color:var(--muted);font-size:.78rem">${m.n}</span></td><td>${m.tp.split(" (")[0]}</td><td>${m.sz}</td><td>${m.hp.split(" ")[0]}</td><td>${m.ac.split(" ")[0]}</td><td class="srcsig">${m.src}</td><td style="white-space:nowrap"><button class="btn small" title="Aggiungi all'incontro (scheda Incontro)" onclick="event.stopPropagation();addToEnc(${i})">➕</button> <button class="btn small" title="Manda subito al tracker di combattimento" onclick="event.stopPropagation();addToTrk(${i})">🗡</button></td></tr>`}).join("");
+    return`<tr class="mrow" onclick="openSb(${i})"><td style="color:var(--gold-l);font-family:var(--font-display)">${esc(m.cr)}</td><td><b>${esc(m.it)}</b> <span style="color:var(--muted);font-size:.78rem">${esc(m.n)}</span></td><td>${esc(m.tp.split(" (")[0])}</td><td>${esc(m.sz)}</td><td>${esc(m.hp.split(" ")[0])}</td><td>${esc(m.ac.split(" ")[0])}</td><td class="srcsig">${esc(m.src)}</td><td style="white-space:nowrap"><button class="btn small" title="Aggiungi all'incontro (scheda Incontro)" onclick="event.stopPropagation();addToEnc(${i})">➕</button> <button class="btn small" title="Manda subito al tracker di combattimento" onclick="event.stopPropagation();addToTrk(${i})">🗡</button></td></tr>`}).join("");
 }
 
 /* ================= GENERATORE ================= */
@@ -1405,8 +1406,8 @@ function renderMList(){
   l.sort((a,b)=>crVal(a.m.cr)-crVal(b.m.cr)||a.m.it.localeCompare(b.m.it));
   const over=l.length>40;if(over)l=l.slice(0,40);
   $("mList").innerHTML=l.map(({m,idx})=>`<div class="enc-row">
-    <span class="en" onclick="openSb(${idx})">${m.it}</span>
-    <span class="em">GS ${m.cr} · ${XP[m.cr].toLocaleString("it-IT")} XP · ${m.tp.split(" (")[0]} · ${m.src}</span>
+    <span class="en" onclick="openSb(${idx})">${esc(m.it)}</span>
+    <span class="em">GS ${esc(m.cr)} · ${XP[m.cr].toLocaleString("it-IT")} XP · ${esc(m.tp.split(" (")[0])} · ${esc(m.src)}</span>
     <span style="margin-left:auto"><button class="btn small gold" onclick="addToEnc(${idx})">➕ Aggiungi</button></span></div>`).join("")
    +(over?'<p style="color:var(--muted);font-size:.8rem">…altri risultati nascosti: affina la ricerca.</p>':'')
    ||'<p style="color:var(--muted)">Nessuna creatura corrisponde ai filtri.</p>';
@@ -1485,8 +1486,8 @@ function renderEnc(){
   $("encPanel").style.display="";
   $("encRows").innerHTML=ENC.map((r,k)=>{const m=MONSTERS[r.i];
    return`<div class="enc-row"><span class="cnt">${r.q}×</span>
-    <span class="en" onclick="openSb(${r.i})">${m.it}${r.v?(r.v>0?" ⬆(élite)":" ⬇(indebolita)"):""}</span>
-    <span class="em">${m.n} · GS ${m.cr} · ${vXp(r).toLocaleString("it-IT")} XP cad. · ${m.tp.split(" (")[0]}</span>
+    <span class="en" onclick="openSb(${r.i})">${esc(m.it)}${r.v?(r.v>0?" ⬆(élite)":" ⬇(indebolita)"):""}</span>
+    <span class="em">${esc(m.n)} · GS ${esc(m.cr)} · ${vXp(r).toLocaleString("it-IT")} XP cad. · ${esc(m.tp.split(" (")[0])}</span>
     <span style="margin-left:auto">
      <button class="btn small" onclick="openSb(${r.i})">🔍 Statblock</button>
      <button class="btn small" onclick="rerollRow(${k})" title="Sostituisci con un mostro di pari GS">♻</button>
@@ -2649,8 +2650,8 @@ function renderRList(){
   const l=pool().filter(m=>m.n.toLowerCase().includes(q)||m.it.toLowerCase().includes(q)).slice(0,10);
   $("rList").innerHTML=l.map(m=>{const i=MONSTERS.indexOf(m);
    return`<div class="enc-row" style="padding:5px 12px">
-    <span class="en" onclick="openSb(${i})">${m.it}</span>
-    <span class="em">GS ${m.cr} · ${m.tp.split(" (")[0]} · ${m.src}</span>
+    <span class="en" onclick="openSb(${i})">${esc(m.it)}</span>
+    <span class="em">GS ${esc(m.cr)} · ${esc(m.tp.split(" (")[0])} · ${esc(m.src)}</span>
     <span style="margin-left:auto"><button class="btn small gold" onclick="addToTrk(${i});$('rQ').value='';renderRList()">🗡 Aggiungi</button></span></div>`}).join("")
    ||'<p style="color:var(--muted);font-size:.85rem">Nessuna creatura trovata.</p>';
 }
@@ -2703,7 +2704,7 @@ function initSelects(){
   const crsPresent=CRS.filter(c=>pool().some(m=>m.cr===c));
   $("bCr").innerHTML='<option value="">Tutti</option>'+crsPresent.map(c=>`<option>${c}</option>`).join("");
   const types=[...new Set(pool().map(m=>m.tp.split(" (")[0]))].sort();
-  $("bType").innerHTML='<option value="">Tutti</option>'+types.map(t=>`<option>${t}</option>`).join("");
+  $("bType").innerHTML='<option value="">Tutti</option>'+types.map(t=>`<option>${esc(t)}</option>`).join("");
   const envs=[...new Set(pool().flatMap(m=>m.env||[]))].filter(e=>e!=="qualsiasi").sort();
   $("bEnv").innerHTML='<option value="">Tutti</option>'+envs.map(e=>`<option>${e}</option>`).join("");
   $("gEnv").innerHTML='<option value="">Qualsiasi</option>'+envs.map(e=>`<option>${e}</option>`).join("");
@@ -2711,7 +2712,7 @@ function initSelects(){
   $("gCrMax").innerHTML=crsPresent.map(c=>`<option${c==="1"?" selected":""}>${c}</option>`).join("");
   $("mCr").innerHTML='<option value="">Tutti</option>'+crsPresent.map(c=>`<option>${c}</option>`).join("");
   const selT=selTypes();
-  $("gTypes").innerHTML=types.map(t=>`<span class="chip${selT.includes(t)?" sel":""}" data-t="${t}" onclick="this.classList.toggle('sel');if($('gMode').value==='m')renderMList()">${t}</span>`).join("");
+  $("gTypes").innerHTML=types.map(t=>`<span class="chip${selT.includes(t)?" sel":""}" data-t="${esc(t)}" onclick="this.classList.toggle('sel');if($('gMode').value==='m')renderMList()">${esc(t)}</span>`).join("");
   if($("gMode").value==="m")renderMList();
 }
 (function(){

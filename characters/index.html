@@ -2078,7 +2078,8 @@ const tN=(en,dict)=>LANG==="it"&&dict[en]?dict[en]:en;
 const rN=en=>tN(en,IT_RACE), cN=en=>tN(en,IT_CLASS), scN=en=>tN(en,IT_SUBCL), bgN=en=>tN(en,IT_BG), skN=en=>tN(en,IT_SKILL);
 const spN=en=>{const d=SPELL_DET[en];return LANG==="it"&&d&&d[0]?d[0]:en};
 /* ================= SALVATAGGIO ================= */
-const htmlEsc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+/* applicarla due volte non cambia il risultato: i testi homebrew arrivano nelle tabelle già resi innocui (vedi applyHB) */
+const htmlEsc=s=>String(s??"").replace(/&(?!(?:amp|lt|gt|quot);)/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 /* >>> COMUNE: dati (generato da common/ con tools/build-common.js: non modificare qui) */
 /* ================= DATI ESTERNI (file importati, link condivisi, backup) =================
    Tutto ciò che arriva da fuori viene ripulito prima di entrare nella suite:
@@ -2183,6 +2184,18 @@ function resumeDraft(){if(!C)return;if(C.race&&C.cls)buildSheet();else startWiza
 /* ---- homebrew ---- */
 let HB=dbGet("homebrew",{races:[],spells:[],feats:[],bgs:[],weapons:[],armors:[],shields:[]});
 ["races","spells","feats","bgs","weapons","armors","shields"].forEach(k=>{if(!Array.isArray(HB[k]))HB[k]=[]});
+/* I contenuti homebrew possono contenere qualunque carattere (scritti a mano, importati, ripristinati da un backup).
+   - Il nome (n) fa da chiave e finisce in molti punti della pagina: gli si tolgono i caratteri < > & ", che in un nome non servono.
+   - I testi solo da mostrare (nome italiano, descrizioni, note, tratti) vengono resi innocui in applyHB, quando entrano nelle tabelle di gioco. */
+const hbKey=v=>String(v??"").replace(/[<>&"]/g,"").replace(/\s+/g," ").trim();
+function hbClean(){["races","spells","feats","bgs","weapons","armors","shields"].forEach(k=>{
+  HB[k]=HB[k].filter(x=>x&&typeof x==="object"&&hbKey(x.n));const seen=new Set();
+  HB[k].forEach(x=>{x.n=hbKey(x.n);["size","school","classes","cat"].forEach(f=>{if(f in x)x[f]=hbKey(x[f])})});
+  HB[k]=HB[k].filter(x=>!seen.has(x.n)&&seen.add(x.n))});
+  HB.spells.forEach(x=>{x.lv=Math.max(0,Math.min(9,parseInt(x.lv,10)||0))});
+  HB.races.forEach(x=>{x.traits=(Array.isArray(x.traits)?x.traits:[]).map(String);if(!x.asi||typeof x.asi!=="object")x.asi={}});
+  HB.bgs.forEach(x=>{x.sk=(Array.isArray(x.sk)?x.sk:[]).map(hbKey)})}
+hbClean();
 /* scudi: [nome, nome IT, bonus CA, note, fonte] */
 const SHIELDS=[["Shield","Scudo",2,"",""]];
 function shieldOf(v){if(!v)return null;return SHIELDS.find(s=>s[0]===v)||(v===true?SHIELDS[0]:null)}
@@ -2192,18 +2205,18 @@ function applyHB(){
   for(let i=SPELLS.length-1;i>=0;i--)if(SPELLS[i][4]==="HB")SPELLS.splice(i,1);
   for(let i=FEATS.length-1;i>=0;i--)if(FEATS[i][2]==="HB")FEATS.splice(i,1);
   for(let i=BACKGROUNDS.length-1;i>=0;i--)if(BACKGROUNDS[i].src==="HB")BACKGROUNDS.splice(i,1);
-  (HB.races||[]).forEach(r=>RACES.push({hb:true,n:r.n,src:"HB",size:r.size||"Medium",spd:r.spd||30,dv:r.dv||0,asi:r.asi||{},traits:r.traits||[]}));
-  (HB.spells||[]).forEach(s=>{SPELLS.push([s.n,s.lv,s.school||"V",s.classes||"w","HB"]);SPELL_DET[s.n]=[s.it||"",s.det||""]});
-  (HB.feats||[]).forEach(ft=>{FEATS.push([ft.n,ft.it||ft.n,"HB",ft.desc||""]);if(ft.asi&&ft.asi.length)FEAT_ASI[ft.n]=ft.asi});
-  (HB.bgs||[]).forEach(b=>BACKGROUNDS.push({n:b.n,src:"HB",sk:b.sk||[],x:b.x||""}));
+  (HB.races||[]).forEach(r=>RACES.push({hb:true,n:r.n,src:"HB",size:r.size||"Medium",spd:+r.spd||30,dv:+r.dv||0,asi:r.asi||{},traits:(r.traits||[]).map(htmlEsc)}));
+  (HB.spells||[]).forEach(s=>{SPELLS.push([s.n,s.lv,s.school||"V",s.classes||"w","HB"]);SPELL_DET[s.n]=[htmlEsc(s.it||""),htmlEsc(s.det||"")]});
+  (HB.feats||[]).forEach(ft=>{FEATS.push([ft.n,htmlEsc(ft.it||ft.n),"HB",htmlEsc(ft.desc||"")]);if(ft.asi&&ft.asi.length)FEAT_ASI[ft.n]=ft.asi});
+  (HB.bgs||[]).forEach(b=>BACKGROUNDS.push({n:b.n,src:"HB",sk:b.sk||[],x:htmlEsc(b.x||"")}));
   for(let i=WEAPONS.length-1;i>=0;i--)if(WEAPONS[i][6]==="HB")WEAPONS.splice(i,1);
-  (HB.weapons||[]).forEach(w=>WEAPONS.push([w.n,w.it||w.n,w.dmg,w.rng?"r":"m",w.fin?1:0,w.props||"","HB"]));
+  (HB.weapons||[]).forEach(w=>WEAPONS.push([w.n,htmlEsc(w.it||w.n),htmlEsc(w.dmg),w.rng?"r":"m",w.fin?1:0,htmlEsc(w.props||""),"HB"]));
   for(let i=ARMORS.length-1;i>=0;i--)if(ARMORS[i][7]==="HB")ARMORS.splice(i,1);
-  (HB.armors||[]).forEach(a=>ARMORS.push([a.n,a.it||a.n,a.cat,+a.ac,a.cat==="med"?(+a.maxDex||2):99,+a.str||0,a.stealth?1:0,"HB",a.note||""]));
+  (HB.armors||[]).forEach(a=>ARMORS.push([a.n,htmlEsc(a.it||a.n),a.cat,+a.ac||10,a.cat==="med"?(+a.maxDex||2):99,+a.str||0,a.stealth?1:0,"HB",htmlEsc(a.note||"")]));
   for(let i=SHIELDS.length-1;i>=1;i--)if(SHIELDS[i][4]==="HB")SHIELDS.splice(i,1);
-  (HB.shields||[]).forEach(s=>SHIELDS.push([s.n,s.it||s.n,+s.bonus||2,s.note||"","HB"]));
+  (HB.shields||[]).forEach(s=>SHIELDS.push([s.n,htmlEsc(s.it||s.n),+s.bonus||2,htmlEsc(s.note||""),"HB"]));
 }
-function hbSave(){dbSet("homebrew",HB);applyHB();renderHbList();srcBadge()}
+function hbSave(){hbClean();dbSet("homebrew",HB);applyHB();renderHbList();srcBadge()}
 function openHbModal(){
   // popola i selettori dinamici
   const cls=document.getElementById("hbsCls");
