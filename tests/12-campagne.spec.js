@@ -15,7 +15,7 @@ test("primo avvio: i dati esistenti diventano «La mia campagna», senza spostar
   const r = await reg(page); expect(r.list.map(c => c.name)).toEqual(["La mia campagna"]); expect(r.cur).toBe(r.list[0].id);
   expect(await ls(page, "dnd5e_schema")).toBe(3); expect((await ls(page, "dnd5e_npcs"))[0].name).toBe("Mira");
   await page.click("#snData > .btn"); await expect(page.locator("#snCamp .mi-note")).toContainText("La mia campagna");
-  await expect(page.locator("#snCamp .mi-it")).toHaveCount(2);                                  // con una sola campagna: nuova e rinomina
+  await expect(page.locator("#snCamp .mi-it")).toHaveCount(4);                                  // con una sola campagna: nuova, rinomina, esporta, importa
   await expect(page.locator("#snData > .btn .lbl")).toHaveText("Dati");
 });
 
@@ -28,6 +28,9 @@ test("nuova campagna e ritorno: dati separati, homebrew e preferenze in comune",
   expect((await ls(page, "dnd5e_enc_hb"))[0].n).toBe("Belva"); expect((await ls(page, "dnd5e_ui")).x).toBe(1);
   expect(JSON.parse((await ls(page, "dnd5e_camp_" + r.list[0].id)).dnd5e_npcs)[0].name).toBe("Mira");
   await expect(page.locator("#snData > .btn .lbl")).toHaveText("Strahd b");
+  /* eventi in ritardo delle scritture fatte dalla pagina precedente: la pagina nuova continua a salvare */
+  expect(await page.evaluate(() => { const r = campReg(), fire = (key, val) => window.dispatchEvent(new StorageEvent("storage", { key, newValue: val, storageArea: localStorage }));
+    fire("dnd5e_camp_" + r.list[0].id, "{}"); const a = DB_LOCK; fire("dnd5e_camps", JSON.stringify(r)); const b = DB_LOCK; fire("dnd5e_camp_" + r.cur, "{}"); return [a, b, DB_LOCK]; })).toEqual([false, false, false]);
   await page.evaluate(n => dbSet("npcs", n), NPC("Ireena"));
   await pick(page, "La mia campagna");
   r = await reg(page); expect(r.cur).toBe(r.list[0].id);
@@ -85,4 +88,33 @@ test("backup: contiene tutte le campagne; un backup precedente entra nella campa
   r = await reg(page); expect(r.list.length).toBe(2); expect((await ls(page, "dnd5e_npcs"))[0].name).toBe("Volo");
   expect(JSON.parse((await ls(page, "dnd5e_camp_" + ids[1])).dnd5e_npcs)[0].name).toBe("Ireena");
   await page.goto("/index.html"); await expect(page.locator("#campNow")).toContainText("La mia campagna");
+});
+
+test("esporta e importa una campagna: arriva come nuova campagna con le sue immagini, le altre restano", async ({ page }) => {
+  await open(page, "maps"); await page.evaluate(() => localStorage.clear()); await page.reload(); await page.waitForTimeout(400);
+  /* una mappa con un'immagine, un NPC, e un mostro homebrew che non deve viaggiare */
+  const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  const img = await page.evaluate(async u => { const a = await uploadImage(new File([dataUrlToBlob(u)], "pedina.png", { type: "image/png" }), "token");
+    setMapName("Cripta"); addObject(["token", "hood", "Bandito"], 3, 3); M.objects[0].img = a; saveNow(); dbSet("npcs", [{ id: "npc_1", name: "Mira", sb: "Bandit" }]); dbSet("encHb", [{ id: "hb_1", n: "Belva" }]); return a; }, png);
+  const [dl] = await Promise.all([page.waitForEvent("download"), page.evaluate(() => { campExport(); })]);
+  const file = await dl.path(), data = JSON.parse(fs.readFileSync(file, "utf8"));
+  expect([data.type, data.name, data.assets.length, "dnd5e_enc_hb" in data.store, "dnd5e_camps" in data.store]).toEqual(["dnd5e_campaign", "La mia campagna", 1, false, false]);
+  /* altro browser: dati diversi, libreria vuota */
+  await page.evaluate(async () => { localStorage.clear(); for (const a of await assetAll()) await assetDel(a.id); }); await page.goto("/npcs/index.html");
+  await page.evaluate(() => dbSet("npcs", [{ id: "npc_9", name: "Residente", sb: "Bandit" }]));
+  const mine = (await reg(page)).cur;
+  await page.evaluate(() => { window.__uiQueue = ["Aggiungi e apri"]; });
+  await page.click("#snData > .btn");
+  const [fc] = await Promise.all([page.waitForEvent("filechooser"), page.click('#snCamp button:has-text("Importa una campagna")')]);
+  await Promise.all([page.waitForEvent("load"), fc.setFiles(file)]); await page.waitForTimeout(300);
+  const r = await reg(page); expect(r.list.map(c => c.name)).toEqual(["La mia campagna", "La mia campagna (2)"]); expect(r.cur).not.toBe(mine);
+  expect((await ls(page, "dnd5e_npcs"))[0].name).toBe("Mira"); expect(await ls(page, "dnd5e_enc_hb")).toBe(null);
+  expect(JSON.parse((await ls(page, "dnd5e_camp_" + mine)).dnd5e_npcs)[0].name).toBe("Residente");
+  const maps = await ls(page, "dnd5e_maps"); expect(maps[0].name).toBe("Cripta");
+  expect(await page.evaluate(async id => !!(await assetGet(id)), maps[0].objects[0].img)).toBe(true);
+  /* un file di campagna dato a «Ripristina backup» viene riconosciuto; un backup dato a «Importa una campagna» viene rifiutato con una spiegazione */
+  await page.evaluate(() => { window.__uiQueue = ["Annulla"]; }); await page.setInputFiles("#bkFile", file); await page.waitForTimeout(400);
+  expect(await page.evaluate(() => (window.__uiLog || []).join("|"))).toContain("Importare la campagna");
+  await page.evaluate(() => { window.__uiQueue = ["yes"]; campImportData({ type: "dnd5e_suite_backup", store: {} }); }); await page.waitForTimeout(300);
+  expect((await reg(page)).list.length).toBe(2);
 });

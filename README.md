@@ -23,6 +23,8 @@ Dal menu **Dati** di qualunque tool si creano più campagne e si passa dall'una 
 
 La campagna attiva sta nelle chiavi di sempre del localStorage; le altre sono conservate ciascuna in una chiave `dnd5e_camp_<id>` e il registro è in `dnd5e_camps`. Il backup contiene tutte le campagne; un backup fatto prima di questa funzione si ripristina nella campagna attiva.
 
+Dallo stesso menu una campagna si esporta in un file (con le immagini usate dalle sue mappe) e si importa come nuova campagna in un altro browser: homebrew e preferenze non viaggiano nel file.
+
 ## Uso senza connessione
 
 Dopo la prima visita la suite si apre anche senza rete, e dal browser si può installare come app («Installa» nella barra degli indirizzi, oppure «Aggiungi a schermata Home» su telefono e tablet).

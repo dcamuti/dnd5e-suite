@@ -23,6 +23,7 @@ function restoreSuite(file){
   const rd=new FileReader();
   rd.onload=async()=>{try{
     const d=JSON.parse(rd.result);
+    if(d&&d.type==="dnd5e_campaign"){campImportData(d);return}
     if(d.type!=="dnd5e_suite_backup"||!d.store||typeof d.store!=="object")throw 0;
     const bs=parseInt(d.schema,10)>0?parseInt(d.schema,10):1;
     if(bs>DB_SCHEMA){uiAlert("Questo backup è stato creato da una versione più recente della suite e non può essere ripristinato qui.\n\nAggiorna la pagina (o la suite) e riprova.");return}
