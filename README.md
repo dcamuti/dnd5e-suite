@@ -66,6 +66,7 @@ npm run build                       # copia common/ nei 7 tool dopo una modifica
 | `tests/07-mappe` | disegno, elementi, annulla, export/import, token collegati, nebbia e vista giocatori |
 | `tests/08-finestre-immagini` | finestre della suite da tastiera, Annulla, conferma del ripristino, libreria immagini |
 | `tests/09-mappa-tracker` | creature della mappa portate nel tracker, turno evidenziato e passato dalla mappa, stato per i giocatori |
+| `tests/10-aree-ping` | aree d'effetto (cerchio, cono, linea, cubo), creature colpite, vista giocatori, segnalazione di un punto |
 
 Ogni test fallisce anche se la pagina genera un errore JavaScript o apre una finestra nativa del browser.
 

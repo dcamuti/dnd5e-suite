@@ -109,6 +109,23 @@ label.f{display:block; font-size:.74rem; color:var(--muted); margin:8px 0 3px; l
 .obj .hpb{position:absolute; left:14%; right:14%; bottom:1px; height:4px; background:#2a1a10; border:1px solid #000; border-radius:2px; overflow:hidden; pointer-events:none}
 .obj .hpb i{display:block; height:100%; background:#5fae4f}
 .obj .hpb i.mid{background:#d1a531}.obj .hpb i.low{background:#c94a3c}
+.areas{position:absolute; left:0; top:0; pointer-events:none; overflow:visible}
+.ahandle{position:absolute; width:16px; height:16px; margin:-8px 0 0 -8px; border-radius:50%; background:var(--c,#e2572b); border:2px solid #fff; box-shadow:0 1px 4px #000; cursor:grab; touch-action:none; z-index:3}
+.ahandle.sel{box-shadow:0 0 0 3px #eccb62,0 0 12px rgba(236,203,98,.7)}
+.ahandle.hid{border-style:dashed; opacity:.8}
+.ahandle .lbl,.alabel{position:absolute; left:50%; top:calc(100% + 2px); transform:translateX(-50%); white-space:nowrap; font-size:10px; font-family:Georgia,serif; color:#f4ead6; background:rgba(16,11,6,.82); border:1px solid var(--c,#c9a227); border-radius:4px; padding:0 4px; pointer-events:none}
+.alabel{top:auto; margin-top:6px}
+body.pv .alabel{font-size:calc(18px * var(--inv,1)); padding:calc(1px * var(--inv,1)) calc(6px * var(--inv,1))}
+.arow{display:flex; gap:5px; margin-top:8px; flex-wrap:wrap; align-items:center; font-size:.76rem; color:var(--muted)}
+.arow .btn{padding:5px 8px; font-size:.74rem}
+.acol{width:22px; height:22px; border-radius:50%; border:2px solid var(--border); cursor:pointer; padding:0}
+.acol.on{border-color:#fff; box-shadow:0 0 0 2px rgba(236,203,98,.5)}
+.ping{position:absolute; width:0; height:0; pointer-events:none; z-index:9}
+.ping i{position:absolute; left:-44px; top:-44px; width:88px; height:88px; border-radius:50%; border:4px solid #fff; box-shadow:0 0 14px 2px #f6d873, inset 0 0 14px 2px #f6d873; opacity:0; animation:ping 1s ease-out 3}
+.ping b{position:absolute; left:-6px; top:-6px; width:12px; height:12px; border-radius:50%; background:#fff; box-shadow:0 0 10px 3px #f6d873}
+@keyframes ping{0%{transform:scale(.12); opacity:1}100%{transform:scale(1); opacity:0}}
+@media (prefers-reduced-motion:reduce){.ping i{animation:none; opacity:1}}
+.vp.m-area{cursor:crosshair}
 .obj.turn .ic{box-shadow:0 0 0 3px #f6d873,0 0 16px 4px rgba(246,216,115,.75); animation:turnPulse 1.6s ease-in-out infinite}
 .obj.turn{z-index:4}
 @keyframes turnPulse{50%{box-shadow:0 0 0 3px #f6d873,0 0 28px 10px rgba(246,216,115,.95)}}
@@ -283,6 +300,7 @@ select,input,textarea,.fld{max-width:100%}
       <button class="btn small" data-sz="2" onclick="setBrush(2)">2</button>
       <button class="btn small" data-sz="3" onclick="setBrush(3)">3</button>
     </div>
+    <div class="arow" id="areaRow"><span>Area</span><span id="areaShapes"></span><span id="areaCols" style="display:inline-flex;gap:4px"></span></div>
     <h2>Terreno</h2>
     <div class="terr" id="terrBtns"></div>
     <div class="empty" id="terrName" style="margin-top:6px"></div>
@@ -321,7 +339,9 @@ select,input,textarea,.fld{max-width:100%}
       <button class="btn gold" onclick="openPlayers()" style="grid-column:1/-1">📺 Apri vista giocatori</button>
       <button class="btn" onclick="pvShowHere()" title="Inquadra nella vista giocatori la zona che stai guardando">📍 Mostra qui</button>
       <button class="btn" onclick="pvAuto()" title="La vista giocatori torna ad adattarsi all'area rivelata">⤢ Adatta</button>
+      <button class="btn" id="pingBtn" onclick="pingArm()" style="grid-column:1/-1" title="Segnala un punto: un cerchio lampeggia per qualche secondo qui e nella vista giocatori">📣 Indica un punto</button>
     </div>
+    <div class="hintbox">Per indicare un punto ai giocatori basta anche un doppio clic sulla mappa.</div>
     </div>
   </aside>
   <section class="vpwrap">
@@ -330,6 +350,7 @@ select,input,textarea,.fld{max-width:100%}
         <img id="bgImg" alt="">
         <canvas id="cv"></canvas>
         <canvas id="cvGrid"></canvas>
+        <svg id="areas" class="areas"></svg>
         <canvas id="cvFog"></canvas>
         <div id="rectPrev"></div>
         <div id="objs"></div>
@@ -799,10 +820,15 @@ function toast(t){const e=$("toast");e.textContent=t;e.style.display="block";cle
 /* ================= FORMATO DELLA MAPPA (v1) =================
    { id, v:1, name, src?, grid:{type:"square",w,h,cell,unit:"ft"},
      palette:[{k,pattern,color,tex?,scale?}], terrain:[righe: un carattere per casella = indice nella palette (0-9, a-z)],
-     objects:[{id,type,x,y,size,icon,label,note,vis?,own?,ref?,img?,trk?}], fog:{on,shown:[righe 0/1]}, bg?, notes, created, updated }
+     objects:[{id,type,x,y,size,icon,label,note,vis?,own?,ref?,img?,trk?}], fog:{on,shown:[righe 0/1]}, bg?,
+     areas:[{id,shape:"circle"|"cone"|"line"|"cube",x,y,n,a?,color,label,vis?}], notes, created, updated }
    tex/img/bg sono ID di immagini della libreria: se mancano si usano i pattern e le icone interni.
+   areas sono le aree d'effetto: x,y in caselle (a passi di mezza casella: origine, o angolo in alto a sinistra per il cubo), n = raggio, lunghezza
+   o lato in caselle, a = direzione in gradi (0 = est, in senso orario) per cono e linea.
    trk è l'ID della riga del tracker degli Incontri a cui il token è collegato (i PG si collegano da soli tramite la scheda). */
 const MAP_V=1, C=32, GRID_MIN=5, GRID_MAX=100;
+const AREA_SHAPES={circle:["◯ Cerchio","Raggio"],cone:["◣ Cono","Lunghezza"],line:["━ Linea","Lunghezza"],cube:["■ Cubo","Lato"]},AREA_MAX=60,AREA_DEF={circle:4,cone:3,line:6,cube:2};
+const AREA_COLORS=[["#e2572b","Fuoco"],["#4aa3df","Freddo"],["#7dbb3c","Acido o veleno"],["#e8d44d","Fulmine o luce"],["#9a6bd1","Necrotico o psichico"],["#d8c7a6","Neutro"]];
 const CH="0123456789abcdefghijklmnopqrstuvwxyz";
 const TERRAINS=[
   {k:"empty",n:"Vuoto",pattern:"none",color:"#0b0805"},
@@ -851,8 +877,12 @@ function normalizeMap(m){
     if(o.ref&&typeof o.ref==="object"&&/^(pc|npc|mon|hb|trk|pz|wld)$/.test(o.ref.t)){const rf={t:o.ref.t};if(/^[\w-]+$/.test(o.ref.id||""))rf.id=o.ref.id;if(typeof o.ref.n==="string")rf.n=o.ref.n.slice(0,80);if(rf.id||rf.n)r.ref=rf}
     if(typeof o.alias==="string"&&o.alias.trim())r.alias=o.alias.slice(0,80);if(/^[\w-]+$/.test(o.img||""))r.img=o.img;if(/^[\w-]+$/.test(o.trk||""))r.trk=o.trk;return r});
   const fog=m.fog&&typeof m.fog==="object"?{on:!!m.fog.on,shown:Array.isArray(m.fog.shown)?m.fog.shown.filter(x=>typeof x==="string").slice(0,h):[]}:{on:false,shown:[]};
+  const areas=(Array.isArray(m.areas)?m.areas:[]).filter(a=>a&&AREA_SHAPES[a.shape]&&isFinite(+a.x)&&isFinite(+a.y)).slice(0,60).map(a=>{
+    const r={id:/^[\w-]+$/.test(a.id||"")?a.id:newId("ar"),shape:a.shape,x:Math.max(0,Math.min(w,Math.round(+a.x*2)/2)),y:Math.max(0,Math.min(h,Math.round(+a.y*2)/2)),n:clampInt(a.n,1,AREA_MAX,4),
+      color:/^#[0-9a-f]{6}$/i.test(a.color||"")?a.color:AREA_COLORS[0][0],label:typeof a.label==="string"?a.label.slice(0,60):""};
+    if(a.shape==="cone"||a.shape==="line")r.a=((Math.round(+a.a||0)%360)+360)%360;if(a.vis==="dm")r.vis="dm";return r});
   const out={id:/^[\w-]+$/.test(m.id||"")?m.id:newId("map"),v:MAP_V,name:typeof m.name==="string"&&m.name.trim()?m.name.slice(0,80):"Mappa senza nome",
-    grid:{type:"square",w,h,cell:clampInt(g.cell,1,100,5),unit:"ft"},palette:pal,terrain,objects,fog,
+    grid:{type:"square",w,h,cell:clampInt(g.cell,1,100,5),unit:"ft"},palette:pal,terrain,objects,areas,fog,
     notes:typeof m.notes==="string"?m.notes:"",created:m.created||new Date().toISOString(),updated:m.updated||new Date().toISOString()};
   if(m.src&&typeof m.src==="object"&&m.src.t&&m.src.id)out.src={t:String(m.src.t),id:String(m.src.id)};
   if(m.bg&&typeof m.bg==="object"&&/^[\w-]+$/.test(m.bg.img||""))out.bg={img:m.bg.img,x:Math.max(-200,Math.min(200,+m.bg.x||0)),y:Math.max(-200,Math.min(200,+m.bg.y||0)),wc:Math.max(1,Math.min(200,+m.bg.wc||w)),op:Math.max(.1,Math.min(1,+m.bg.op||1))};
@@ -877,10 +907,11 @@ window.addEventListener("beforeunload",()=>{if(DIRTY)saveNow()});
 
 /* ---- annulla / ripeti ---- */
 let UNDO=[],REDO=[];
-function snap(){if(!M)return;UNDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog,palette:M.palette,bg:M.bg||null}));if(UNDO.length>60)UNDO.shift();REDO=[];updUndo()}
-function restoreSnap(s){const o=JSON.parse(s);M.terrain=o.terrain;M.objects=o.objects;M.grid=o.grid;if(o.fog)M.fog=o.fog;if(o.palette)M.palette=o.palette;if(o.bg)M.bg=o.bg;else delete M.bg;renderToolUI();renderBgForm();fogNorm(M);renderFogUI();SEL=null;buildStage();renderObjs();renderSel();renderMapForm();saveSoon()}
-function undo(){if(!UNDO.length)return;REDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog,palette:M.palette,bg:M.bg||null}));restoreSnap(UNDO.pop());updUndo()}
-function redo(){if(!REDO.length)return;UNDO.push(JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog,palette:M.palette,bg:M.bg||null}));restoreSnap(REDO.pop());updUndo()}
+function snapState(){return JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog,palette:M.palette,bg:M.bg||null,areas:M.areas||[]})}
+function snap(){if(!M)return;UNDO.push(snapState());if(UNDO.length>60)UNDO.shift();REDO=[];updUndo()}
+function restoreSnap(s){const o=JSON.parse(s);M.terrain=o.terrain;M.objects=o.objects;M.grid=o.grid;if(o.fog)M.fog=o.fog;if(o.palette)M.palette=o.palette;if(o.bg)M.bg=o.bg;else delete M.bg;M.areas=o.areas||[];renderToolUI();renderBgForm();fogNorm(M);renderFogUI();SEL=null;buildStage();renderObjs();renderSel();renderMapForm();saveSoon()}
+function undo(){if(!UNDO.length)return;REDO.push(snapState());restoreSnap(UNDO.pop());updUndo()}
+function redo(){if(!REDO.length)return;UNDO.push(snapState());restoreSnap(REDO.pop());updUndo()}
 function updUndo(){$("bUndo").disabled=!UNDO.length;$("bRedo").disabled=!REDO.length}
 /* ================= DISEGNO DEL TERRENO =================
    pattern interni generati in canvas, con variazioni deterministiche per casella (stessa mappa = stesso aspetto) */
@@ -934,7 +965,7 @@ let SHOW_GRID=true;
 function toggleGrid(){SHOW_GRID=!SHOW_GRID;$("cvGrid").style.display=SHOW_GRID?"":"none";$("bGrid").classList.toggle("on",SHOW_GRID)}
 function buildStage(){const w=M.grid.w,h=M.grid.h,W=w*C,H=h*C;
   ["cv","cvGrid"].forEach(id=>{const c=$(id);c.width=W;c.height=H;c.style.width=W+"px";c.style.height=H+"px"});
-  $("stage").style.width=W+"px";$("stage").style.height=H+"px";$("objs").style.width=W+"px";$("objs").style.height=H+"px";
+  $("stage").style.width=W+"px";$("stage").style.height=H+"px";$("objs").style.width=W+"px";$("objs").style.height=H+"px";$("areas").setAttribute("width",W);$("areas").setAttribute("height",H);
   const ctx=$("cv").getContext("2d");ctx.clearRect(0,0,W,H);for(let y=0;y<h;y++)for(let x=0;x<w;x++)drawCell(ctx,x,y);
   const g=$("cvGrid").getContext("2d");g.clearRect(0,0,W,H);drawGrid(g,w,h,.16);drawFog();renderBg();applyView()}
 
@@ -956,14 +987,14 @@ function renderObjs(){REFC=null;const list=PVMODE?M.objects.filter(pvVisible):M.
     u?["nel tracker",u.hp!=null?"PF "+u.hp+(u.hpMax?"/"+u.hpMax:""):"",st.cond.join(", "),st.dead?"sconfitto":"",st.turn?"è il suo turno":""].filter(Boolean).join(" · "):"",
     info&&info.missing?"⚠ elemento originale non più presente":"",hid?"nascosto ai giocatori":""].filter(Boolean).join(" — ");
   return`<div class="obj t-${o.type} vis-${objVis(o)} ${hid?"hid":""} ${SEL===o.id?"sel":""}${cls}" data-id="${o.id}" style="left:${o.x*C}px;top:${o.y*C}px;width:${s}px;height:${s}px"
-    title="${esc(tip)}">${objIcon(o,t)}${skull}${hpBar(hp)}${(info&&info.missing)||imgMissing(o.img)?'<span class="warn">⚠</span>':""}${nm||cnd?`<span class="lbl">${esc(nm)}${cnd}</span>`:""}</div>`}).join("");
-  if(!PVMODE)renderCbar()}
+    title="${esc(tip)}">${objIcon(o,t)}${skull}${hpBar(hp)}${(info&&info.missing)||imgMissing(o.img)?'<span class="warn">⚠</span>':""}${nm||cnd?`<span class="lbl">${esc(nm)}${cnd}</span>`:""}</div>`}).join("")+areaHandles();
+  renderAreas();if(!PVMODE)renderCbar()}
 function addObject(def,x,y){if(!M)return;const [type,icon,label,extra]=def;const sz=type==="token"&&/dragon/.test(icon)?2:1;
   x=Math.max(0,Math.min(M.grid.w-sz,x));y=Math.max(0,Math.min(M.grid.h-sz,y));snap();
   const o={id:newId("obj"),type,x,y,size:sz,icon,label,note:""};if(extra&&extra.secret){o.secret=true}
   M.objects.push(o);SEL=o.id;renderObjs();renderSel();saveSoon()}
 function selObj(){return M&&SEL?M.objects.find(o=>o.id===SEL):null}
-function renderSel(){const o=selObj(),b=$("selBox");
+function renderSel(){const o=selObj(),b=$("selBox");const ar=selArea();if(ar){b.innerHTML=areaPanel(ar);return}
   if(!o){b.innerHTML='<div class="empty">Nessun elemento selezionato. Clicca un elemento per modificarlo; trascinalo per spostarlo (con qualunque strumento; tieni premuto Alt per lavorare sulla casella sotto).</div>';return}
   const t=OBJ_TYPES[o.type],v=objVis(o);
   b.innerHTML=`<div class="selcard"><div class="head"><div class="sw">${iconSvg(o.icon,t.col)}</div><div><b style="color:var(--gold-l);font-family:var(--font-display)">${esc(t.n)}${o.secret?" segreta":""}</b><br><span class="empty">Casella ${o.x+1}, ${o.y+1}</span></div></div>
@@ -1001,14 +1032,14 @@ function cellOf(e){const r=$("stage").getBoundingClientRect();return{x:Math.floo
 const inMap=c=>M&&c.x>=0&&c.y>=0&&c.x<M.grid.w&&c.y<M.grid.h;
 
 /* ================= STRUMENTI ================= */
-const TOOLS=[["select","🖐 Seleziona","V"],["paint","🖌 Pennello","B"],["rect","▭ Rettangolo","R"],["fill","🪣 Riempi","F"],["erase","🧽 Gomma","E"],["ruler","📏 Righello","M"]];
+const TOOLS=[["select","🖐 Seleziona","V"],["paint","🖌 Pennello","B"],["rect","▭ Rettangolo","R"],["fill","🪣 Riempi","F"],["erase","🧽 Gomma","E"],["ruler","📏 Righello","M"],["area","💥 Area","A"]];
 let MODE="select",BRUSH=1,TERR=1,ARMED=null;
 /* schede del pannello sinistro: l'ultima scelta resta tra una visita e l'altra */
 function setLTab(t){document.querySelectorAll(".ltabs [data-lt]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.lt===t)));
   document.querySelectorAll(".ltab").forEach(p=>p.classList.toggle("on",p.dataset.lt===t));uiPrefSet("mapsTab",t)}
-function setMode(m){MODE=m;ARMED=null;ARMED_S=null;{const tb={paint:"draw",rect:"draw",fill:"draw",erase:"draw",reveal:"play",cover:"play",revrect:"play",revroom:"play"}[m];if(tb&&!PVMODE)setLTab(tb)}document.querySelectorAll(".pal .it,.sitem").forEach(x=>x.classList.remove("armed"));
+function setMode(m){MODE=m;ARMED=null;ARMED_S=null;pingArm(false);{const tb={paint:"draw",rect:"draw",fill:"draw",erase:"draw",area:"draw",reveal:"play",cover:"play",revrect:"play",revroom:"play"}[m];if(tb&&!PVMODE)setLTab(tb)}document.querySelectorAll(".pal .it,.sitem").forEach(x=>x.classList.remove("armed"));
   document.querySelectorAll("[data-m]").forEach(b=>b.classList.toggle("on",b.dataset.m===m));
-  $("vp").className="vp m-"+m;$("sizeRow").style.opacity=(m==="paint"||m==="erase"||m==="reveal"||m==="cover")?1:.45;$("vp").classList.toggle("m-paint",m==="reveal"||m==="cover"||m==="revrect"||m==="revroom");if(m!=="ruler")$("ruler").innerHTML=""}
+  $("vp").className="vp m-"+m;$("sizeRow").style.opacity=(m==="paint"||m==="erase"||m==="reveal"||m==="cover")?1:.45;$("vp").classList.toggle("m-paint",m==="reveal"||m==="cover"||m==="revrect"||m==="revroom");if(m!=="ruler")$("ruler").innerHTML="";if($("areaRow"))$("areaRow").style.opacity=m==="area"?1:.45}
 function setBrush(n){BRUSH=n;document.querySelectorAll("#sizeRow .btn").forEach(b=>b.classList.toggle("on",+b.dataset.sz===n))}
 function setTerr(i){TERR=i;document.querySelectorAll("#terrBtns button").forEach((b,j)=>b.classList.toggle("on",j===i));
   const p=M&&M.palette[i];$("terrName").textContent=p?palName(p):"";if(MODE!=="paint"&&MODE!=="rect"&&MODE!=="fill")setMode("paint")}
@@ -1022,7 +1053,7 @@ function renderToolUI(){
     drawSwatch(ctx,p,32,+cv.dataset.i)});
   $("palette").innerHTML=PALETTE_ITEMS.map(([g,items],gi)=>`<h3>${g}</h3><div class="pal">${items.map((it,ii)=>`<div class="it" draggable="true" data-g="${gi}" data-i="${ii}" title="${esc(it[2])}"
      ondragstart="palDrag(event,${gi},${ii})" onclick="palArm(this,${gi},${ii})">${iconSvg(it[1],OBJ_TYPES[it[0]].col)}</div>`).join("")}</div>`).join("");
-  setMode(MODE);setBrush(BRUSH);setTerrQuiet(TERR);renderSuiteList()}
+  renderAreaUI();setMode(MODE);setBrush(BRUSH);setTerrQuiet(TERR);renderSuiteList()}
 function setTerrQuiet(i){TERR=i;document.querySelectorAll("#terrBtns button").forEach((b,j)=>b.classList.toggle("on",j===i));const p=M&&M.palette[i];$("terrName").textContent=p?palName(p):""}
 function palDrag(e,g,i){e.dataTransfer.setData("text/plain","pal:"+g+":"+i);e.dataTransfer.effectAllowed="copy"}
 function palArm(el,g,i){const was=el.classList.contains("armed");setMode("select");if(was)return;ARMED=PALETTE_ITEMS[g][1][i];el.classList.add("armed");$("vp").className="vp m-place";
@@ -1052,9 +1083,14 @@ let PTR=null;
 function onDown(e){if(!M)return;$("vp").focus({preventScroll:true});const c=cellOf(e);
   if(e.button===1||(e.button===0&&SPACE)){PTR={kind:"pan",sx:e.clientX,sy:e.clientY,vx:VIEW.x,vy:VIEW.y};$("vp").classList.add("panning");e.preventDefault();return}
   if(e.button!==0)return;
+  if(PING_ARM){pingArm(false);pingAt(c.fx,c.fy);return}
   if(ARMED){if(inMap(c))addObject(ARMED,c.x,c.y);setMode("select");return}
   if(ARMED_S){const a=ARMED_S;setMode("select");if(inMap(c))addSuite(a[0],a[1],c.x,c.y);return}
   const objEl=e.target.closest(".obj");
+  /* un'area si prende dalla sua maniglia, con qualunque strumento */
+  const arEl=e.target.closest(".ahandle");
+  if(arEl&&MODE!=="ruler"&&!e.altKey){const a=M.areas.find(x=>x.id===arEl.dataset.area);if(a){SEL=a.id;OBJ_EDIT_SNAP=false;renderObjs();renderSel();
+      const h=areaHandle(a);PTR={kind:"amove",id:a.id,ox:c.fx-h.x,oy:c.fy-h.y,dx:h.x-a.x,dy:h.y-a.y,moved:false};$("vp").setPointerCapture(e.pointerId);return}}
   /* un elemento si prende e si sposta con qualunque strumento (con Alt premuto si lavora invece sulla casella sotto) */
   if(objEl&&MODE!=="ruler"&&!e.altKey){const o=M.objects.find(x=>x.id===objEl.dataset.id);if(o){SEL=o.id;OBJ_EDIT_SNAP=false;renderObjs();renderSel();
       PTR={kind:"move",id:o.id,ox:c.fx-o.x,oy:c.fy-o.y,start:{x:o.x,y:o.y},moved:false};$("vp").setPointerCapture(e.pointerId);return}}
@@ -1068,6 +1104,7 @@ function onDown(e){if(!M)return;$("vp").focus({preventScroll:true});const c=cell
   if(MODE==="rect"){PTR={kind:"rect",a:c};showRect(c,c);$("vp").setPointerCapture(e.pointerId);return}
   if(MODE==="fill"){snap();floodFill(c,CH[TERR]);saveSoon();return}
   if(MODE==="ruler"){PTR={kind:"ruler",a:c};drawRuler(c,c);$("vp").setPointerCapture(e.pointerId);return}
+  if(MODE==="area"){const o={x:half(c.fx,M.grid.w),y:half(c.fy,M.grid.h)};PTR={kind:"area",o,dragged:false};AREA_TMP=areaFrom(o,o);renderAreas();$("vp").setPointerCapture(e.pointerId);return}
   if(!M.fog.on)return;
   if(MODE==="reveal"||MODE==="cover"){snap();const v=MODE==="reveal";fogBrush(c.x,c.y,v);drawFog();PTR={kind:"fog",last:c,v};$("vp").setPointerCapture(e.pointerId);return}
   if(MODE==="revrect"){PTR={kind:"fogrect",a:c};showRect(c,c);$("vp").setPointerCapture(e.pointerId);return}
@@ -1079,6 +1116,11 @@ function onMove(e){if(!M)return;const c=cellOf(e);
   if(PTR.kind==="rect"||PTR.kind==="fogrect"){showRect(PTR.a,c);return}
   if(PTR.kind==="fog"){const cc={x:Math.max(0,Math.min(M.grid.w-1,c.x)),y:Math.max(0,Math.min(M.grid.h-1,c.y))};if(cc.x!==PTR.last.x||cc.y!==PTR.last.y){if(fogLine(PTR.last,cc,PTR.v)){drawFog();pvLive({t:"fog",id:M.id,shown:M.fog.shown})}PTR.last=cc}return}
   if(PTR.kind==="ruler"){drawRuler(PTR.a,c);return}
+  if(PTR.kind==="area"){if(Math.hypot(c.fx-PTR.o.x,c.fy-PTR.o.y)>=.5)PTR.dragged=true;if(PTR.dragged){AREA_TMP=areaFrom(PTR.o,{x:c.fx,y:c.fy});renderAreas();
+      $("status").textContent=`💥 ${AREA_SHAPES[AREA_TMP.shape][0].slice(2)}: ${AREA_TMP.n*M.grid.cell} ft · ${areaTokens(AREA_TMP).length} creature`}return}
+  if(PTR.kind==="amove"){const a=M.areas.find(x=>x.id===PTR.id);if(!a)return;const nx=half(c.fx-PTR.ox-PTR.dx,M.grid.w),ny=half(c.fy-PTR.oy-PTR.dy,M.grid.h);
+    if(nx!==a.x||ny!==a.y){if(!PTR.moved){snap();PTR.moved=true}a.x=nx;a.y=ny;renderAreas();const el=document.querySelector(`.ahandle[data-area="${a.id}"]`),h=areaHandle(a);
+      if(el){el.style.left=h.x*C+"px";el.style.top=h.y*C+"px"}pvLive({t:"ar",id:M.id,areas:M.areas})}return}
   if(PTR.kind==="move"){const o=M.objects.find(x=>x.id===PTR.id);if(!o)return;const el=document.querySelector(`.obj[data-id="${o.id}"]`);
     const nx=Math.max(0,Math.min(M.grid.w-o.size,Math.round(c.fx-PTR.ox))),ny=Math.max(0,Math.min(M.grid.h-o.size,Math.round(c.fy-PTR.oy)));
     if(nx!==o.x||ny!==o.y){if(!PTR.moved){snap();PTR.moved=true}o.x=nx;o.y=ny;if(el){el.style.left=nx*C+"px";el.style.top=ny*C+"px";el.classList.add("drag")}pvLive({t:"mv",id:M.id,o:o.id,x:nx,y:ny})}}}
@@ -1087,7 +1129,9 @@ function onUp(e){if(!PTR)return;const p=PTR;PTR=null;$("vp").classList.remove("p
   if(p.kind==="fog"){renderObjs();saveSoon()}
   if(p.kind==="fogrect"){$("rectPrev").style.display="none";snap();fogRect(p.a,cellOf(e));drawFog();renderObjs();saveSoon()}
   if(p.kind==="rect"){$("rectPrev").style.display="none";snap();fillRect(p.a,cellOf(e),CH[TERR]);saveSoon()}
-  if(p.kind==="move"){if(p.moved){renderObjs();renderSel();saveSoon()}}}
+  if(p.kind==="move"){if(p.moved){renderObjs();renderSel();saveSoon()}}
+  if(p.kind==="amove"){if(p.moved){renderObjs();renderSel();saveSoon()}}
+  if(p.kind==="area"){const a=AREA_TMP;AREA_TMP=null;if(a){snap();a.id=newId("ar");M.areas.push(a);SEL=a.id;setMode("select");renderObjs();renderSel();saveSoon()}else renderAreas()}}
 function showRect(a,b){const r=$("rectPrev"),x0=Math.max(0,Math.min(a.x,b.x)),y0=Math.max(0,Math.min(a.y,b.y)),x1=Math.min(M.grid.w-1,Math.max(a.x,b.x)),y1=Math.min(M.grid.h-1,Math.max(a.y,b.y));
   Object.assign(r.style,{display:"block",left:x0*C+"px",top:y0*C+"px",width:(x1-x0+1)*C+"px",height:(y1-y0+1)*C+"px"});$("status").textContent=`▭ ${x1-x0+1}×${y1-y0+1} caselle`}
 let SPACE=false;
@@ -1123,9 +1167,9 @@ function applySize(){if(!M)return;const w=clampInt($("mW").value,GRID_MIN,GRID_M
   if(w===M.grid.w&&h===M.grid.h)return;
   const lostObj=M.objects.filter(o=>o.x+o.size>w||o.y+o.size>h).length;
   let lostCells=0;M.terrain.forEach((r,y)=>{for(let x=0;x<r.length;x++)if((x>=w||y>=h)&&r[x]!=="0")lostCells++});
-  const before=JSON.stringify({terrain:M.terrain,objects:M.objects,grid:M.grid,fog:M.fog,palette:M.palette,bg:M.bg||null});
+  const before=snapState();
   snap();M.terrain=Array.from({length:h},(_,y)=>(M.terrain[y]||"").slice(0,w).padEnd(w,"0"));M.grid.w=w;M.grid.h=h;
-  M.objects=M.objects.filter(o=>o.x+o.size<=w&&o.y+o.size<=h);if(SEL&&!selObj())SEL=null;fogNorm(M);
+  M.objects=M.objects.filter(o=>o.x+o.size<=w&&o.y+o.size<=h);M.areas=(M.areas||[]).filter(a=>a.x<=w&&a.y<=h);if(SEL&&!selObj()&&!selArea())SEL=null;fogNorm(M);
   buildStage();renderObjs();renderSel();renderMapForm();fitView();saveSoon();
   if(lostObj||lostCells)uiUndo(`↔ Mappa ridotta: tolte ${lostCells} caselle disegnate${lostObj?` e ${lostObj} elementi`:""}`,()=>{snap();restoreSnap(before);fitView()})}
 function openMap(m){if(DIRTY)saveNow();M=normalizeMap(m);SEL=null;UNDO=[];REDO=[];updUndo();renderToolUI();buildStage();renderObjs();renderSel();renderMapForm();renderFogUI();renderBgForm();pvSend();
@@ -1260,6 +1304,69 @@ function renderSuiteList(){REFC=null;const R=refCache(),q=($("sQ").value||"").tr
     html=l.map(u=>it("trk",u.id,u.pc?"visored-helm":"goblin-head",u.name,[u.sub,u.hp!=null?"PF "+u.hp+(u.hpMax?"/"+u.hpMax:""):""].filter(Boolean).join(" · "))).join("")
       ||`<p class="empty">${trkGet().list.length?"Tutti i combattenti del tracker sono già su questa mappa.":"Il tracker degli Incontri è vuoto."}</p>`}
   $("sList").innerHTML=html}
+
+/* ================= AREE D'EFFETTO E SEGNALAZIONE DI UN PUNTO =================
+   Un'area copre le caselle il cui centro cade al suo interno. L'origine si aggancia a mezza casella (incroci e centri).
+   Il cono è largo, a ogni distanza dall'origine, quanto quella distanza; la linea è larga una casella. */
+let AREA_SHAPE="circle",AREA_COL=AREA_COLORS[0][0],AREA_TMP=null;
+const half=(v,max)=>Math.max(0,Math.min(max,Math.round(v*2)/2));
+function selArea(){return M&&SEL?(M.areas||[]).find(a=>a.id===SEL):null}
+function renderAreaUI(){if(!$("areaShapes"))return;
+  $("areaShapes").innerHTML=Object.keys(AREA_SHAPES).map(k=>`<button class="btn ${AREA_SHAPE===k?"on":""}" onclick="setAreaShape('${k}')" title="${AREA_SHAPES[k][0].slice(2)}" aria-label="${AREA_SHAPES[k][0].slice(2)}">${AREA_SHAPES[k][0].split(" ")[0]}</button>`).join(" ");
+  $("areaCols").innerHTML=AREA_COLORS.map(([c,n])=>`<button class="acol ${AREA_COL===c?"on":""}" style="background:${c}" onclick="setAreaCol('${c}')" title="${n}" aria-label="${n}"></button>`).join("")}
+function setAreaShape(k){AREA_SHAPE=k;renderAreaUI();if(MODE!=="area")setMode("area")}
+function setAreaCol(c){AREA_COL=c;renderAreaUI();if(MODE!=="area")setMode("area")}
+/* area tracciata dall'origine o al punto p; un semplice clic dà la dimensione più comune */
+function areaFrom(o,p){const dx=p.x-o.x,dy=p.y-o.y,d=Math.hypot(dx,dy),click=d<.5,a={shape:AREA_SHAPE,x:o.x,y:o.y,color:AREA_COL,label:""};
+  if(AREA_SHAPE==="cube"){a.n=click?AREA_DEF.cube:Math.max(1,Math.min(AREA_MAX,Math.round(Math.max(Math.abs(dx),Math.abs(dy)))));if(dx<0&&!click)a.x=o.x-a.n;if(dy<0&&!click)a.y=o.y-a.n;
+    a.x=Math.max(0,a.x);a.y=Math.max(0,a.y);return a}
+  a.n=click?AREA_DEF[AREA_SHAPE]:Math.max(1,Math.min(AREA_MAX,Math.round(d)));
+  if(AREA_SHAPE!=="circle")a.a=click?0:((Math.round(Math.atan2(dy,dx)*180/Math.PI/5)*5)%360+360)%360;return a}
+function areaCovers(a,px,py){const dx=px-a.x,dy=py-a.y,E=1e-6;
+  if(a.shape==="circle")return dx*dx+dy*dy<=a.n*a.n+E;
+  if(a.shape==="cube")return dx>=-E&&dy>=-E&&dx<=a.n+E&&dy<=a.n+E;
+  const r=(a.a||0)*Math.PI/180,al=dx*Math.cos(r)+dy*Math.sin(r),pe=Math.abs(-dx*Math.sin(r)+dy*Math.cos(r));
+  if(al<-E||al>a.n+E)return false;return a.shape==="cone"?al>E&&pe<=al/2+E:pe<=.5+E}
+function areaCells(a){const out=[],r=a.n+1,x0=Math.max(0,Math.floor(a.x-r)),y0=Math.max(0,Math.floor(a.y-r)),x1=Math.min(M.grid.w-1,Math.ceil(a.x+r)),y1=Math.min(M.grid.h-1,Math.ceil(a.y+r));
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)if(areaCovers(a,x+.5,y+.5))out.push([x,y]);return out}
+function areaTokens(a){return M.objects.filter(o=>{if(o.type!=="token")return false;for(let j=0;j<o.size;j++)for(let i=0;i<o.size;i++)if(areaCovers(a,o.x+i+.5,o.y+j+.5))return true;return false})}
+/* punto in cui stanno maniglia ed etichetta: l'origine, o il centro per il cubo */
+function areaHandle(a){return a.shape==="cube"?{x:a.x+a.n/2,y:a.y+a.n/2}:{x:a.x,y:a.y}}
+function areaShapeSvg(a){const X=a.x*C,Y=a.y*C,N=a.n*C;
+  if(a.shape==="circle")return`<circle cx="${X}" cy="${Y}" r="${N}"/>`;
+  if(a.shape==="cube")return`<rect x="${X}" y="${Y}" width="${N}" height="${N}"/>`;
+  const r=(a.a||0)*Math.PI/180,cx=Math.cos(r),sy=Math.sin(r),hw=(a.shape==="cone"?a.n/2:.5)*C,ex=X+cx*N,ey=Y+sy*N,px=-sy*hw,py=cx*hw,f=v=>Math.round(v*10)/10;
+  return a.shape==="cone"?`<polygon points="${f(X)},${f(Y)} ${f(ex+px)},${f(ey+py)} ${f(ex-px)},${f(ey-py)}"/>`
+    :`<polygon points="${f(X+px)},${f(Y+py)} ${f(ex+px)},${f(ey+py)} ${f(ex-px)},${f(ey-py)} ${f(X-px)},${f(Y-py)}"/>`}
+function areaTitle(a){return[a.label,AREA_SHAPES[a.shape][0].slice(2)+" "+a.n*M.grid.cell+" ft"].filter(Boolean).join(" · ")}
+function renderAreas(){const el=$("areas");if(!el||!M)return;const list=(M.areas||[]).filter(a=>!PVMODE||a.vis!=="dm").concat(AREA_TMP&&!PVMODE?[AREA_TMP]:[]);
+  el.innerHTML=list.map(a=>{const sel=!PVMODE&&a.id&&a.id===SEL;
+    return`<g fill="${a.color}" stroke="${a.color}"><path stroke="none" fill-opacity=".3" d="${areaCells(a).map(([x,y])=>`M${x*C} ${y*C}h${C}v${C}h${-C}z`).join("")}"/><g fill-opacity=".1" stroke-width="${sel?4:2.5}" stroke-linejoin="round" ${a.vis==="dm"?'stroke-dasharray="8 6"':""}>${areaShapeSvg(a)}</g></g>`}).join("")}
+/* nell'editor ogni area ha una maniglia con l'etichetta; nella vista giocatori resta solo l'etichetta */
+function areaHandles(){return(M.areas||[]).filter(a=>!PVMODE||a.vis!=="dm").map(a=>{const h=areaHandle(a);
+  if(PVMODE)return a.label?`<div class="alabel" style="left:${h.x*C}px;top:${h.y*C}px;--c:${a.color}">${esc(a.label)}</div>`:"";
+  return`<div class="ahandle ${SEL===a.id?"sel":""} ${a.vis==="dm"?"hid":""}" data-area="${a.id}" style="left:${h.x*C}px;top:${h.y*C}px;--c:${a.color}" title="${esc(areaTitle(a)+(a.vis==="dm"?" — nascosta ai giocatori":"")+" (trascina per spostare)")}"><span class="lbl">${esc(areaTitle(a))}</span></div>`}).join("")}
+function areaHits(a){const t=areaTokens(a).map(o=>dispName(o)||"Creatura");return t.length?`<b style="color:var(--gold-l)">${t.length} ${t.length===1?"creatura":"creature"} nell'area:</b> ${esc(t.join(", "))}`:"Nessuna creatura nell'area."}
+function areaPanel(a){const cell=M.grid.cell,dir=a.shape==="cone"||a.shape==="line";
+  return`<div class="selcard"><div class="head"><div class="sw" style="border-radius:50%;background:${a.color};border:2px solid #fff"></div><div><b style="color:var(--gold-l);font-family:var(--font-display)">Area: ${AREA_SHAPES[a.shape][0].slice(2).toLowerCase()}</b><br><span class="empty">${a.n} ${a.n===1?"casella":"caselle"} · ${a.n*cell} ft</span></div></div>
+   <label class="f" for="sLabel">Etichetta</label><input type="text" id="sLabel" value="${esc(a.label)}" placeholder="es. Palla di fuoco" maxlength="60" oninput="setArea('label',this.value)">
+   <label class="f" for="arN">${AREA_SHAPES[a.shape][1]} (ft)</label><input type="number" id="arN" min="${cell}" max="${AREA_MAX*cell}" step="${cell}" value="${a.n*cell}" onchange="setArea('n',Math.round(this.value/${cell}))">
+   ${dir?`<label class="f" for="arA">Direzione: <span id="arAv">${a.a||0}</span>°</label><input type="range" id="arA" min="0" max="355" step="5" value="${a.a||0}" oninput="setArea('a',+this.value)">`:""}
+   <label class="f">Colore</label><div style="display:flex;gap:5px">${AREA_COLORS.map(([c,n])=>`<button class="acol ${a.color===c?"on":""}" style="background:${c}" onclick="setArea('color','${c}')" title="${n}" aria-label="${n}"></button>`).join("")}</div>
+   <div class="trkbox" id="arHits">${areaHits(a)}</div>
+   <div class="toolbar"><button class="btn small" onclick="setArea('vis',${a.vis==="dm"?"'all'":"'dm'"})" title="Visibilità nella vista giocatori">${a.vis==="dm"?"🙈 Nascosta ai giocatori":"👁 Visibile ai giocatori"}</button></div>
+   <div class="toolbar"><button class="btn small" onclick="delArea()">🗑 Elimina</button></div></div>`}
+function setArea(f,v){const a=selArea();if(!a)return;if(!OBJ_EDIT_SNAP){snap();OBJ_EDIT_SNAP=true}
+  if(f==="n")a.n=clampInt(v,1,AREA_MAX,a.n);else if(f==="a")a.a=((Math.round(v)%360)+360)%360;else if(f==="vis"){if(v==="dm")a.vis="dm";else delete a.vis}
+  else if(f==="label")a.label=String(v).slice(0,60);else if(f==="color"&&/^#[0-9a-f]{6}$/i.test(v))a.color=v;
+  renderObjs();if(f==="label"||f==="a"){if($("arAv"))$("arAv").textContent=a.a||0;if($("arHits"))$("arHits").innerHTML=areaHits(a)}else{OBJ_EDIT_SNAP=false;renderSel()}
+  pvLive({t:"ar",id:M.id,areas:M.areas});saveSoon()}
+function delArea(){const a=selArea();if(!a)return;snap();M.areas=M.areas.filter(x=>x.id!==a.id);SEL=null;renderObjs();renderSel();saveSoon()}
+/* segnalazione di un punto: un cerchio che pulsa per circa tre secondi, qui e nella vista giocatori; non viene salvata */
+let PING_ARM=false;
+function pingArm(on){PING_ARM=on===undefined?!PING_ARM:!!on;const b=$("pingBtn");if(b)b.classList.toggle("on",PING_ARM);if(PING_ARM){$("vp").classList.add("m-area");toast("Clicca sulla mappa il punto da indicare (Esc per annullare)")}else if(MODE!=="area")$("vp").classList.remove("m-area")}
+function pingShow(x,y){if(!M||!isFinite(x)||!isFinite(y))return;const d=document.createElement("div");d.className="ping";d.style.left=x*C+"px";d.style.top=y*C+"px";d.innerHTML="<i></i><b></b>";$("stage").appendChild(d);setTimeout(()=>d.remove(),3000)}
+function pingAt(x,y){if(!M||PVMODE||x<0||y<0||x>M.grid.w||y>M.grid.h)return;pingShow(x,y);pvPost({t:"ping",id:M.id,x,y})}
 
 /* ================= COMBATTIMENTO: collegamento con il tracker degli Incontri =================
    Un token è collegato a una riga del tracker tramite il campo trk (ID della riga); i PG con una scheda si collegano da soli.
@@ -1501,6 +1608,8 @@ function pvStart(id){PVMODE=true;document.body.classList.add("pv");
     else if(d.t==="view"&&d.id===M.id){PV_LOCK=d.auto?null:{x:d.x,y:d.y,w:d.w,h:d.h};pvFit()}
     else if(d.t==="mv"&&d.id===M.id){const o=M.objects.find(x=>x.id===d.o);if(o){o.x=d.x;o.y=d.y;renderObjs()}}
     else if(d.t==="fog"&&d.id===M.id&&Array.isArray(d.shown)){M.fog.shown=d.shown;fogNorm(M);drawFog();renderObjs();if(!PV_LOCK)pvFit()}
+    else if(d.t==="ar"&&d.id===M.id&&Array.isArray(d.areas)){M.areas=d.areas;renderObjs()}
+    else if(d.t==="ping"&&d.id===M.id)pingShow(+d.x,+d.y)
     else if(d.t==="assets")refreshImages()};
   window.addEventListener("storage",e=>{if(e.key===dbKey("encTrk")||e.key===dbKey("chars")){trkChanged();return}
     if(e.key!==dbKey("maps"))return;const n=mapsAll().find(x=>x.id===M.id);if(n&&n.updated!==M.updated)pvRender(n)});
@@ -1515,6 +1624,7 @@ function pvStart(id){PVMODE=true;document.body.classList.add("pv");
   vp.addEventListener("pointerdown",vpDown);vp.addEventListener("pointermove",vpMove);vp.addEventListener("pointerup",vpUp);vp.addEventListener("pointercancel",vpUp);
   vp.addEventListener("wheel",e=>{e.preventDefault();const r=vp.getBoundingClientRect();zoomAt(e.deltaY<0?1.12:1/1.12,e.clientX-r.left,e.clientY-r.top)},{passive:false});
   vp.addEventListener("contextmenu",e=>e.preventDefault());
+  vp.addEventListener("dblclick",e=>{if(!M||MODE==="area"||e.target.closest(".cbar,.zoombar,.ftools"))return;const c=cellOf(e);pingAt(c.fx,c.fy)});
   vp.addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer.dropEffect="copy"});
   vp.addEventListener("drop",e=>{e.preventDefault();const raw=e.dataTransfer.getData("text/plain")||"";
     if(raw.indexOf("suite:")===0){try{const [k,key]=JSON.parse(raw.slice(6));const c=cellOf(e);if(inMap(c)){setMode("select");addSuite(k,key,c.x,c.y)}}catch(err){}return}
@@ -1525,13 +1635,13 @@ function pvStart(id){PVMODE=true;document.body.classList.add("pv");
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();e.shiftKey?redo():undo();return}
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="y"){e.preventDefault();redo();return}
     if(e.key==="Escape"){const open=[...document.querySelectorAll(".modal")].find(x=>x.style.display==="flex");if(open)open.style.display="none";else{setMode("select");SEL=null;renderObjs();renderSel()}return}
-    if((e.key==="Delete"||e.key==="Backspace")&&SEL){e.preventDefault();delObj();return}
+    if((e.key==="Delete"||e.key==="Backspace")&&SEL){e.preventDefault();if(selArea())delArea();else delObj();return}
     if(e.ctrlKey||e.metaKey||e.altKey)return;
-    const k={v:"select",b:"paint",r:"rect",f:"fill",e:"erase",m:"ruler"}[e.key.toLowerCase()];if(k)setMode(k)});
+    const k={v:"select",b:"paint",r:"rect",f:"fill",e:"erase",m:"ruler",a:"area"}[e.key.toLowerCase()];if(k)setMode(k)});
   document.addEventListener("keyup",e=>{if(e.key===" ")SPACE=false});
   document.querySelectorAll(".modal").forEach(md=>md.addEventListener("click",e=>{if(e.target===md)md.style.display="none"}));
   /* le modifiche testuali fanno un solo passo di annulla per elemento selezionato */
-  document.addEventListener("focusout",e=>{if(e.target&&(e.target.id==="sLabel"||e.target.id==="sNote"))OBJ_EDIT_SNAP=false});
+  document.addEventListener("focusout",e=>{if(e.target&&(e.target.id==="sLabel"||e.target.id==="sNote"||e.target.id==="arA"))OBJ_EDIT_SNAP=false});
   /* un'altra finestra ha modificato le mappe: si ricarica quella aperta se qui non ci sono modifiche in corso */
   window.addEventListener("storage",e=>{if(!M)return;
     if(["chars","npcs","encHb","encSaved"].map(dbKey).includes(e.key)){REFC=null;renderObjs();renderSel();renderSuiteList();return}
