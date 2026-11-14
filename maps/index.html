@@ -141,6 +141,9 @@ body.pv .alabel{font-size:calc(18px * var(--inv,1)); padding:calc(1px * var(--in
 .cbar .btn{padding:4px 10px; font-size:.8rem}
 body.pv .cbar{display:none !important}
 @media (max-width:760px){.cbar{bottom:38px}}
+.hprow{display:flex; gap:5px; align-items:center; margin-top:7px; flex-wrap:wrap}
+.hprow input{width:58px; padding:5px 6px; text-align:center}
+.hprow label{color:var(--muted); font-size:.74rem; margin-left:auto; display:flex; align-items:center; gap:4px}
 .trkbox{border-top:1px solid var(--border); margin-top:10px; padding-top:8px; font-size:.8rem}
 .obj .warn{position:absolute; right:-3px; top:-5px; font-size:12px; pointer-events:none; filter:drop-shadow(0 1px 1px #000)}
 .refbox{border-top:1px solid var(--border); margin-top:10px; padding-top:8px; font-size:.8rem}
@@ -1738,7 +1741,17 @@ function trkPanel(o){if(o.type!=="token")return"";const T=trkGet();if(!T.list.le
   const used=new Set(M.objects.filter(x=>x.id!==o.id).map(x=>{const r=trkRowOf(x);return r&&r.id}).filter(Boolean));
   return`<div class="trkbox"><label class="f" style="margin-top:0" for="sTrk">Riga del tracker</label>${auto?`<div class="empty">Collegato tramite la scheda del PG.</div>`
     :`<select id="sTrk" onchange="setTrk(this.value)"><option value="">— nessuna —</option>${T.list.filter(x=>!used.has(x.id)||(u&&u.id===x.id)).map(x=>`<option value="${esc(x.id)}" ${u&&u.id===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select>`}
-    ${u?`<div style="margin-top:4px">${st.turn?'<b style="color:var(--gold-l)">▶ È il suo turno</b> · ':""}${u.init!=null?"Iniziativa "+esc(u.init)+" · ":""}${u.hp!=null?"PF "+esc(u.hp)+(u.hpMax?" / "+esc(u.hpMax):""):""}${u.thp?" (+"+esc(u.thp)+" temp.)":""}${st.dead?" · ☠ sconfitto":""}${st.cond.length?`<br>${esc(st.cond.join(" · "))}`:""}${st.hidden?'<br><span class="empty">nascosto ai giocatori nel tracker</span>':""}</div>`:""}</div>`}
+    ${u?`<div style="margin-top:4px">${st.turn?'<b style="color:var(--gold-l)">▶ È il suo turno</b> · ':""}${u.init!=null?"Iniziativa "+esc(u.init)+" · ":""}${u.hp!=null?"PF "+esc(u.hp)+(u.hpMax?" / "+esc(u.hpMax):""):""}${u.thp?" (+"+esc(u.thp)+" temp.)":""}${st.dead?" · ☠ sconfitto":""}${st.cond.length?`<br>${esc(st.cond.join(" · "))}`:""}${st.hidden?'<br><span class="empty">nascosto ai giocatori nel tracker</span>':""}</div>
+    ${u.hp!=null?`<div class="hprow"><input type="number" id="sHpN" min="1" inputmode="numeric" placeholder="PF" aria-label="Punti ferita da togliere o restituire" onkeydown="if(event.key==='Enter'){event.preventDefault();trkHp(-1)}">
+      <button class="btn small danger" onclick="trkHp(-1)" title="Toglie i punti ferita indicati: prima da quelli temporanei (Invio nel campo fa lo stesso)">Danno</button><button class="btn small" onclick="trkHp(1)" title="Restituisce i punti ferita indicati, fino al massimo">Cura</button>
+      <label title="Punti ferita temporanei">temp. <input type="number" id="sThp" min="0" inputmode="numeric" value="${esc(u.thp||0)}" onchange="trkThp(this.value)"></label></div>`:""}`:""}</div>`}
+/* danni e cure dal token selezionato, con le regole del tracker: i PF temporanei assorbono per primi, mai sotto zero né sopra il massimo */
+function trkHp(sign){const o=selObj(),r=o&&trkRowOf(o),v=parseInt(($("sHpN")||{}).value,10);if(!r||!(v>0))return;TRKC=null;const T=trkRead(),u=T.list.find(x=>x.id===r.id);if(!u||u.hp==null)return;
+  if(sign<0){let d=v;const th=u.thp||0;if(th>0){const a=Math.min(th,d);u.thp=th-a;d-=a}u.hp=Math.max(0,u.hp-d)}
+  else u.hp=Math.min(u.hpMax==null?Infinity:u.hpMax,u.hp+v);
+  if(u.hp>0){u.dsS=0;u.dsF=0}
+  dbSet("encTrk",T);TRKC=null;renderObjs();renderSel();const f=$("sHpN");if(f)f.focus()}
+function trkThp(v){const o=selObj(),r=o&&trkRowOf(o);if(!r)return;TRKC=null;const T=trkRead(),u=T.list.find(x=>x.id===r.id);if(!u)return;u.thp=Math.max(0,parseInt(v,10)||0);dbSet("encTrk",T);TRKC=null;renderObjs();renderSel()}
 function suiteDrag(e,el){e.dataTransfer.setData("text/plain","suite:"+JSON.stringify([el.dataset.k,el.dataset.key]));e.dataTransfer.effectAllowed="copy"}
 let ARMED_S=null;
 function suiteArm(el){const was=el.classList.contains("armed");setMode("select");if(was)return;ARMED_S=[el.dataset.k,el.dataset.key];el.classList.add("armed");$("vp").className="vp m-place";

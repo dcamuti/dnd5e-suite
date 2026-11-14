@@ -82,3 +82,17 @@ test("dal tracker alla mappa: la scheda Tracker elenca chi manca e crea token co
     .toEqual([["Ogre", 2, "mon", true, "all"], ["Capo dei banditi", 1, "", true, "dm"]]);
   await expect(m.locator("#sList .sitem")).toHaveCount(0); await expect(m.locator("#cbar")).toBeVisible();
 });
+
+test("danni e cure dalla mappa: temporanei per primi, limiti rispettati, registro del tracker aggiornato", async ({ page, context }) => {
+  const { m } = await scene(page, context);
+  await m.evaluate(() => toTracker()); await open(page, "encounters", "#tracker");
+  await page.evaluate(() => { const u = TRK.list[1]; u.hp = 7; u.hpMax = 7; u.thp = 3; u.cond = ["Conc."]; trkSave(); }); await m.waitForTimeout(300);
+  await m.evaluate(() => { SEL = M.objects[1].id; renderSel(); });
+  await m.fill("#sHpN", "5"); await m.click('.hprow button:has-text("Danno")');
+  expect(await m.evaluate(() => { const u = trkRead().list[1]; return [u.hp, u.thp]; })).toEqual([5, 0]);      // 3 assorbiti dai temporanei
+  await expect(page.locator("#dlog")).toContainText("Goblin"); await expect(page.locator("#dlog")).toContainText("TS Concentrazione CD 10");
+  await m.fill("#sHpN", "99"); await m.click('.hprow button:has-text("Cura")'); expect(await m.evaluate(() => trkRead().list[1].hp)).toBe(7);
+  await m.fill("#sHpN", "99"); await m.press("#sHpN", "Enter"); expect(await m.evaluate(() => trkRead().list[1].hp)).toBe(0);
+  await expect(m.locator(".obj.dead")).toHaveCount(1); await expect(page.locator(".trk-row.dead, .trk-row.ko")).toHaveCount(1);
+  await m.fill("#sThp", "4"); await m.locator("#sThp").blur(); expect(await m.evaluate(() => trkRead().list[1].thp)).toBe(4);
+});

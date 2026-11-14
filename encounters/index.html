@@ -2239,6 +2239,10 @@ window.addEventListener("storage",e=>{if(e.key!==dbKey("encTrk"))return;const ol
   const added=TRK.list.filter(u=>!old.list.some(x=>x.id===u.id)).length,act=TRK.turn>=0?TRK.list[TRK.turn]:null;
   (old.fx||[]).filter(f=>!TRK.fx.some(x=>x.id===f.id)).forEach(f=>{if(TRK.round>old.round)dlog(`⏳ Effetto terminato: <b>${esc(f.name)}</b>${f.tgt?" ("+esc(f.tgt)+")":""}`)});
   if(TRK.round>old.round&&LAIR)dlog(`🏰 Round ${TRK.round}: ricorda l'azione di tana (iniziativa 20)`);
+  /* danni e cure dati dalla mappa */
+  TRK.list.forEach(u=>{const p=old.list.find(x=>x.id===u.id);if(!p||p.hp==null||u.hp==null)return;const lost=(p.hp-u.hp)+((p.thp||0)-(u.thp||0));
+    if(u.hp!==p.hp||(lost>0&&(u.thp||0)<(p.thp||0)))dlog(`🗺 Dalla mappa: <b>${esc(u.name)}</b> ${lost>0?"−"+lost:"+"+(-lost)} PF (${p.hp} → ${u.hp})${u.hp===0&&p.hp>0?" · a terra":""}`);
+    if(lost>0&&u.cond&&u.cond.includes("Conc."))dlog(`⚠ ${esc(u.name)}: TS Concentrazione CD ${Math.max(10,Math.floor(lost/2))}`)});
   if(added)dlog(`🗺 ${added===1?"Un combattente aggiunto":added+" combattenti aggiunti"} dalla mappa`);
   else if(act&&(TRK.turn!==old.turn||TRK.round!==old.round))dlog(`🗺 Dalla mappa: round ${TRK.round}, tocca a <b>${esc(act.name)}</b>`);
   if(TAB==="track")renderTrk();else if(PV&&!PV.closed)pvRender()});
