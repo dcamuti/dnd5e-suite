@@ -20,7 +20,7 @@ function dataBadge(){const el=document.getElementById("snData");if(!el)return;co
   if(b)b.title=(r.list.length>1?"Campagna «"+campCur().name+"» · ":"")+(warn?(d===null?"Non hai ancora fatto un backup dei dati della suite":`L'ultimo backup risale a ${d} giorni fa`):"Backup, ripristino e campagne")}
 function renderDataMenu(){renderCampMenu();const i=document.getElementById("snDataInfo");if(!i)return;const d=lastBackupDays();
   const quando=d===null?"<b>mai</b>":d===0?"<b>oggi</b>":d===1?"<b>ieri</b>":`<b>${d} giorni fa</b>`;
-  i.innerHTML=`Ultimo backup: ${quando}`+(suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS)?" · è consigliato farne uno":"")}
+  i.innerHTML=`Ultimo backup: ${quando}`+(suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS)?" · è consigliato farne uno":"")+(pwaReady()?"<br>✔ Disponibile anche senza connessione":"")}
 dataBadge();
 /* preferenze di interfaccia (sezioni aperte, schede scelte…): una sola chiave, dnd5e_ui */
 function uiPrefGet(k,d){const o=dbGet("ui",{})||{};return Object.prototype.hasOwnProperty.call(o,k)?o[k]:d}

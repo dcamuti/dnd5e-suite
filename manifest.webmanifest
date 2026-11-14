@@ -1,0 +1,22 @@
+{
+  "name": "Suite D&D 5E",
+  "short_name": "D&D 5E",
+  "description": "Gli strumenti del master per preparare e condurre la campagna.",
+  "lang": "it",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#16100b",
+  "theme_color": "#16100b",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Tracker di combattimento", "url": "./encounters/index.html#tracker" },
+    { "name": "Mappe", "url": "./maps/index.html" },
+    { "name": "Diario di campagna", "url": "./journal/index.html" },
+    { "name": "Schede PG", "url": "./characters/index.html" }
+  ]
+}

@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Generatore NPC D&D 5E</title>
+<meta name="theme-color" content="#16100b">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" type="image/png" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@700&display=swap');
 :root{
   --bg:#16100b; --panel:#221a12; --panel2:#2c2217; --border:#4a3826;
   --gold:#c9a227; --gold-l:#eccb62; --ink:#ece2d0; --muted:#a89878;
@@ -106,6 +109,11 @@ label.fld span{display:block; font-size:.72rem; color:var(--muted); margin-botto
   .dossier,.mm{box-shadow:none; margin-bottom:14px; break-inside:avoid}
 }
 /* >>> COMUNE: stile (generato da common/ con tools/build-common.js: non modificare qui) */
+/* ==== FONT LOCALI (cartella fonts/, licenza SIL OFL 1.1): nessuna richiesta a server esterni, la suite funziona senza connessione ==== */
+@font-face{font-family:'Cinzel'; font-style:normal; font-weight:500; font-display:swap; src:url('../fonts/cinzel-latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'Cinzel'; font-style:normal; font-weight:600; font-display:swap; src:url('../fonts/cinzel-latin-600-normal.woff2') format('woff2')}
+@font-face{font-family:'Cinzel'; font-style:normal; font-weight:700; font-display:swap; src:url('../fonts/cinzel-latin-700-normal.woff2') format('woff2')}
+@font-face{font-family:'Cinzel Decorative'; font-style:normal; font-weight:700; font-display:swap; src:url('../fonts/cinzel-decorative-latin-700-normal.woff2') format('woff2')}
 /* ==== BASE UX COMUNE: focus visibile, bordi dei campi, controlli touch (uguale in tutti i tool) ==== */
 :root{--border-field:#7d6648}
 input[type=text],input[type=number],input[type=date],input[type=search],select,textarea{border-color:var(--border-field)}
@@ -1264,7 +1272,7 @@ function dataBadge(){const el=document.getElementById("snData");if(!el)return;co
   if(b)b.title=(r.list.length>1?"Campagna «"+campCur().name+"» · ":"")+(warn?(d===null?"Non hai ancora fatto un backup dei dati della suite":`L'ultimo backup risale a ${d} giorni fa`):"Backup, ripristino e campagne")}
 function renderDataMenu(){renderCampMenu();const i=document.getElementById("snDataInfo");if(!i)return;const d=lastBackupDays();
   const quando=d===null?"<b>mai</b>":d===0?"<b>oggi</b>":d===1?"<b>ieri</b>":`<b>${d} giorni fa</b>`;
-  i.innerHTML=`Ultimo backup: ${quando}`+(suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS)?" · è consigliato farne uno":"")}
+  i.innerHTML=`Ultimo backup: ${quando}`+(suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS)?" · è consigliato farne uno":"")+(pwaReady()?"<br>✔ Disponibile anche senza connessione":"")}
 dataBadge();
 /* preferenze di interfaccia (sezioni aperte, schede scelte…): una sola chiave, dnd5e_ui */
 function uiPrefGet(k,d){const o=dbGet("ui",{})||{};return Object.prototype.hasOwnProperty.call(o,k)?o[k]:d}
@@ -1369,6 +1377,14 @@ function gsGo(url){const a=document.createElement("a");a.href=url;const same=a.p
   document.addEventListener("keydown",e=>{const k=e.key.toLowerCase(),t=e.target,typing=t&&(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)||t.isContentEditable);
     if(((e.ctrlKey||e.metaKey)&&k==="k")||(k==="/"&&!typing&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!document.querySelector(".ui-ov"))){e.preventDefault();gsOpen()}});
   if(location.hash==="#cerca"){history.replaceState(null,"",location.pathname+location.search);setTimeout(gsOpen,60)}})();
+/* ================= USO SENZA CONNESSIONE (uguale in tutti i tool) =================
+   Il service worker (sw.js nella radice) conserva una copia di tutte le pagine: dopo la prima visita la suite si apre anche offline.
+   Funziona solo su https (o in locale con un server): aprendo i file direttamente dal disco non viene registrato.
+   Si chiede anche al browser di non cancellare da solo i dati della suite quando lo spazio scarseggia. */
+if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){
+  navigator.serviceWorker.register("../sw.js").catch(()=>{});
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>{if(!p)navigator.storage.persist().catch(()=>{})}).catch(()=>{})}catch(e){}}
+const pwaReady=()=>!!(navigator.serviceWorker&&navigator.serviceWorker.controller);
 /* <<< COMUNE: interfaccia */
 function importNpc(){$("impFile").click()}
 $("impFile").addEventListener("change",e=>{

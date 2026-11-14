@@ -4,8 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Suite D&D 5E</title>
+<meta name="theme-color" content="#16100b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@700&display=swap');
+/* font locali (cartella fonts/, licenza SIL OFL 1.1): la suite funziona anche senza connessione */
+@font-face{font-family:'Cinzel'; font-style:normal; font-weight:500; font-display:swap; src:url('fonts/cinzel-latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'Cinzel'; font-style:normal; font-weight:600; font-display:swap; src:url('fonts/cinzel-latin-600-normal.woff2') format('woff2')}
+@font-face{font-family:'Cinzel'; font-style:normal; font-weight:700; font-display:swap; src:url('fonts/cinzel-latin-700-normal.woff2') format('woff2')}
+@font-face{font-family:'Cinzel Decorative'; font-style:normal; font-weight:700; font-display:swap; src:url('fonts/cinzel-decorative-latin-700-normal.woff2') format('woff2')}
 :root{
   --bg:#16100b; --border:#4a3826; --gold:#c9a227; --gold-l:#eccb62;
   --ink:#ece2d0; --muted:#a89878; --red:#8b2e2e;
@@ -53,11 +61,13 @@ footer{text-align:center; color:var(--muted); font-size:.8rem; padding:0 20px 30
   </ul>
 </main>
 <p style="text-align:center;margin:-34px 0 34px"><a href="journal/index.html#cerca" style="color:var(--gold-l)">Cerca nella campagna</a></p>
-<footer><span id="campNow"></span>I dati restano salvati in questo browser. Usa “Backup suite” in qualsiasi tool per esportarli in un file JSON.</footer>
+<footer><span id="campNow"></span>I dati restano salvati in questo browser, e la suite funziona anche senza connessione dopo la prima visita. Usa “Backup suite” in qualsiasi tool per esportarli in un file JSON.</footer>
 <script>
 /* campagna attiva (si cambia dal menu Dati di qualunque tool) */
 try{const r=JSON.parse(localStorage.getItem("dnd5e_camps")),c=r&&r.list.find(x=>x.id===r.cur);
   if(c&&r.list.length>1){const b=document.createElement("b");b.textContent=c.name;const el=document.getElementById("campNow");el.append("Campagna attiva: ",b,". Si cambia dal menu Dati di qualunque tool. ")}}catch(e){}
+/* uso senza connessione: il service worker conserva una copia delle pagine (solo su https o in locale con un server) */
+if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
 </html>

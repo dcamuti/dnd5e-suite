@@ -1,3 +1,8 @@
+/* ==== FONT LOCALI (cartella fonts/, licenza SIL OFL 1.1): nessuna richiesta a server esterni, la suite funziona senza connessione ==== */
+@font-face{font-family:'Cinzel'; font-style:normal; font-weight:500; font-display:swap; src:url('../fonts/cinzel-latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'Cinzel'; font-style:normal; font-weight:600; font-display:swap; src:url('../fonts/cinzel-latin-600-normal.woff2') format('woff2')}
+@font-face{font-family:'Cinzel'; font-style:normal; font-weight:700; font-display:swap; src:url('../fonts/cinzel-latin-700-normal.woff2') format('woff2')}
+@font-face{font-family:'Cinzel Decorative'; font-style:normal; font-weight:700; font-display:swap; src:url('../fonts/cinzel-decorative-latin-700-normal.woff2') format('woff2')}
 /* ==== BASE UX COMUNE: focus visibile, bordi dei campi, controlli touch (uguale in tutti i tool) ==== */
 :root{--border-field:#7d6648}
 input[type=text],input[type=number],input[type=date],input[type=search],select,textarea{border-color:var(--border-field)}
