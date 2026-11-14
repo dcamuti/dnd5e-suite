@@ -13,14 +13,20 @@ function hmFileKey(e,el){if(e.key==="Enter"||e.key===" "){e.preventDefault();con
 const BACKUP_WARN_DAYS=30;
 function lastBackupDays(){const v=dbGet("lastBackup",null);const t=v?Date.parse(v):NaN;return isNaN(t)?null:Math.floor((Date.now()-t)/86400000)}
 function suiteHasData(){return SUITE_KEYS.some(k=>k!==STORE.lang&&k!==STORE.lastBackup&&k!==STORE.camps&&localStorage.getItem(k)!=null)||campReg().list.length>1}
-function dataBadge(){const el=document.getElementById("snData");if(!el)return;const d=lastBackupDays(),warn=suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS);
+/* Spazio usato nel localStorage, in caratteri. I browser ne concedono circa 5 milioni per sito (le immagini stanno in
+   IndexedDB e non contano): oltre l'80% il menu Dati avvisa, perché a spazio finito i salvataggi falliscono. */
+const STORE_LIMIT=5000000,STORE_WARN=.8;
+function storeUsage(){let n=0;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);n+=k.length+(localStorage.getItem(k)||"").length}}catch(e){}return n}
+function dataBadge(){const el=document.getElementById("snData");if(!el)return;const d=lastBackupDays(),full=storeUsage()/STORE_LIMIT>=STORE_WARN,warn=full||(suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS));
   el.classList.toggle("warn",warn);const b=el.querySelector(":scope>.btn");
   /* con più campagne il pulsante mostra quella attiva */
   const r=campReg(),l=el.querySelector(":scope>.btn .lbl");if(l)l.textContent=r.list.length>1?campCur().name:"Dati";
-  if(b)b.title=(r.list.length>1?"Campagna «"+campCur().name+"» · ":"")+(warn?(d===null?"Non hai ancora fatto un backup dei dati della suite":`L'ultimo backup risale a ${d} giorni fa`):"Backup, ripristino e campagne")}
+  if(b)b.title=(r.list.length>1?"Campagna «"+campCur().name+"» · ":"")+(full?"Lo spazio per i dati è quasi esaurito":warn?(d===null?"Non hai ancora fatto un backup dei dati della suite":`L'ultimo backup risale a ${d} giorni fa`):"Backup, ripristino e campagne")}
 function renderDataMenu(){renderCampMenu();const i=document.getElementById("snDataInfo");if(!i)return;const d=lastBackupDays();
   const quando=d===null?"<b>mai</b>":d===0?"<b>oggi</b>":d===1?"<b>ieri</b>":`<b>${d} giorni fa</b>`;
-  i.innerHTML=`Ultimo backup: ${quando}`+(suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS)?" · è consigliato farne uno":"")+(pwaReady()?"<br>✔ Disponibile anche senza connessione":"")}
+  i.innerHTML=`Ultimo backup: ${quando}`+(suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS)?" · è consigliato farne uno":"")+(pwaReady()?"<br>✔ Disponibile anche senza connessione":"")
+    +(()=>{const u=storeUsage(),pc=Math.min(100,Math.round(u/STORE_LIMIT*100)),mb=(u/1e6).toFixed(1).replace(".",",");
+      return`<br><span id="snSpace">Spazio dei dati: <b>${mb} MB</b> su circa 5 (${pc}%)</span>`+(u/STORE_LIMIT>=STORE_WARN?"<br><b>⚠ Spazio quasi esaurito:</b> fai un backup, poi elimina le mappe o le campagne che non ti servono più.":"")})()}
 dataBadge();
 /* preferenze di interfaccia (sezioni aperte, schede scelte…): una sola chiave, dnd5e_ui */
 function uiPrefGet(k,d){const o=dbGet("ui",{})||{};return Object.prototype.hasOwnProperty.call(o,k)?o[k]:d}

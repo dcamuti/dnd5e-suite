@@ -50,6 +50,9 @@ async function campDelete(){hmCloseAll();const r=campReg(),cur=campCur();
   if(!await uiConfirm(`La campagna «${c.name}» verrà eliminata con tutti i suoi dati: PG, NPC, incontri, Diario, Mondo, Enigmi e Mappe.\nL'operazione non si può annullare: se ti serve, fai prima un backup.`,{title:"🗑 Eliminare la campagna?",yes:"Elimina «"+c.name+"»",danger:true}))return;
   const x=campReg();x.list=x.list.filter(k=>k.id!==c.id);try{campSave(x);localStorage.removeItem(CAMP_PARK+c.id)}catch(e){}
   dataBadge();uiNote("🗑 Campagna «"+c.name+"» eliminata")}
+/* mappe delle campagne non attive (per sapere se un'immagine della libreria, comune a tutte, è usata altrove) */
+function campParkedMaps(){const out=[];campReg().list.forEach(c=>{try{const o=JSON.parse(localStorage.getItem(CAMP_PARK+c.id)||"null");
+  if(o&&typeof o[STORE.maps]==="string")(JSON.parse(o[STORE.maps])||[]).forEach(m=>{if(m)out.push({camp:c.name,map:m})})}catch(e){}});return out}
 /* ---- una campagna in un file: per passarla a un altro master o a un altro browser ----
    Il file contiene solo i dati della campagna (non homebrew, preferenze o altre campagne) e le immagini usate dalle sue mappe. */
 function campAssetIds(mapsRaw){const s=new Set();try{(JSON.parse(mapsRaw)||[]).forEach(m=>{if(!m)return;(m.palette||[]).forEach(p=>p&&p.tex&&s.add(p.tex));(m.objects||[]).forEach(o=>o&&o.img&&s.add(o.img));if(m.bg&&m.bg.img)s.add(m.bg.img)})}catch(e){}return[...s]}

@@ -121,3 +121,20 @@ test("esporta e importa una campagna: arriva come nuova campagna con le sue imma
   await page.evaluate(() => { window.__uiQueue = ["yes"]; campImportData({ type: "dnd5e_suite_backup", store: {} }); }); await page.waitForTimeout(300);
   expect((await reg(page)).list.length).toBe(2);
 });
+
+test("libreria immagini comune: l'uso nelle altre campagne viene contato; il menu Dati mostra lo spazio usato", async ({ page }) => {
+  await open(page, "maps"); await page.evaluate(() => localStorage.clear()); await page.reload(); await page.waitForTimeout(400);
+  const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  await page.evaluate(async u => { for (const a of await assetAll()) await assetDel(a.id); const id = await uploadImage(new File([dataUrlToBlob(u)], "pedina.png", { type: "image/png" }), "token");
+    addObject(["token", "hood", "Bandito"], 3, 3); M.objects[0].img = id; saveNow(); }, png);
+  await newCamp(page, "Seconda"); await page.waitForTimeout(300);
+  await page.evaluate(() => openLib()); await expect(page.locator("#libBody")).toContainText("usata in 1 mappa di altre campagne"); await expect(page.locator("#libBody")).not.toContainText("non usata");
+  await page.click("#libBody .xbtn"); await expect(page.locator("#uiUndo")).toContainText("era usata in 1 mappa (1 in altre campagne)");
+  await page.click("#uiUndo button"); await page.waitForTimeout(300); expect(await page.evaluate(async () => (await assetAll()).length)).toBe(1);
+  /* spazio usato: indicato nel menu, con avviso oltre l'80% */
+  await page.evaluate(() => { document.getElementById("mdLib").style.display = "none"; });
+  await page.click("#snData > .btn"); await expect(page.locator("#snSpace")).toContainText("MB"); await expect(page.locator("#snDataInfo")).not.toContainText("quasi esaurito");
+  await page.evaluate(() => { localStorage.setItem("riempimento", "x".repeat(4100000)); hmCloseAll(); dataBadge(); });
+  await expect(page.locator("#snData")).toHaveClass(/warn/); await page.click("#snData > .btn"); await expect(page.locator("#snDataInfo")).toContainText("Spazio quasi esaurito");
+  await page.evaluate(() => localStorage.removeItem("riempimento"));
+});
