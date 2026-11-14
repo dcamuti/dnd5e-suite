@@ -1,0 +1,88 @@
+// Più campagne: dati separati per campagna, contenuti comuni condivisi, cambio sicuro, backup di tutte le campagne.
+const fs = require("fs");
+const { test, expect, open, ls, setLs, tmpFile } = require("./helpers");
+const NPC = n => [{ id: "npc_" + n, name: n, sb: "Bandit" }];
+const reg = page => ls(page, "dnd5e_camps");
+/* crea una campagna dal menu Dati e aspetta la ricarica */
+async function newCamp(page, name) { await page.evaluate(n => { window.__uiQueue = [{ btn: "yes", fields: { v: n } }]; }, name);
+  await page.click("#snData > .btn"); await Promise.all([page.waitForEvent("load"), page.click('#snCamp button:has-text("Nuova campagna")')]); await page.waitForTimeout(250); }
+async function pick(page, name) { await page.evaluate(n => { window.__uiQueue = [n]; }, name);
+  await page.click("#snData > .btn"); await Promise.all([page.waitForEvent("load"), page.click('#snCamp button:has-text("Cambia campagna")')]); await page.waitForTimeout(250); }
+
+test("primo avvio: i dati esistenti diventano «La mia campagna», senza spostare nulla", async ({ page }) => {
+  await open(page, "npcs"); await page.evaluate(() => localStorage.clear());
+  await setLs(page, { dnd5e_schema: "2", dnd5e_npcs: NPC("Mira") }); await page.reload(); await page.waitForTimeout(250);
+  const r = await reg(page); expect(r.list.map(c => c.name)).toEqual(["La mia campagna"]); expect(r.cur).toBe(r.list[0].id);
+  expect(await ls(page, "dnd5e_schema")).toBe(3); expect((await ls(page, "dnd5e_npcs"))[0].name).toBe("Mira");
+  await page.click("#snData > .btn"); await expect(page.locator("#snCamp .mi-note")).toContainText("La mia campagna");
+  await expect(page.locator("#snCamp .mi-it")).toHaveCount(2);                                  // con una sola campagna: nuova e rinomina
+  await expect(page.locator("#snData > .btn .lbl")).toHaveText("Dati");
+});
+
+test("nuova campagna e ritorno: dati separati, homebrew e preferenze in comune", async ({ page }) => {
+  await open(page, "npcs"); await page.evaluate(() => localStorage.clear());
+  await setLs(page, { dnd5e_npcs: NPC("Mira"), dnd5e_enc_hb: [{ id: "hb_1", n: "Belva", it: "Belva" }], dnd5e_diary: { sessions: [{ id: "ses_1", title: "Uno" }] }, dnd5e_ui: { x: 1 } });
+  await page.reload(); await newCamp(page, "Strahd <b>");
+  let r = await reg(page); expect(r.list.map(c => c.name)).toEqual(["La mia campagna", "Strahd b"]); expect(r.cur).toBe(r.list[1].id);
+  expect(await ls(page, "dnd5e_npcs")).toBe(null); expect(await ls(page, "dnd5e_diary")).toBe(null);
+  expect((await ls(page, "dnd5e_enc_hb"))[0].n).toBe("Belva"); expect((await ls(page, "dnd5e_ui")).x).toBe(1);
+  expect(JSON.parse((await ls(page, "dnd5e_camp_" + r.list[0].id)).dnd5e_npcs)[0].name).toBe("Mira");
+  await expect(page.locator("#snData > .btn .lbl")).toHaveText("Strahd b");
+  await page.evaluate(n => dbSet("npcs", n), NPC("Ireena"));
+  await pick(page, "La mia campagna");
+  r = await reg(page); expect(r.cur).toBe(r.list[0].id);
+  expect((await ls(page, "dnd5e_npcs"))[0].name).toBe("Mira"); expect((await ls(page, "dnd5e_diary")).sessions[0].title).toBe("Uno");
+  expect(await ls(page, "dnd5e_camp_" + r.list[0].id)).toBe(null);
+  expect(JSON.parse((await ls(page, "dnd5e_camp_" + r.list[1].id)).dnd5e_npcs)[0].name).toBe("Ireena");
+  /* rinomina ed elimina */
+  await page.evaluate(() => { window.__uiQueue = [{ btn: "yes", fields: { v: "Faerûn" } }]; campRename(); }); await page.waitForTimeout(300);
+  expect((await reg(page)).list[0].name).toBe("Faerûn");
+  await page.evaluate(() => { window.__uiQueue = ["Strahd b", "yes"]; campDelete(); }); await page.waitForTimeout(500);
+  r = await reg(page); expect(r.list.map(c => c.name)).toEqual(["Faerûn"]);
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith("dnd5e_camp_")))).toEqual([]);
+});
+
+test("cambio con altre finestre aperte: le modifiche in sospeso finiscono nella campagna giusta, le altre finestre si ricaricano", async ({ page, context }) => {
+  await open(page, "maps"); await page.evaluate(() => localStorage.clear()); await page.reload(); await page.waitForTimeout(400);
+  const other = await context.newPage(); await other.goto("/npcs/index.html"); await other.waitForTimeout(300);
+  await page.evaluate(() => { setMapName("Cripta"); addObject(["token", "hood", "Bandito"], 3, 3); });   // salvataggio ancora in sospeso
+  const first = await page.evaluate(() => M.id);
+  await Promise.all([other.waitForEvent("load"), newCamp(page, "Seconda")]); await other.waitForTimeout(300);
+  const r = await reg(page);
+  const parked = JSON.parse((await ls(page, "dnd5e_camp_" + r.list[0].id)).dnd5e_maps);
+  expect(parked.map(m => [m.name, m.objects.length])).toEqual([["Cripta", 1]]);
+  expect(await page.evaluate(() => M.id)).not.toBe(first);                                       // la nuova campagna ha la sua mappa vuota
+  expect(await other.evaluate(() => [CAMP_AT_LOAD === campReg().cur, DB_LOCK])).toEqual([true, false]);
+  /* una finestra rimasta indietro non può scrivere nella campagna sbagliata */
+  await other.evaluate(() => { DB_LOCK = true; dbSet("npcs", [{ id: "npc_x", name: "Intruso" }]); DB_LOCK = false; });
+  expect(await ls(page, "dnd5e_npcs")).toBe(null);
+});
+
+test("spazio insufficiente durante il cambio: resta tutto com'era", async ({ page }) => {
+  await open(page, "npcs"); await page.evaluate(() => localStorage.clear()); await setLs(page, { dnd5e_npcs: NPC("Mira") }); await page.reload();
+  const out = await page.evaluate(() => { const r = campReg(); r.list.push({ id: "cmp_b", name: "B", created: "" }); campSave(r); localStorage.setItem("dnd5e_camp_cmp_b", JSON.stringify({ dnd5e_npcs: '[{"id":"npc_b","name":"Boris"}]' }));
+    const real = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (k === "dnd5e_camps") throw new Error("QuotaExceededError"); return real.call(this, k, v); };
+    window.__uiQueue = ["yes"]; const ok = campSwitch("cmp_b"); Storage.prototype.setItem = real;
+    return [ok, DB_LOCK, campReg().cur === r.cur, JSON.parse(localStorage.getItem("dnd5e_npcs"))[0].name, localStorage.getItem("dnd5e_camp_" + r.cur), JSON.parse(JSON.parse(localStorage.getItem("dnd5e_camp_cmp_b")).dnd5e_npcs)[0].name]; });
+  expect(out).toEqual([false, false, true, "Mira", null, "Boris"]);
+});
+
+test("backup: contiene tutte le campagne; un backup precedente entra nella campagna attiva", async ({ page }) => {
+  await open(page, "npcs"); await page.evaluate(() => localStorage.clear()); await setLs(page, { dnd5e_npcs: NPC("Mira") }); await page.reload();
+  await newCamp(page, "Seconda"); await page.evaluate(n => dbSet("npcs", n), NPC("Ireena"));
+  const [dl] = await Promise.all([page.waitForEvent("download"), page.evaluate(() => { backupSuite(); })]);
+  const file = await dl.path(), bk = JSON.parse(fs.readFileSync(file, "utf8")), ids = (await reg(page)).list.map(c => c.id);
+  expect(bk.ver).toBe(4); expect(Object.keys(bk.camps)).toEqual([ids[0]]);
+  await page.evaluate(() => { localStorage.clear(); }); await page.reload();
+  await Promise.all([page.waitForEvent("load"), page.setInputFiles("#bkFile", file)]); await page.waitForTimeout(250);
+  let r = await reg(page); expect(r.list.map(c => c.name)).toEqual(["La mia campagna", "Seconda"]); expect(r.cur).toBe(ids[1]);
+  expect((await ls(page, "dnd5e_npcs"))[0].name).toBe("Ireena");
+  await pick(page, "La mia campagna"); expect((await ls(page, "dnd5e_npcs"))[0].name).toBe("Mira");
+  /* backup della versione precedente (una sola campagna): sostituisce quella attiva, l'altra resta */
+  const old = tmpFile("vecchio.json", JSON.stringify({ type: "dnd5e_suite_backup", ver: 3, schema: 2, store: { dnd5e_npcs: JSON.stringify(NPC("Volo")) } }));
+  await Promise.all([page.waitForEvent("load"), page.setInputFiles("#bkFile", old)]); await page.waitForTimeout(250);
+  expect(await page.evaluate(() => window.__uiLog || [])).toEqual([]);                           // (registro azzerato dalla ricarica)
+  r = await reg(page); expect(r.list.length).toBe(2); expect((await ls(page, "dnd5e_npcs"))[0].name).toBe("Volo");
+  expect(JSON.parse((await ls(page, "dnd5e_camp_" + ids[1])).dnd5e_npcs)[0].name).toBe("Ireena");
+  await page.goto("/index.html"); await expect(page.locator("#campNow")).toContainText("La mia campagna");
+});

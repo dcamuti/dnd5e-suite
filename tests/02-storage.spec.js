@@ -12,7 +12,7 @@ test("migrazione 1→2: le chiavi enc_* passano a dnd5e_enc_* con copia di sicur
   await seedLegacy(page); await open(page, "encounters");
   const keys = await page.evaluate(() => Object.keys(localStorage));
   expect(keys.filter(k => k.startsWith("enc_"))).toEqual([]);
-  expect(await ls(page, "dnd5e_schema")).toBe(2);
+  expect(await ls(page, "dnd5e_schema")).toBe(3);
   expect((await ls(page, "dnd5e_enc_saved"))[0].name).toBe("Imboscata");
   expect(Object.keys((await ls(page, "dnd5e_migr_v2")).store).sort()).toEqual(["enc_hb", "enc_saved", "enc_src", "enc_trk"]);
   expect(await page.evaluate(() => TRK.list.map(u => u.name))).toEqual(["Orco"]);
@@ -35,7 +35,7 @@ test("backup e ripristino: giro completo identico, virgolette e & conservate, da
   const before = await page.evaluate(() => Object.fromEntries(Object.keys(localStorage).filter(k => k !== "dnd5e_migr_v2" && k !== "dnd5e_last_backup" && k !== "dnd5e_ui").map(k => [k, localStorage.getItem(k)])));
   const [dl] = await Promise.all([page.waitForEvent("download"), page.evaluate(() => { backupSuite(); })]);
   const file = await dl.path(), bk = JSON.parse(fs.readFileSync(file, "utf8"));
-  expect(bk.ver).toBe(3); expect(bk.schema).toBe(2); expect(bk.store.dnd5e_last_backup).toBeTruthy();
+  expect(bk.ver).toBe(4); expect(bk.schema).toBe(3); expect(bk.store.dnd5e_last_backup).toBeTruthy();
   await expect(page.locator("#snData")).not.toHaveClass(/warn/);
   await page.evaluate(() => localStorage.clear());
   await Promise.all([page.waitForEvent("load"), page.setInputFiles("#bkFile", file)]);   // conferma e ricarica automatiche

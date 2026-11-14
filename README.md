@@ -17,6 +17,12 @@ Ogni tool è un singolo `index.html` autonomo. I tool condividono i dati tramite
 
 Questo repository unifica i precedenti repo `dnd5e-tool-*`, di cui conserva la storia.
 
+## Campagne
+
+Dal menu **Dati** di qualunque tool si creano più campagne e si passa dall'una all'altra. Sono separati per campagna: Schede PG, NPC, incontri salvati, tracker, Diario, Mondo, Enigmi, Mappe e profilo di campagna. Restano in comune: contenuti homebrew, fonti scelte, libreria immagini, lingua e preferenze dell'interfaccia.
+
+La campagna attiva sta nelle chiavi di sempre del localStorage; le altre sono conservate ciascuna in una chiave `dnd5e_camp_<id>` e il registro è in `dnd5e_camps`. Il backup contiene tutte le campagne; un backup fatto prima di questa funzione si ripristina nella campagna attiva.
+
 ## Codice comune
 
 Storage, backup, finestre, menu e stile di base sono uguali in tutti i tool. La loro unica fonte è la cartella `common/`: uno script li copia dentro i 7 `index.html`, tra i marcatori `>>> COMUNE` e `<<< COMUNE`. I file pubblicati restano autonomi: `common/` non viene caricata dal sito.
@@ -33,7 +39,7 @@ Per cambiare il codice comune:
 | `storage` | `storage.js` | chiavi dei dati, lettura e scrittura, migrazioni |
 | `dati` | `dati-esterni.js`, `id-visibilita.js` | pulizia di ciò che viene importato, ID, visibilità e proprietà |
 | `motore` | `motore.js`, `diario.js` | generatore casuale, profilo di campagna, invio al Diario (assente nelle Schede PG) |
-| `interfaccia` | `immagini.js`, `backup.js`, `finestre.js`, `menu.js`, `interfaccia.js` | libreria immagini, backup e ripristino, finestre e Annulla, menu Dati, preferenze e accessibilità |
+| `interfaccia` | `immagini.js`, `backup.js`, `campagne.js`, `finestre.js`, `menu.js`, `interfaccia.js` | libreria immagini, backup e ripristino, campagne, finestre e Annulla, menu Dati, preferenze e accessibilità |
 
 Dove un tool deve differire, la variante è scritta nel file comune con righe `/*#if tool*/ … /*#else*/ … /*#endif*/`. Oggi sono due: negli Enigmi l'HTML importato è ammesso (e ripulito), negli Incontri c'è una regola in più per i pulsanti dei punti ferita.
 
@@ -68,6 +74,7 @@ npm run build                       # copia common/ nei 7 tool dopo una modifica
 | `tests/09-mappa-tracker` | creature della mappa portate nel tracker, turno evidenziato e passato dalla mappa, stato per i giocatori |
 | `tests/10-aree-ping` | aree d'effetto (cerchio, cono, linea, cubo), creature colpite, vista giocatori, segnalazione di un punto |
 | `tests/11-dungeon-mappa` | dungeon generato trasformato in mappa: stanze raggiungibili e chiuse da muri, contenuti, nebbia iniziale |
+| `tests/12-campagne` | dati separati per campagna, contenuti comuni, cambio con altre finestre aperte, spazio insufficiente, backup di tutte le campagne |
 
 Ogni test fallisce anche se la pagina genera un errore JavaScript o apre una finestra nativa del browser.
 

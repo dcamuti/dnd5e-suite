@@ -524,23 +524,40 @@ select,input,textarea,.fld{max-width:100%}
    La versione dello schema è in dnd5e_schema; dbMigrate() applica le migrazioni mancanti all'apertura di qualunque tool. */
 const STORE={chars:"dnd5e_chars",draft:"dnd5e_draft",lang:"dnd5e_lang",homebrew:"dnd5e_homebrew",npcs:"dnd5e_npcs",
   encSrc:"dnd5e_enc_src",encSaved:"dnd5e_enc_saved",encTrk:"dnd5e_enc_trk",encHb:"dnd5e_enc_hb",
-  diary:"dnd5e_diary",puzzles:"dnd5e_puzzles",profile:"dnd5e_profile",world:"dnd5e_world",maps:"dnd5e_maps",lastBackup:"dnd5e_last_backup",ui:"dnd5e_ui"};
+  diary:"dnd5e_diary",puzzles:"dnd5e_puzzles",profile:"dnd5e_profile",world:"dnd5e_world",maps:"dnd5e_maps",lastBackup:"dnd5e_last_backup",ui:"dnd5e_ui",camps:"dnd5e_camps"};
 const STORE_RAW=["lang","lastBackup"];/* testo semplice, non JSON */
-const DB_SCHEMA=2,DB_SCHEMA_KEY="dnd5e_schema";
+const DB_SCHEMA=3,DB_SCHEMA_KEY="dnd5e_schema";
 /* chiavi delle versioni precedenti → chiave attuale (migrazione 1→2 e ripristino di backup vecchi) */
 const STORE_LEGACY={enc_src:"dnd5e_enc_src",enc_saved:"dnd5e_enc_saved",enc_trk:"dnd5e_enc_trk",enc_hb:"dnd5e_enc_hb"};
 function dbKey(n){const k=STORE[n];if(!k)throw new Error("Dato di storage sconosciuto: "+n);return k}
 function dbGet(n,d){try{const v=localStorage.getItem(dbKey(n));if(v==null)return d;return STORE_RAW.includes(n)?v:JSON.parse(v)}catch(e){return d}}
-let DB_WARNED=false;
-function dbSet(n,v){try{localStorage.setItem(dbKey(n),STORE_RAW.includes(n)?String(v):JSON.stringify(v));return true}
+let DB_WARNED=false,DB_LOCK=false;/* DB_LOCK: durante un cambio di campagna nessuna pagina scrive più (vedi campSwitch) */
+function dbSet(n,v){if(DB_LOCK)return true;try{localStorage.setItem(dbKey(n),STORE_RAW.includes(n)?String(v):JSON.stringify(v));return true}
   catch(e){if(!DB_WARNED){DB_WARNED=true;uiAlert("⚠ Spazio di salvataggio del browser pieno: le ultime modifiche non sono state salvate.\n\nFai un 🗄 Backup suite e libera spazio, per esempio eliminando elementi salvati che non usi più.")}return false}}
-function dbDel(n){try{localStorage.removeItem(dbKey(n))}catch(e){}}
+function dbDel(n){if(DB_LOCK)return;try{localStorage.removeItem(dbKey(n))}catch(e){}}
 function dbSchema(){const v=parseInt(localStorage.getItem(DB_SCHEMA_KEY),10);return v>0?v:1}
+/* ---- campagne ----
+   La campagna attiva sta nelle chiavi normali, così i tool la leggono come sempre. Le altre sono «parcheggiate»: ciascuna in una
+   chiave dnd5e_camp_<id> che contiene i valori grezzi delle sue chiavi. Cambiare campagna scambia i due gruppi (campSwitch).
+   Sono comuni a tutte le campagne: lingua, contenuti homebrew, fonti scelte, preferenze dell'interfaccia, data dell'ultimo
+   backup e libreria immagini. Il registro dnd5e_camps è {cur:<id>, list:[{id,name,created}]}. */
+const CAMP_DATA=["chars","draft","npcs","encSaved","encTrk","diary","puzzles","profile","world","maps"];
+const CAMP_PARK="dnd5e_camp_",CAMP_NAME_DEF="La mia campagna";
+const campName=v=>String(v??"").replace(/[<>]/g,"").replace(/\s+/g," ").trim().slice(0,40);
+function campReg(){let r=null;try{r=JSON.parse(localStorage.getItem(STORE.camps))}catch(e){}
+  const ok=r&&typeof r==="object"&&Array.isArray(r.list);
+  const list=ok?r.list.filter(c=>c&&/^[\w-]+$/.test(c.id||"")).map(c=>({id:c.id,name:campName(c.name)||CAMP_NAME_DEF,created:typeof c.created==="string"?c.created:""})):[];
+  if(list.length&&list.some(c=>c.id===r.cur))return{cur:r.cur,list};
+  /* registro assente o rovinato: i dati presenti diventano la campagna attiva */
+  const c=list[0]||{id:newId("cmp"),name:CAMP_NAME_DEF,created:new Date().toISOString()},out={cur:c.id,list:list.length?list:[c]};
+  try{localStorage.setItem(STORE.camps,JSON.stringify(out))}catch(e){}return out}
 const DB_MIGRATIONS={
   /* 1→2: chiavi degli Incontri sotto il prefisso dnd5e_, con copia dei valori originali in dnd5e_migr_v2 */
   2(){const snap={};for(const o in STORE_LEGACY){const v=localStorage.getItem(o);if(v!=null)snap[o]=v}
     if(Object.keys(snap).length&&localStorage.getItem("dnd5e_migr_v2")==null)localStorage.setItem("dnd5e_migr_v2",JSON.stringify({date:new Date().toISOString(),store:snap}));
-    for(const o in snap){const n=STORE_LEGACY[o];if(localStorage.getItem(n)==null)localStorage.setItem(n,snap[o]);if(localStorage.getItem(n)!=null)localStorage.removeItem(o)}}
+    for(const o in snap){const n=STORE_LEGACY[o];if(localStorage.getItem(n)==null)localStorage.setItem(n,snap[o]);if(localStorage.getItem(n)!=null)localStorage.removeItem(o)}},
+  /* 2→3: registro delle campagne; i dati esistenti diventano la prima campagna, senza spostare nulla */
+  3(){campReg()}
 };
 function dbMigrate(){try{
   let v=dbSchema();
@@ -3519,8 +3536,11 @@ function remapAssetIds(txt,map){let out=txt;Object.keys(map).forEach(o=>{if(map[
 /* chiavi reali di tutti i dati della suite (dalla tabella STORE) */
 const SUITE_KEYS=Object.values(STORE);
 async function backupSuite(){
-  const data={type:"dnd5e_suite_backup",ver:3,schema:DB_SCHEMA,date:new Date().toISOString(),store:{}};
-  let n=0;SUITE_KEYS.forEach(k=>{try{const v=localStorage.getItem(k);if(v!=null){data.store[k]=v;n++}}catch(e){}});
+  const data={type:"dnd5e_suite_backup",ver:4,schema:DB_SCHEMA,date:new Date().toISOString(),store:{}};
+  let n=0;SUITE_KEYS.forEach(k=>{try{const v=localStorage.getItem(k);if(v!=null){data.store[k]=v;if(k!==STORE.camps)n++}}catch(e){}});
+  /* le campagne non attive: una voce per campagna, con i valori grezzi delle sue chiavi */
+  const parks={};campReg().list.forEach(c=>{try{const v=localStorage.getItem(CAMP_PARK+c.id);if(v!=null){parks[c.id]=v;n++}}catch(e){}});
+  if(Object.keys(parks).length)data.camps=parks;
   /* immagini della libreria: facoltative, perché possono pesare molto */
   let imgs=[];try{imgs=await assetAll()}catch(e){}
   if(!n&&!imgs.length){uiAlert("Nulla da salvare.");return}
@@ -3545,13 +3565,26 @@ function restoreSuite(file){
     const st={};Object.keys(d.store).forEach(k=>{const nk=STORE_LEGACY[k]||k;if(SUITE_KEYS.includes(nk)&&typeof d.store[k]==="string"&&(!(nk in st)||nk===k))st[nk]=d.store[k]});
     const keys=Object.keys(st);if(!keys.length)throw 0;
     const nImg=Array.isArray(d.assets)?d.assets.length:0;
-    if(!await uiConfirm("Tutti i dati della suite in questo browser verranno sostituiti da quelli del file. L'operazione non si può annullare."+(nImg?`\n\nLe ${nImg} immagini del backup verranno aggiunte alla libreria (quelle già presenti restano).`:""),{title:"⬆ Ripristinare il backup?",yes:"Sostituisci tutti i dati",danger:true}))return;
+    /* backup con il registro delle campagne: sostituisce tutte le campagne. Backup precedenti (una sola campagna): entrano in quella attiva */
+    let reg=null;try{const x=JSON.parse(st[STORE.camps]);if(x&&Array.isArray(x.list)&&x.list.some(c=>c&&c.id===x.cur))reg=x}catch(e){}
+    if(!reg){delete st[STORE.camps];const i=keys.indexOf(STORE.camps);if(i>=0)keys.splice(i,1);if(!keys.length)throw 0}
+    const here=campReg(),nBk=reg?reg.list.length:1;
+    const what=reg?"Tutti i dati della suite in questo browser"+(here.list.length>1||nBk>1?` (tutte le campagne: qui ${here.list.length}, nel file ${nBk})`:"")+" verranno sostituiti da quelli del file."
+      :here.list.length>1?`Il file contiene una sola campagna: sostituirà i dati della campagna attiva «${campCur().name}» e i contenuti comuni. Le altre campagne non vengono toccate.`
+      :"Tutti i dati della suite in questo browser verranno sostituiti da quelli del file.";
+    if(!await uiConfirm(what+" L'operazione non si può annullare."+(nImg?`\n\nLe ${nImg} immagini del backup verranno aggiunte alla libreria (quelle già presenti restano).`:""),{title:"⬆ Ripristinare il backup?",yes:"Sostituisci tutti i dati",danger:true}))return;
     /* immagini: aggiunte, mai cancellate; i riferimenti delle mappe seguono gli ID nella libreria */
     let imgMap={},imgFail=false;if(nImg){try{imgMap=await mergeAssets(d.assets)}catch(e){imgFail=true}}
     if(st[STORE.maps])st[STORE.maps]=remapAssetIds(st[STORE.maps],imgMap);
     /* sostituzione completa: le chiavi della suite assenti nel backup vengono rimosse, così non restano dati misti */
     let fail=0;
-    SUITE_KEYS.forEach(k=>{try{if(keys.includes(k))localStorage.setItem(k,safeStoreVal(k,st[k]));else localStorage.removeItem(k)}catch(e){fail++}});
+    SUITE_KEYS.forEach(k=>{if(k===STORE.camps&&!reg)return;try{if(keys.includes(k))localStorage.setItem(k,safeStoreVal(k,st[k]));else localStorage.removeItem(k)}catch(e){fail++}});
+    if(reg){const parks=d.camps&&typeof d.camps==="object"?d.camps:{},ck=CAMP_DATA.map(n=>STORE[n]);
+      Object.keys(localStorage).filter(k=>k.indexOf(CAMP_PARK)===0).forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+      reg.list.forEach(c=>{if(!c||c.id===reg.cur||!/^[\w-]+$/.test(c.id||"")||typeof parks[c.id]!=="string")return;
+        try{const o=JSON.parse(parks[c.id]),out={};Object.keys(o||{}).forEach(k=>{if(ck.includes(k)&&typeof o[k]==="string")out[k]=safeStoreVal(k,k===STORE.maps?remapAssetIds(o[k],imgMap):o[k])});
+          localStorage.setItem(CAMP_PARK+c.id,JSON.stringify(out))}catch(e){fail++}})}
+    campReg();
     Object.keys(STORE_LEGACY).forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
     try{localStorage.setItem(DB_SCHEMA_KEY,String(Math.max(bs,1)));}catch(e){}
     dbMigrate();
@@ -3560,6 +3593,62 @@ function restoreSuite(file){
   }catch(err){uiAlert("File di backup non valido.")}};
   rd.readAsText(file);
 }
+/* ================= CAMPAGNE (uguale in tutti i tool) =================
+   Registro e chiavi sono descritti in «STORAGE DELLA SUITE». Qui: cambio di campagna e voci del menu Dati. */
+const CAMP_AT_LOAD=campReg().cur;
+function campCur(){const r=campReg();return r.list.find(c=>c.id===r.cur)}
+function campSave(r){localStorage.setItem(STORE.camps,JSON.stringify(r))}
+/* Scambia la campagna attiva con quella indicata. Restituisce true se riuscito: chi chiama ricarica la pagina.
+   Ordine: 1) le pagine salvano ciò che hanno in sospeso; 2) da qui nessuno scrive più; 3) la campagna attiva viene parcheggiata;
+   4) l'altra prende il suo posto; 5) il registro cambia. Se manca spazio si torna alla situazione di partenza. */
+function campSwitch(id){const r=campReg(),from=r.cur;if(id===from||!r.list.some(c=>c.id===id))return false;
+  try{window.dispatchEvent(new Event("beforeunload"))}catch(e){}
+  const keys=CAMP_DATA.map(n=>STORE[n]),cur={};keys.forEach(k=>{const v=localStorage.getItem(k);if(v!=null)cur[k]=v});
+  let tgt={};try{tgt=JSON.parse(localStorage.getItem(CAMP_PARK+id)||"{}")||{}}catch(e){tgt={}}
+  DB_LOCK=true;
+  try{localStorage.setItem(CAMP_PARK+from,JSON.stringify(cur))}
+  catch(e){DB_LOCK=false;uiAlert("⚠ Spazio del browser insufficiente per cambiare campagna: non è stato modificato nulla.\n\nLibera spazio (per esempio eliminando mappe o immagini che non usi) e riprova.");return false}
+  try{keys.forEach(k=>localStorage.removeItem(k));
+    keys.forEach(k=>{if(typeof tgt[k]==="string")localStorage.setItem(k,tgt[k])});
+    r.cur=id;campSave(r)}
+  catch(e){try{keys.forEach(k=>localStorage.removeItem(k));Object.keys(cur).forEach(k=>localStorage.setItem(k,cur[k]));localStorage.removeItem(CAMP_PARK+from)}catch(e2){}
+    DB_LOCK=false;uiAlert("⚠ Cambio di campagna non riuscito per spazio del browser insufficiente: è rimasta attiva la campagna di prima.");return false}
+  try{localStorage.removeItem(CAMP_PARK+id)}catch(e){}
+  return true}
+/* un'altra finestra sta cambiando campagna (o ripristinando un backup): questa smette di scrivere e si ricarica */
+window.addEventListener("storage",e=>{if(!e.key)return;
+  if(e.key===STORE.camps){if(campReg().cur!==CAMP_AT_LOAD){DB_LOCK=true;location.reload()}else dataBadge();return}
+  if(e.key.indexOf(CAMP_PARK)!==0)return;
+  if(e.newValue==null){if(campReg().cur===CAMP_AT_LOAD)DB_LOCK=false;return}
+  DB_LOCK=true;setTimeout(()=>{if(DB_LOCK)location.reload()},1500)});
+async function campNew(){hmCloseAll();
+  const v=await uiPrompt("La nuova campagna parte vuota: PG, NPC, incontri salvati, tracker, Diario, Mondo, Enigmi e Mappe sono separati per campagna.\nContenuti homebrew, immagini e preferenze restano in comune.","",{title:"➕ Nuova campagna",label:"Nome della campagna",placeholder:"es. La Maledizione di Strahd",yes:"Crea e apri"});
+  const name=campName(v);if(!name)return;const r=campReg(),c={id:newId("cmp"),name,created:new Date().toISOString()};r.list.push(c);
+  try{campSave(r)}catch(e){uiAlert("⚠ Spazio del browser insufficiente: la campagna non è stata creata.");return}
+  if(campSwitch(c.id))location.reload();else{const x=campReg();x.list=x.list.filter(k=>k.id!==c.id);try{campSave(x)}catch(e){}}}
+async function campPick(){hmCloseAll();const r=campReg(),cur=campCur();
+  const d=await uiDialog({title:"🔁 Cambia campagna",text:`Campagna attiva: «${cur.name}».\nScegli quella da aprire: la pagina verrà ricaricata.`,
+    buttons:[{label:"Annulla",value:null,cancel:true}].concat(r.list.filter(c=>c.id!==r.cur).map(c=>({label:c.name,value:c.id})))});
+  if(d.value&&campSwitch(d.value))location.reload()}
+async function campRename(){hmCloseAll();const cur=campCur(),v=await uiPrompt("",cur.name,{title:"✏ Rinomina la campagna",label:"Nome della campagna",yes:"Rinomina"});
+  const name=campName(v);if(!name||name===cur.name)return;const r=campReg();r.list.find(c=>c.id===r.cur).name=name;
+  try{campSave(r)}catch(e){return}dataBadge();uiNote("✏ Campagna rinominata: «"+name+"»")}
+async function campDelete(){hmCloseAll();const r=campReg(),cur=campCur();
+  const d=await uiDialog({title:"🗑 Elimina una campagna",text:`Si può eliminare una campagna diversa da quella attiva («${cur.name}»).\nQuale vuoi eliminare?`,
+    buttons:[{label:"Annulla",value:null,cancel:true}].concat(r.list.filter(c=>c.id!==r.cur).map(c=>({label:c.name,value:c.id})))});
+  const c=r.list.find(x=>x.id===d.value);if(!c)return;
+  if(!await uiConfirm(`La campagna «${c.name}» verrà eliminata con tutti i suoi dati: PG, NPC, incontri, Diario, Mondo, Enigmi e Mappe.\nL'operazione non si può annullare: se ti serve, fai prima un backup.`,{title:"🗑 Eliminare la campagna?",yes:"Elimina «"+c.name+"»",danger:true}))return;
+  const x=campReg();x.list=x.list.filter(k=>k.id!==c.id);try{campSave(x);localStorage.removeItem(CAMP_PARK+c.id)}catch(e){}
+  dataBadge();uiNote("🗑 Campagna «"+c.name+"» eliminata")}
+/* voci della campagna in cima al menu Dati (aggiunte qui, così il menu è uguale in tutti i tool) */
+function renderCampMenu(){const m=document.querySelector("#snData .hmenu-list");if(!m)return;let box=document.getElementById("snCamp");
+  if(!box){box=document.createElement("div");box.id="snCamp";m.insertBefore(box,m.firstChild)}
+  const r=campReg(),c=campCur(),many=r.list.length>1,it=(fn,ico,l)=>`<button class="mi-it" role="menuitem" onclick="${fn}()">${ico} ${l}</button>`;
+  box.innerHTML=`<div class="mi-note">Campagna: <b>${uiEsc(c.name)}</b>${many?` · ${r.list.length} in tutto`:""}</div>`+
+    (many?it("campPick",'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4" /> <path d="M3 11v-1a4 4 0 0 1 4-4h14" /> <path d="m7 22-4-4 4-4" /> <path d="M21 13v1a4 4 0 0 1-4 4H3" /></svg>',"Cambia campagna"):"")+
+    it("campNew",'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /> <path d="M12 5v14" /></svg>',"Nuova campagna")+
+    it("campRename",'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /> <path d="m15 5 4 4" /></svg>',"Rinomina la campagna")+
+    (many?it("campDelete",'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18" /> <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /> <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /> <line x1="10" x2="10" y1="11" y2="17" /> <line x1="14" x2="14" y1="11" y2="17" /></svg>',"Elimina una campagna"):"")+`<div class="mi-sep"></div>`}
 /* ================= FINESTRE DELLA SUITE (al posto di confirm/prompt del browser) =================
    uiDialog({title,text|html,fields:[{k,label,type,value,min,max,placeholder}],buttons:[{label,value,kind,primary,cancel}]}) → Promise
    Invio = pulsante principale, Esc o clic fuori = annulla; il focus resta nella finestra finché è aperta. */
@@ -3630,11 +3719,13 @@ document.addEventListener("keydown",e=>{const m=document.querySelector(".hmenu.o
 function hmFileKey(e,el){if(e.key==="Enter"||e.key===" "){e.preventDefault();const i=el.querySelector("input[type=file]");if(i)i.click()}}
 const BACKUP_WARN_DAYS=30;
 function lastBackupDays(){const v=dbGet("lastBackup",null);const t=v?Date.parse(v):NaN;return isNaN(t)?null:Math.floor((Date.now()-t)/86400000)}
-function suiteHasData(){return SUITE_KEYS.some(k=>k!==STORE.lang&&k!==STORE.lastBackup&&localStorage.getItem(k)!=null)}
+function suiteHasData(){return SUITE_KEYS.some(k=>k!==STORE.lang&&k!==STORE.lastBackup&&k!==STORE.camps&&localStorage.getItem(k)!=null)||campReg().list.length>1}
 function dataBadge(){const el=document.getElementById("snData");if(!el)return;const d=lastBackupDays(),warn=suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS);
   el.classList.toggle("warn",warn);const b=el.querySelector(":scope>.btn");
-  if(b)b.title=warn?(d===null?"Non hai ancora fatto un backup dei dati della suite":`L'ultimo backup risale a ${d} giorni fa`):"Backup e ripristino di tutti i dati della suite"}
-function renderDataMenu(){const i=document.getElementById("snDataInfo");if(!i)return;const d=lastBackupDays();
+  /* con più campagne il pulsante mostra quella attiva */
+  const r=campReg(),l=el.querySelector(":scope>.btn .lbl");if(l)l.textContent=r.list.length>1?campCur().name:"Dati";
+  if(b)b.title=(r.list.length>1?"Campagna «"+campCur().name+"» · ":"")+(warn?(d===null?"Non hai ancora fatto un backup dei dati della suite":`L'ultimo backup risale a ${d} giorni fa`):"Backup, ripristino e campagne")}
+function renderDataMenu(){renderCampMenu();const i=document.getElementById("snDataInfo");if(!i)return;const d=lastBackupDays();
   const quando=d===null?"<b>mai</b>":d===0?"<b>oggi</b>":d===1?"<b>ieri</b>":`<b>${d} giorni fa</b>`;
   i.innerHTML=`Ultimo backup: ${quando}`+(suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS)?" · è consigliato farne uno":"")}
 dataBadge();

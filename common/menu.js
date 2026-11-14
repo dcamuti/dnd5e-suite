@@ -12,11 +12,13 @@ document.addEventListener("keydown",e=>{const m=document.querySelector(".hmenu.o
 function hmFileKey(e,el){if(e.key==="Enter"||e.key===" "){e.preventDefault();const i=el.querySelector("input[type=file]");if(i)i.click()}}
 const BACKUP_WARN_DAYS=30;
 function lastBackupDays(){const v=dbGet("lastBackup",null);const t=v?Date.parse(v):NaN;return isNaN(t)?null:Math.floor((Date.now()-t)/86400000)}
-function suiteHasData(){return SUITE_KEYS.some(k=>k!==STORE.lang&&k!==STORE.lastBackup&&localStorage.getItem(k)!=null)}
+function suiteHasData(){return SUITE_KEYS.some(k=>k!==STORE.lang&&k!==STORE.lastBackup&&k!==STORE.camps&&localStorage.getItem(k)!=null)||campReg().list.length>1}
 function dataBadge(){const el=document.getElementById("snData");if(!el)return;const d=lastBackupDays(),warn=suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS);
   el.classList.toggle("warn",warn);const b=el.querySelector(":scope>.btn");
-  if(b)b.title=warn?(d===null?"Non hai ancora fatto un backup dei dati della suite":`L'ultimo backup risale a ${d} giorni fa`):"Backup e ripristino di tutti i dati della suite"}
-function renderDataMenu(){const i=document.getElementById("snDataInfo");if(!i)return;const d=lastBackupDays();
+  /* con più campagne il pulsante mostra quella attiva */
+  const r=campReg(),l=el.querySelector(":scope>.btn .lbl");if(l)l.textContent=r.list.length>1?campCur().name:"Dati";
+  if(b)b.title=(r.list.length>1?"Campagna «"+campCur().name+"» · ":"")+(warn?(d===null?"Non hai ancora fatto un backup dei dati della suite":`L'ultimo backup risale a ${d} giorni fa`):"Backup, ripristino e campagne")}
+function renderDataMenu(){renderCampMenu();const i=document.getElementById("snDataInfo");if(!i)return;const d=lastBackupDays();
   const quando=d===null?"<b>mai</b>":d===0?"<b>oggi</b>":d===1?"<b>ieri</b>":`<b>${d} giorni fa</b>`;
   i.innerHTML=`Ultimo backup: ${quando}`+(suiteHasData()&&(d===null||d>=BACKUP_WARN_DAYS)?" · è consigliato farne uno":"")}
 dataBadge();
