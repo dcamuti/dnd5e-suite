@@ -20,7 +20,16 @@ test("pianta del dungeon: stanze tutte raggiungibili, chiuse da muri, contenuti 
       if (m.objects.filter(o => o.type === "door").length < n - 1) fail("porte insufficienti");
       const want = t => DUN.rooms.filter(r => t.includes(r.tipo)).length, have = (ty, l) => m.objects.filter(o => o.type === ty && (!l || l.includes(o.label))).length;
       if (have("trap") !== want(["trappola"])) fail("trappole"); if (have("treasure") !== want(["tesoro", "mostro+tesoro", "boss"])) fail("tesori");
-      if (have("poi", ["Mostri", "Boss"]) !== want(["mostro", "mostro+tesoro", "boss"])) fail("scontri");
+      /* stanze con mostri: token del bestiario nascosti, dentro la mappa, con l'incontro scritto nella nota */
+      const fights = DUN.rooms.filter(r => ["mostro", "mostro+tesoro", "boss"].includes(r.tipo)), mons = m.objects.filter(o => o.type === "token" && o.ref);
+      if (fights.length && !mons.length) fail("nessun mostro piazzato"); if (mons.some(o => o.vis !== "dm" || o.x + o.size > W || o.y + o.size > H)) fail("mostro visibile o fuori mappa");
+      fights.forEach(r => { const nt = notes.find(o => o.label === "Stanza " + r.n); if (!/Incontro: \d+× /.test(nt.note) && !m.objects.some(o => o.type === "poi" && ["Mostri", "Boss"].includes(o.label))) fail("stanza " + r.n + " senza incontro"); });
+      /* uscite: ogni passaggio descritto ha il suo ritorno nella stanza indicata, e la prima stanza ha l'ingresso */
+      const opp = { nord: "sud", sud: "nord", est: "ovest", ovest: "est" };
+      DUN.rooms.forEach(r => r.ex.forEach(e => { const mm = e.match(/ a (nord|sud|est|ovest) verso la stanza (\d+)$/); if (!mm) { if (e !== "ingresso del dungeon") fail("uscita non riconosciuta: " + e); return; }
+        const back = DUN.rooms[+mm[2] - 1].ex.some(x => x.endsWith(" a " + opp[mm[1]] + " verso la stanza " + r.n)); if (!back) fail("uscita senza ritorno: stanza " + r.n + " → " + e); }));
+      if (DUN.rooms[0].ex[0] !== "ingresso del dungeon") fail("manca l'ingresso"); if (DUN.rooms.some(r => !r.ex.length)) fail("stanza senza uscite");
+      if (!notes.every(o => /Uscite: /.test(o.note))) fail("nota senza uscite");
       if (m.objects.some(o => o.type === "token" && o.vis !== "dm")) fail("incontro speciale visibile ai giocatori");
     } return out.slice(0, 5); });
   expect(bad).toEqual([]);
@@ -42,6 +51,9 @@ test("crea la mappa: salvata, aperta nell'editor senza correzioni, nebbia sulla 
   const pv = await context.newPage(); await pv.goto("/maps/index.html#view=" + saved.id); await pv.waitForTimeout(600);
   expect(await pv.evaluate(() => [...document.querySelectorAll(".obj")].every(e => /t-(poi|door)/.test(e.className)))).toBe(true);
   await expect(pv.locator(".obj.t-poi")).toHaveCount(1);
+  /* nell'editor i mostri hanno un'icona scelta dal tipo e il collegamento al bestiario; il testo del dungeon riporta le uscite disegnate */
+  expect(await m.evaluate(() => M.objects.filter(o => o.type === "token" && o.ref).every(o => o.icon !== "auto" && ICONS[o.icon] && refInfo(o) && !refInfo(o).missing))).toBe(true);
+  await expect(page.locator("#dunOut")).toContainText("ingresso del dungeon"); await expect(page.locator("#dunOut")).toContainText("verso la stanza 2");
   await page.click('button:has-text("Crea la mappa")'); await page.waitForTimeout(300);
   const all = await ls(page, "dnd5e_maps"); expect(all.map(x => x.name)).toEqual([saved.name, saved.name + " (2)"]);
 });

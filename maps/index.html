@@ -1202,7 +1202,7 @@ function normalizeMap(m){
     r=r.slice(0,w).split("").map(c=>{const i=CH.indexOf(c);return i>=0&&i<pal.length?c:"0"}).join("");terrain.push(r.padEnd(w,"0"))}
   const objects=(Array.isArray(m.objects)?m.objects:[]).filter(o=>o&&OBJ_TYPES[o.type]).map(o=>{
     const r={id:/^[\w-]+$/.test(o.id||"")?o.id:newId("obj"),type:o.type,x:clampInt(o.x,0,w-1,0),y:clampInt(o.y,0,h-1,0),size:clampInt(o.size,1,4,1),
-      icon:ICONS[o.icon]?o.icon:DEF_ICON[o.type],label:typeof o.label==="string"?o.label.slice(0,80):"",note:typeof o.note==="string"?o.note.slice(0,2000):""};
+      icon:ICONS[o.icon]?o.icon:(o.icon==="auto"&&o.ref&&o.ref.t==="mon"&&MON_BY_N[o.ref.n]?monIcon(o.ref.n,MON_BY_N[o.ref.n][4]):DEF_ICON[o.type]),label:typeof o.label==="string"?o.label.slice(0,80):"",note:typeof o.note==="string"?o.note.slice(0,2000):""};
     if(o.vis==="dm"||o.vis==="all")r.vis=o.vis;if(typeof o.own==="string")r.own=o.own;if(o.secret)r.secret=true;
     if(o.ref&&typeof o.ref==="object"&&/^(pc|npc|mon|hb|trk|pz|wld)$/.test(o.ref.t)){const rf={t:o.ref.t};if(/^[\w-]+$/.test(o.ref.id||""))rf.id=o.ref.id;if(typeof o.ref.n==="string")rf.n=o.ref.n.slice(0,80);if(rf.id||rf.n)r.ref=rf}
     if(typeof o.alias==="string"&&o.alias.trim())r.alias=o.alias.slice(0,80);if(/^[\w-]+$/.test(o.img||""))r.img=o.img;if(/^[\w-]+$/.test(o.trk||""))r.trk=o.trk;return r});
