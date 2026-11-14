@@ -49,3 +49,20 @@ test("stampa: i riquadri non si spezzano tra le pagine, quelli lunghi solo tra l
     return { box: g(".sh-box:not(.sh-spells):not(.sh-long)", "breakInside"), head: g(".sh-box h3", "breakAfter"), row: g(".sh-list li", "breakInside"), header: getComputedStyle(document.querySelector(".app-header")).display }; });
   expect(css).toEqual({ box: "avoid", head: "avoid", row: "avoid", header: "none" });
 });
+
+test("stampa compatta: niente descrizioni né personalità, meno pagine, e la stampa normale resta intera", async ({ page }) => {
+  await open(page, "characters"); await makeChar(page, "Aria", 9);
+  const pages = async () => ((await page.pdf({ format: "A4", printBackground: true })).toString("latin1").match(/\/Type\s*\/Page[^s]/g) || []).length;
+  await page.emulateMedia({ media: "print" });
+  const full = await pages(), names = await page.evaluate(() => document.querySelectorAll(".sh-list li > b, .sh-trait > b").length);
+  expect(await page.evaluate(() => [...document.querySelectorAll(".ft-desc")].some(e => e.offsetParent))).toBe(true);
+  await page.evaluate(() => document.documentElement.classList.add("print-compact"));
+  const vis = sel => page.evaluate(s => [...document.querySelectorAll(s)].filter(e => e.offsetParent).length, sel);
+  expect(await vis(".ft-desc")).toBe(0); expect(await vis(".sh-pers")).toBe(0);
+  expect(await vis(".sh-list li > b, .sh-trait:not(.sh-xtra) > b")).toBeGreaterThan(5);            // i nomi restano
+  expect(await vis(".sh-combat .cbox")).toBeGreaterThan(5); expect(await vis(".sh-line")).toBeGreaterThan(20);
+  const compact = await pages(); expect(compact).toBeLessThan(full); expect(compact).toBeLessThanOrEqual(2); expect(names).toBeGreaterThan(5);
+  /* il pulsante mette la classe solo per la durata della stampa */
+  await page.evaluate(() => { document.documentElement.classList.remove("print-compact"); window.print = () => { window.__cls = document.documentElement.classList.contains("print-compact"); window.dispatchEvent(new Event("afterprint")); }; printCompact(); });
+  expect(await page.evaluate(() => [window.__cls, document.documentElement.classList.contains("print-compact")])).toEqual([true, false]);
+});
