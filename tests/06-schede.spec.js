@@ -50,7 +50,8 @@ test("stampa: i riquadri non si spezzano tra le pagine, quelli lunghi solo tra l
   expect(css).toEqual({ box: "avoid", head: "avoid", row: "avoid", header: "none" });
 });
 
-test("stampa compatta: niente descrizioni né personalità, meno pagine, e la stampa normale resta intera", async ({ page }) => {
+test("stampa compatta: niente descrizioni né personalità, meno pagine, e la stampa normale resta intera", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "il numero di pagine del PDF si può misurare solo con Chromium");
   await open(page, "characters"); await makeChar(page, "Aria", 9);
   const pages = async () => ((await page.pdf({ format: "A4", printBackground: true })).toString("latin1").match(/\/Type\s*\/Page[^s]/g) || []).length;
   await page.emulateMedia({ media: "print" });

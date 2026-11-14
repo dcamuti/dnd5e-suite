@@ -74,6 +74,7 @@ npx playwright install chromium     # una volta: scarica il browser per i test
 npm test                            # controllo del codice comune + tutti i test
 npm run test:ui                     # interfaccia grafica per eseguire e ispezionare i singoli test
 npm run check                       # solo il controllo del codice comune (veloce, senza browser)
+npx playwright install firefox webkit && npm run test:altri   # gli stessi test con Firefox e WebKit (il motore di Safari)
 npm run build                       # copia common/ nei 7 tool dopo una modifica al codice comune
 ```
 

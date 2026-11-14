@@ -3,9 +3,10 @@
   "private": true,
   "description": "Suite web D&D 5E: test automatici e strumenti di sviluppo (il sito pubblicato non dipende da questo file)",
   "scripts": {
-    "test": "node tools/check-common.js && playwright test",
-    "test:browser": "playwright test",
-    "test:ui": "playwright test --ui",
+    "test": "node tools/check-common.js && playwright test --project=chromium",
+    "test:browser": "playwright test --project=chromium",
+    "test:ui": "playwright test --ui --project=chromium",
+    "test:altri": "playwright test --project=firefox --project=webkit",
     "check": "node tools/check-common.js",
     "build": "node tools/build-common.js"
   },
