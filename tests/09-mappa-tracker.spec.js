@@ -59,6 +59,16 @@ test("vista giocatori: turno e condizioni solo per le righe visibili, mai i PF d
   await expect(pv.locator(".obj.dead")).toHaveCount(1);
   await m.evaluate(() => trkNext()); await pv.waitForTimeout(400);
   await expect(pv.locator(".obj.turn")).toHaveCount(1);                                         // ora tocca ad Aria (il goblin 2 è sconfitto)
+  /* ordine d'iniziativa a lato: senza la riga nascosta, con lo sconfitto barrato, e la mappa si restringe */
+  await expect(pv.locator("#pvInitBox h2")).toHaveText("Round 2");
+  expect(await pv.locator("#pvInitBox .r").allTextContents()).toEqual(["▶ Aria", "Goblin 2"]);
+  await expect(pv.locator("#pvInitBox .r.dead")).toHaveText("Goblin 2");
+  expect(await pv.evaluate(() => Math.round(window.innerWidth - document.getElementById("vp").getBoundingClientRect().width))).toBe(280);
+  await m.evaluate(() => { setPvNames("pc"); saveNow(); }); await pv.waitForTimeout(400);
+  expect(await pv.locator("#pvInitBox .r").allTextContents()).toEqual(["▶ Aria", "Creatura"]);
+  await m.evaluate(() => { setPvInit(false); saveNow(); }); await pv.waitForTimeout(400);
+  await expect(pv.locator("#pvInitBox")).toBeHidden();
+  expect(await pv.evaluate(() => Math.round(window.innerWidth - document.getElementById("vp").getBoundingClientRect().width))).toBe(0);
 });
 
 test("dal tracker alla mappa: la scheda Tracker elenca chi manca e crea token collegati", async ({ page, context }) => {
