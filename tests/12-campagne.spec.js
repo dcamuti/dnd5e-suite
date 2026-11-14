@@ -87,7 +87,10 @@ test("backup: contiene tutte le campagne; un backup precedente entra nella campa
   expect(await page.evaluate(() => window.__uiLog || [])).toEqual([]);                           // (registro azzerato dalla ricarica)
   r = await reg(page); expect(r.list.length).toBe(2); expect((await ls(page, "dnd5e_npcs"))[0].name).toBe("Volo");
   expect(JSON.parse((await ls(page, "dnd5e_camp_" + ids[1])).dnd5e_npcs)[0].name).toBe("Ireena");
-  await page.goto("/index.html"); await expect(page.locator("#campNow")).toContainText("La mia campagna");
+  /* la home ha lo stesso menu Dati: mostra la campagna attiva e permette di cambiarla */
+  await page.goto("/index.html"); await expect(page.locator("#snData > .btn .lbl")).toHaveText("La mia campagna");
+  await pick(page, "Seconda"); expect(page.url()).toMatch(/\/index\.html$/); await expect(page.locator("#snData > .btn .lbl")).toHaveText("Seconda");
+  expect((await ls(page, "dnd5e_npcs"))[0].name).toBe("Ireena");
 });
 
 test("esporta e importa una campagna: arriva come nuova campagna con le sue immagini, le altre restano", async ({ page }) => {

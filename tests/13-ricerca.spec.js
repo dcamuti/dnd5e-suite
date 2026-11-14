@@ -62,8 +62,11 @@ test("pulsante nella barra, frecce, collegamento #cerca dalla home, solo la camp
   /* in un'altra campagna gli stessi dati non si trovano */
   await page.evaluate(() => { const r = campReg(); r.list.push({ id: "cmp_b", name: "B", created: "" }); campSave(r); });
   await Promise.all([page.waitForEvent("load"), page.evaluate(() => { if (campSwitch("cmp_b")) location.reload(); })]);
-  await page.goto("/index.html"); await Promise.all([page.waitForEvent("load"), page.click('a:has-text("Cerca nella campagna")')]);
+  await page.goto("/journal/index.html#cerca");
   await expect(page.locator("#gsQ")).toBeFocused(); await expect(page.locator("#gsQ")).toHaveAttribute("placeholder", /«B»/);
   await page.fill("#gsQ", "mira"); await expect(page.locator(".gs-it")).toHaveCount(0);
   await page.fill("#gsQ", "segugio"); expect(await titles(page)).toEqual(["Segugio d'ombra"]);                 // l'homebrew è comune a tutte le campagne
+  /* dalla home: stessa ricerca, e il risultato si apre nel tool giusto */
+  await page.goto("/index.html"); await page.click("#snSearch"); await page.fill("#gsQ", "segugio"); await expect(page.locator(".gs-it")).toHaveCount(1);
+  await Promise.all([page.waitForEvent("load"), page.keyboard.press("Enter")]); expect(page.url()).toContain("/encounters/index.html");
 });

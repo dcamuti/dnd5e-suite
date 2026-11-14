@@ -42,12 +42,12 @@ Il pulsante **Cerca** nella barra dei tool (da tastiera `/` oppure Ctrl+K) cerca
 
 ## Codice comune
 
-Storage, backup, finestre, menu e stile di base sono uguali in tutti i tool. La loro unica fonte è la cartella `common/`: uno script li copia dentro i 7 `index.html`, tra i marcatori `>>> COMUNE` e `<<< COMUNE`. I file pubblicati restano autonomi: `common/` non viene caricata dal sito.
+Storage, backup, finestre, menu e stile di base sono uguali in tutti i tool. La loro unica fonte è la cartella `common/`: uno script li copia dentro i 7 tool e nella home, tra i marcatori `>>> COMUNE` e `<<< COMUNE`. I file pubblicati restano autonomi: `common/` non viene caricata dal sito.
 
 Per cambiare il codice comune:
 
 1. modificare il file in `common/` (mai il testo tra i marcatori: verrebbe sovrascritto);
-2. eseguire `node tools/build-common.js` (oppure `npm run build`), che aggiorna i 7 tool;
+2. eseguire `node tools/build-common.js` (oppure `npm run build`), che aggiorna i 7 tool e la home;
 3. fare il commit di `common/` e dei tool insieme.
 
 | Blocco | File in `common/` | Contenuto |
@@ -58,7 +58,7 @@ Per cambiare il codice comune:
 | `motore` | `motore.js`, `diario.js` | generatore casuale, profilo di campagna, invio al Diario (assente nelle Schede PG) |
 | `interfaccia` | `immagini.js`, `backup.js`, `campagne.js`, `finestre.js`, `menu.js`, `interfaccia.js`, `icone.js`, `ricerca.js`, `pwa.js` | libreria immagini, backup e ripristino, campagne, finestre e Annulla, menu Dati, preferenze e accessibilità, icone dei pulsanti, ricerca nella campagna, uso senza connessione |
 
-Dove un tool deve differire, la variante è scritta nel file comune con righe `/*#if tool*/ … /*#else*/ … /*#endif*/`. Oggi sono due: negli Enigmi l'HTML importato è ammesso (e ripulito), negli Incontri c'è una regola in più per i pulsanti dei punti ferita.
+Dove un tool deve differire, la variante è scritta nel file comune con righe `/*#if tool*/ … /*#else*/ … /*#endif*/`. La home si indica con `home`: riceve storage, menu Dati, ricerca e uso senza connessione, e usa percorsi senza `../`. Oggi sono due: negli Enigmi l'HTML importato è ammesso (e ripulito), negli Incontri c'è una regola in più per i pulsanti dei punti ferita.
 
 `tools/build-monster-index.js` funziona allo stesso modo per l'elenco dei mostri dell'editor di mappe, ricavato dal bestiario degli Incontri.
 

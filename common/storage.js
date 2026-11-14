@@ -1,6 +1,12 @@
 /* ================= STORAGE DELLA SUITE =================
    Unico punto di accesso a localStorage: ogni dato ha un nome logico e una sola chiave reale.
    La versione dello schema è in dnd5e_schema; dbMigrate() applica le migrazioni mancanti all'apertura di qualunque tool. */
+/* dove si trova la radice della suite rispetto alla pagina: i tool stanno in una sottocartella, la home no */
+/*#if home*/
+const SUITE_ROOT="";
+/*#else*/
+const SUITE_ROOT="../";
+/*#endif*/
 const STORE={chars:"dnd5e_chars",draft:"dnd5e_draft",lang:"dnd5e_lang",homebrew:"dnd5e_homebrew",npcs:"dnd5e_npcs",
   encSrc:"dnd5e_enc_src",encSaved:"dnd5e_enc_saved",encTrk:"dnd5e_enc_trk",encHb:"dnd5e_enc_hb",
   diary:"dnd5e_diary",puzzles:"dnd5e_puzzles",profile:"dnd5e_profile",world:"dnd5e_world",maps:"dnd5e_maps",lastBackup:"dnd5e_last_backup",ui:"dnd5e_ui",camps:"dnd5e_camps"};

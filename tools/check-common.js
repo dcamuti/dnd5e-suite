@@ -2,17 +2,17 @@
 // Uso (dalla radice del repository):  node tools/check-common.js   → esce con errore se trova differenze.
 "use strict";
 const fs = require("fs"), path = require("path");
-const { run, TOOLS, REGIONS } = require("./build-common.js");
+const { run, PAGES, fileOf, REGIONS } = require("./build-common.js");
 const root = path.join(__dirname, "..");
 let bad = 0; const fail = m => { bad++; console.error("✗ " + m); };
 try {
   const r = run(true);
   r.problems.forEach(fail);
   r.changed.forEach(c => fail(c + " non corrisponde a common/ (il codice comune si modifica lì, poi: node tools/build-common.js)"));
-  if (!r.problems.length && !r.changed.length) console.log(`✓ ${REGIONS.length} blocchi comuni allineati a common/ in ${TOOLS.length} tool`);
+  if (!r.problems.length && !r.changed.length) console.log(`✓ ${REGIONS.length} blocchi comuni allineati a common/ in ${PAGES.length} pagine`);
 } catch (e) { fail(e.message); }
-for (const t of TOOLS) {
-  const src = fs.readFileSync(path.join(root, t, "index.html"), "utf8");
+for (const t of PAGES) {
+  const src = fs.readFileSync(path.join(root, fileOf(t)), "utf8");
   for (const k of ["alert", "confirm", "prompt"]) {
     const n = (src.match(new RegExp("(?<![\\w.$])" + k + "\\(", "g")) || []).length;
     if (n) fail(`${t}: ${n} ${k}() del browser: usa uiNote/uiAlert, uiConfirm o uiPrompt`);

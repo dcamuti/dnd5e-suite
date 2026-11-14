@@ -11,7 +11,7 @@ function gsText(o,out,depth){if(o==null||depth>6||out.n>6000)return;
   if(typeof o==="object")Object.keys(o).forEach(k=>{if(!GS_SKIP.has(k))gsText(o[k],out,depth+1)})}
 function gsIndex(){const arr=n=>{const a=dbGet(n,[]);return Array.isArray(a)?a:[]},out=[];
   const add=(grp,dir,hash,title,sub,obj)=>{title=String(title||"").trim();if(!title)return;const t={a:[],n:0};gsText(obj,t,0);
-    out.push({grp,url:"../"+dir+"/index.html#"+hash,title,sub:sub||"",text:t.a.join(" · ")})};
+    out.push({grp,url:SUITE_ROOT+dir+"/index.html#"+hash,title,sub:sub||"",text:t.a.join(" · ")})};
   arr("chars").forEach(c=>{if(!c||!c.id)return;const s=c.st||{};add("Schede PG","characters","open="+c.id,s.name||c.name,[s.race,s.cls].filter(Boolean).join(" · "),[s.race,s.cls,c.data&&c.data.notes,c.data&&c.data.backstory])});
   arr("npcs").forEach(n=>{if(n&&n.id)add("NPC","npcs","open="+n.id,n.name,[n.race,n.occ].filter(Boolean).join(" · "),n)});
   arr("encSaved").forEach(e=>{if(e&&e.id)add("Incontri","encounters","open="+e.id,e.name,"incontro salvato",(e.enc||[]).map(r=>r.n))});

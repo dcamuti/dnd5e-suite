@@ -3,6 +3,6 @@
    Funziona solo su https (o in locale con un server): aprendo i file direttamente dal disco non viene registrato.
    Si chiede anche al browser di non cancellare da solo i dati della suite quando lo spazio scarseggia. */
 if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){
-  navigator.serviceWorker.register("../sw.js").catch(()=>{});
+  navigator.serviceWorker.register(SUITE_ROOT+"sw.js").catch(()=>{});
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>{if(!p)navigator.storage.persist().catch(()=>{})}).catch(()=>{})}catch(e){}}
 const pwaReady=()=>!!(navigator.serviceWorker&&navigator.serviceWorker.controller);

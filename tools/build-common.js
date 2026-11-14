@@ -3,21 +3,23 @@
 // I file pubblicati restano singoli e autonomi: a runtime non viene caricato nessun file condiviso.
 //
 // Uso (dalla radice del repository):
-//   node tools/build-common.js           → riscrive i blocchi comuni nei 7 index.html
+//   node tools/build-common.js           → riscrive i blocchi comuni nei 7 tool e nella home
 //   node tools/build-common.js --check   → non scrive nulla; esce con errore se un tool non corrisponde a common/
 //
 // Varianti per singolo tool, dentro i file di common/ (ogni direttiva su una riga a sé):
-//   /*#if puzzles*/ … /*#else*/ … /*#endif*/      più tool: /*#if npcs,world*/      negazione: /*#if !characters*/
+//   /*#if puzzles*/ … /*#else*/ … /*#endif*/      più tool: /*#if npcs,world*/      negazione: /*#if !characters*/      la home: /*#if home*/
 "use strict";
 const fs = require("fs"), path = require("path");
 const root = path.join(__dirname, ".."), dir = path.join(root, "common");
 const TOOLS = ["characters", "npcs", "encounters", "world", "journal", "puzzles", "maps"];
+/* le pagine che ricevono il codice comune: i tool e la home (index.html nella radice, nome «home» nelle direttive) */
+const PAGES = TOOLS.concat("home"), fileOf = p => p === "home" ? "index.html" : p + "/index.html";
 /* blocchi nell'ordine in cui compaiono nei file; skip = tool che non hanno il blocco */
 const REGIONS = [
   { name: "stile", files: ["stile-base.css", "stile-intestazione.css", "stile-finestre.css", "stile-sezioni.css", "stile-icone.css"] },
   { name: "storage", files: ["storage.js"] },
   { name: "dati", files: ["dati-esterni.js", "id-visibilita.js"] },
-  { name: "motore", files: ["motore.js", "diario.js"], skip: ["characters"] },   // le Schede PG non generano contenuti e non scrivono nel Diario
+  { name: "motore", files: ["motore.js", "diario.js"], skip: ["characters", "home"] },   // Schede PG e home non generano contenuti e non scrivono nel Diario
   { name: "interfaccia", files: ["immagini.js", "backup.js", "campagne.js", "finestre.js", "menu.js", "interfaccia.js", "icone.js", "ricerca.js", "pwa.js"] },
 ];
 const startOf = n => `/* >>> COMUNE: ${n} (generato da common/ con tools/build-common.js: non modificare qui) */\n`;
@@ -33,7 +35,7 @@ function forTool(text, tool, file) {
     if (m[1] === "if") {
       if (keep !== null) throw new Error(`${where}: #if dentro un altro #if`);
       const neg = m[2].startsWith("!"), list = m[2].replace(/^!/, "").split(",").map(s => s.trim());
-      list.forEach(t => { if (!TOOLS.includes(t)) throw new Error(`${where}: tool sconosciuto "${t}"`); });
+      list.forEach(t => { if (!PAGES.includes(t)) throw new Error(`${where}: tool sconosciuto "${t}"`); });
       keep = list.includes(tool) !== neg;
     } else if (keep === null) throw new Error(`${where}: #${m[1]} senza #if`);
     else if (m[1] === "else") keep = !keep; else keep = null;
@@ -50,8 +52,8 @@ function build(region, tool) {
 }
 function run(check) {
   const problems = [], changed = [];
-  for (const tool of TOOLS) {
-    const file = path.join(root, tool, "index.html"); let src = fs.readFileSync(file, "utf8"); const before = src;
+  for (const tool of PAGES) {
+    const file = path.join(root, fileOf(tool)); let src = fs.readFileSync(file, "utf8"); const before = src;
     for (const r of REGIONS) {
       const a = startOf(r.name), b = endOf(r.name), i = src.indexOf(a), j = src.indexOf(b);
       if (r.skip && r.skip.includes(tool)) { if (i >= 0) problems.push(`${tool}: contiene il blocco "${r.name}", che qui non è previsto`); continue; }
@@ -64,7 +66,7 @@ function run(check) {
   }
   return { problems, changed };
 }
-module.exports = { run, TOOLS, REGIONS };
+module.exports = { run, TOOLS, PAGES, fileOf, REGIONS };
 if (require.main === module) {
   const check = process.argv.includes("--check");
   let r; try { r = run(check); } catch (e) { console.error("✗ " + e.message); process.exit(1); }
@@ -72,7 +74,7 @@ if (require.main === module) {
   if (check) {
     r.changed.forEach(c => console.error("✗ " + c + " non corrisponde a common/"));
     if (r.problems.length || r.changed.length) { console.error("\nIl codice comune si modifica in common/, poi: node tools/build-common.js"); process.exit(1); }
-    console.log(`Codice comune allineato a common/ (${REGIONS.length} blocchi, ${TOOLS.length} tool).`);
+    console.log(`Codice comune allineato a common/ (${REGIONS.length} blocchi, ${PAGES.length} pagine).`);
   } else {
     if (r.problems.length) process.exit(1);
     console.log(r.changed.length ? "Aggiornati:\n  " + r.changed.join("\n  ") : "Nessuna modifica: i tool corrispondono già a common/.");

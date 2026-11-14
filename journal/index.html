@@ -258,6 +258,8 @@ select,input,textarea,.fld{max-width:100%}
 /* ================= STORAGE DELLA SUITE =================
    Unico punto di accesso a localStorage: ogni dato ha un nome logico e una sola chiave reale.
    La versione dello schema è in dnd5e_schema; dbMigrate() applica le migrazioni mancanti all'apertura di qualunque tool. */
+/* dove si trova la radice della suite rispetto alla pagina: i tool stanno in una sottocartella, la home no */
+const SUITE_ROOT="../";
 const STORE={chars:"dnd5e_chars",draft:"dnd5e_draft",lang:"dnd5e_lang",homebrew:"dnd5e_homebrew",npcs:"dnd5e_npcs",
   encSrc:"dnd5e_enc_src",encSaved:"dnd5e_enc_saved",encTrk:"dnd5e_enc_trk",encHb:"dnd5e_enc_hb",
   diary:"dnd5e_diary",puzzles:"dnd5e_puzzles",profile:"dnd5e_profile",world:"dnd5e_world",maps:"dnd5e_maps",lastBackup:"dnd5e_last_backup",ui:"dnd5e_ui",camps:"dnd5e_camps"};
@@ -1087,7 +1089,7 @@ function gsText(o,out,depth){if(o==null||depth>6||out.n>6000)return;
   if(typeof o==="object")Object.keys(o).forEach(k=>{if(!GS_SKIP.has(k))gsText(o[k],out,depth+1)})}
 function gsIndex(){const arr=n=>{const a=dbGet(n,[]);return Array.isArray(a)?a:[]},out=[];
   const add=(grp,dir,hash,title,sub,obj)=>{title=String(title||"").trim();if(!title)return;const t={a:[],n:0};gsText(obj,t,0);
-    out.push({grp,url:"../"+dir+"/index.html#"+hash,title,sub:sub||"",text:t.a.join(" · ")})};
+    out.push({grp,url:SUITE_ROOT+dir+"/index.html#"+hash,title,sub:sub||"",text:t.a.join(" · ")})};
   arr("chars").forEach(c=>{if(!c||!c.id)return;const s=c.st||{};add("Schede PG","characters","open="+c.id,s.name||c.name,[s.race,s.cls].filter(Boolean).join(" · "),[s.race,s.cls,c.data&&c.data.notes,c.data&&c.data.backstory])});
   arr("npcs").forEach(n=>{if(n&&n.id)add("NPC","npcs","open="+n.id,n.name,[n.race,n.occ].filter(Boolean).join(" · "),n)});
   arr("encSaved").forEach(e=>{if(e&&e.id)add("Incontri","encounters","open="+e.id,e.name,"incontro salvato",(e.enc||[]).map(r=>r.n))});
@@ -1149,7 +1151,7 @@ function gsGo(url){const a=document.createElement("a");a.href=url;const same=a.p
    Funziona solo su https (o in locale con un server): aprendo i file direttamente dal disco non viene registrato.
    Si chiede anche al browser di non cancellare da solo i dati della suite quando lo spazio scarseggia. */
 if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){
-  navigator.serviceWorker.register("../sw.js").catch(()=>{});
+  navigator.serviceWorker.register(SUITE_ROOT+"sw.js").catch(()=>{});
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>{if(!p)navigator.storage.persist().catch(()=>{})}).catch(()=>{})}catch(e){}}
 const pwaReady=()=>!!(navigator.serviceWorker&&navigator.serviceWorker.controller);
 /* <<< COMUNE: interfaccia */
