@@ -14,3 +14,21 @@
 .ui-undo{position:fixed; left:50%; bottom:22px; transform:translateX(-50%); display:flex; gap:12px; align-items:center; background:#2a1f12; border:1px solid var(--gold); color:var(--ink); padding:8px 10px 8px 16px; border-radius:12px; z-index:210; box-shadow:0 8px 24px rgba(0,0,0,.55); font-size:.9rem; max-width:calc(100% - 24px)}
 .ui-undo .btn{flex:none}
 @media (max-width:520px){.ui-btns .btn{flex:1 1 auto}}
+/* ricerca nella campagna */
+.sn-search{flex:none; align-self:flex-start; margin-left:auto; border-radius:20px; padding:5px 13px; font-size:.8rem}
+.sn-search+.sn-data{margin-left:0}
+.gs-ov{position:fixed; inset:0; background:rgba(0,0,0,.66); display:flex; align-items:flex-start; justify-content:center; z-index:190; padding:9vh 16px 16px}
+.gs-box{background:linear-gradient(170deg,#2a2015,#1e160d); border:1px solid var(--gold); border-radius:14px; padding:14px; width:min(620px,100%); max-height:80vh; display:flex; flex-direction:column; box-shadow:0 20px 50px rgba(0,0,0,.6); color:var(--ink)}
+.gs-box input{width:100%; font-size:1rem; padding:10px 12px; background:#17110a; color:var(--ink); border:1px solid var(--border); border-radius:9px; font-family:Georgia,serif; -webkit-appearance:none; appearance:none}
+.gs-box input:focus{border-color:var(--gold-l); outline:none}
+.gs-list{overflow:auto; margin-top:8px; min-height:60px}
+.gs-grp{font-family:var(--font-display,'Cinzel',Georgia,serif); color:var(--gold); font-size:.74rem; letter-spacing:1px; padding:10px 8px 4px}
+.gs-it{padding:7px 10px; border-radius:8px; cursor:pointer; line-height:1.35}
+.gs-it b{color:var(--gold-l); font-weight:600}
+.gs-it small{color:var(--muted); margin-left:8px; font-size:.78rem}
+.gs-it .gs-sn{display:block; color:var(--muted); font-size:.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.gs-it mark{background:rgba(236,203,98,.3); color:var(--ink); border-radius:3px; padding:0 1px}
+.gs-it.on,.gs-it:hover{background:#3a2c1a}
+.gs-empty{color:var(--muted); font-size:.86rem; padding:10px 8px; line-height:1.45}
+.gs-foot{display:flex; justify-content:space-between; gap:10px; color:var(--muted); font-size:.72rem; padding:8px 6px 0; border-top:1px solid var(--border); margin-top:8px}
+@media (max-width:760px){.sn-search .lbl{display:none}.gs-ov{padding-top:16px}.gs-foot span:first-child{display:none}}

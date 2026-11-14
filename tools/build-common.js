@@ -18,7 +18,7 @@ const REGIONS = [
   { name: "storage", files: ["storage.js"] },
   { name: "dati", files: ["dati-esterni.js", "id-visibilita.js"] },
   { name: "motore", files: ["motore.js", "diario.js"], skip: ["characters"] },   // le Schede PG non generano contenuti e non scrivono nel Diario
-  { name: "interfaccia", files: ["immagini.js", "backup.js", "campagne.js", "finestre.js", "menu.js", "interfaccia.js"] },
+  { name: "interfaccia", files: ["immagini.js", "backup.js", "campagne.js", "finestre.js", "menu.js", "interfaccia.js", "ricerca.js"] },
 ];
 const startOf = n => `/* >>> COMUNE: ${n} (generato da common/ con tools/build-common.js: non modificare qui) */\n`;
 const endOf = n => `/* <<< COMUNE: ${n} */\n`;

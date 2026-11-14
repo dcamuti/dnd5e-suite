@@ -23,6 +23,10 @@ Dal menu **Dati** di qualunque tool si creano più campagne e si passa dall'una 
 
 La campagna attiva sta nelle chiavi di sempre del localStorage; le altre sono conservate ciascuna in una chiave `dnd5e_camp_<id>` e il registro è in `dnd5e_camps`. Il backup contiene tutte le campagne; un backup fatto prima di questa funzione si ripristina nella campagna attiva.
 
+## Ricerca
+
+Il pulsante **Cerca** nella barra dei tool (da tastiera `/` oppure Ctrl+K) cerca tra gli elementi salvati della campagna attiva: PG, NPC, incontri salvati, mostri homebrew, sessioni e voci del Diario, mondi e fazioni, enigmi, mappe. Un risultato si apre nel suo tool. Il bestiario ufficiale si cerca negli Incontri.
+
 ## Codice comune
 
 Storage, backup, finestre, menu e stile di base sono uguali in tutti i tool. La loro unica fonte è la cartella `common/`: uno script li copia dentro i 7 `index.html`, tra i marcatori `>>> COMUNE` e `<<< COMUNE`. I file pubblicati restano autonomi: `common/` non viene caricata dal sito.
@@ -39,7 +43,7 @@ Per cambiare il codice comune:
 | `storage` | `storage.js` | chiavi dei dati, lettura e scrittura, migrazioni |
 | `dati` | `dati-esterni.js`, `id-visibilita.js` | pulizia di ciò che viene importato, ID, visibilità e proprietà |
 | `motore` | `motore.js`, `diario.js` | generatore casuale, profilo di campagna, invio al Diario (assente nelle Schede PG) |
-| `interfaccia` | `immagini.js`, `backup.js`, `campagne.js`, `finestre.js`, `menu.js`, `interfaccia.js` | libreria immagini, backup e ripristino, campagne, finestre e Annulla, menu Dati, preferenze e accessibilità |
+| `interfaccia` | `immagini.js`, `backup.js`, `campagne.js`, `finestre.js`, `menu.js`, `interfaccia.js`, `ricerca.js` | libreria immagini, backup e ripristino, campagne, finestre e Annulla, menu Dati, preferenze e accessibilità, ricerca nella campagna |
 
 Dove un tool deve differire, la variante è scritta nel file comune con righe `/*#if tool*/ … /*#else*/ … /*#endif*/`. Oggi sono due: negli Enigmi l'HTML importato è ammesso (e ripulito), negli Incontri c'è una regola in più per i pulsanti dei punti ferita.
 
@@ -75,6 +79,7 @@ npm run build                       # copia common/ nei 7 tool dopo una modifica
 | `tests/10-aree-ping` | aree d'effetto (cerchio, cono, linea, cubo), creature colpite, vista giocatori, segnalazione di un punto |
 | `tests/11-dungeon-mappa` | dungeon generato trasformato in mappa: stanze raggiungibili e chiuse da muri, contenuti, nebbia iniziale |
 | `tests/12-campagne` | dati separati per campagna, contenuti comuni, cambio con altre finestre aperte, spazio insufficiente, backup di tutte le campagne |
+| `tests/13-ricerca` | ricerca nella campagna: risultati da tutti i tool, apertura nel tool giusto, tastiera, solo la campagna attiva |
 
 Ogni test fallisce anche se la pagina genera un errore JavaScript o apre una finestra nativa del browser.
 
