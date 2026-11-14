@@ -1653,6 +1653,7 @@ function shareHb(k){
 }
 function checkHash(){
   const h=location.hash;if(!h)return;
+  if(h==="#tracker"){history.replaceState(null,"",location.pathname+location.search);showTab("track");return}
   try{
     if(h.indexOf("#enc=")===0){
       const o=b64d(h.slice(5));
@@ -1873,6 +1874,17 @@ new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes)if(n.nod
 /* ================= TRACKER ================= */
 let TRK=dbGet("encTrk",{list:[],turn:-1,round:0});
 if(!TRK.fx)TRK.fx=[];
+/* i combattenti aggiunti dall'editor di mappe portano il nome del mostro (mn): la posizione nel bestiario si ricava da quello */
+function trkFix(){if(!TRK||!Array.isArray(TRK.list))TRK={list:[],turn:-1,round:0};if(!TRK.fx)TRK.fx=[];
+  TRK.list.forEach(u=>{if(u&&u.mn){const i=MONSTERS.findIndex(m=>m.n===u.mn);if(i>=0)u.mi=i}})}
+/* il tracker è stato modificato in un'altra finestra (dall'editor di mappe: turno successivo, combattenti aggiunti) */
+window.addEventListener("storage",e=>{if(e.key!==dbKey("encTrk"))return;const old=TRK;TRK=dbGet("encTrk",{list:[],turn:-1,round:0});trkFix();
+  const added=TRK.list.filter(u=>!old.list.some(x=>x.id===u.id)).length,act=TRK.turn>=0?TRK.list[TRK.turn]:null;
+  (old.fx||[]).filter(f=>!TRK.fx.some(x=>x.id===f.id)).forEach(f=>{if(TRK.round>old.round)dlog(`⏳ Effetto terminato: <b>${esc(f.name)}</b>${f.tgt?" ("+esc(f.tgt)+")":""}`)});
+  if(TRK.round>old.round&&LAIR)dlog(`🏰 Round ${TRK.round}: ricorda l'azione di tana (iniziativa 20)`);
+  if(added)dlog(`🗺 ${added===1?"Un combattente aggiunto":added+" combattenti aggiunti"} dalla mappa`);
+  else if(act&&(TRK.turn!==old.turn||TRK.round!==old.round))dlog(`🗺 Dalla mappa: round ${TRK.round}, tocca a <b>${esc(act.name)}</b>`);
+  if(TAB==="track")renderTrk();else if(PV&&!PV.closed)pvRender()});
 const CONDS=["Prono","Afferrato","Trattenuto","Accecato","Assordato","Avvelenato","Spaventato","Affascinato","Stordito","Paralizzato","Incapacitato","Invisibile","Pietrificato","Conc."];
 const COND_DESC={
  "Prono":"Svantaggio ai suoi attacchi. Attacchi in mischia contro di lui con vantaggio, a distanza con svantaggio. Rialzarsi costa metà movimento.",
@@ -2283,7 +2295,7 @@ function initSelects(){
   $("gCount").innerHTML=Array.from({length:20},(_,i)=>`<option${i+1===4?" selected":""}>${i+1}</option>`).join("");
   $("gMaxN").innerHTML=Array.from({length:15},(_,i)=>`<option${i+1===6?" selected":""}>${i+1}</option>`).join("");
   $("dunN").innerHTML=Array.from({length:11},(_,i)=>`<option${i+4===6?" selected":""}>${i+4}</option>`).join("");
-  loadHB();initSelects();renderTh();srcBadge();renderTrk();checkHash();
+  loadHB();trkFix();initSelects();renderTh();srcBadge();renderTrk();checkHash();
 })();
 /* v1.1 — homebrew + incontro manuale */
 </script>

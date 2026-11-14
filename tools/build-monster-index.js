@@ -14,8 +14,10 @@ for(;i<enc.length;i++){const ch=enc[i];
   if(ch==="[")depth++;else if(ch==="]"){depth--;if(!depth){end=i;break}}}
 const list=vm.runInNewContext("("+enc.slice(enc.indexOf("[",a),end+1)+")");
 const hpAvg=h=>{const m=/^\s*(\d+)/.exec(String(h||""));return m?+m[1]:0};
-/* [nome inglese, nome italiano, GS, taglia, tipo, CA, PF medi] */
-const idx=list.filter(m=>m&&m.n).map(m=>[m.n,m.it||m.n,String(m.cr),m.sz||"",(m.tp||"").replace(/\s+/g," ").trim(),parseInt(m.ac,10)||0,hpAvg(m.hp)]);
+/* [nome inglese, nome italiano, GS, taglia, tipo, CA, PF medi, modificatore di Destrezza]
+   La posizione nell'elenco è la stessa del bestiario: il tracker indica i mostri per posizione. */
+const idx=list.filter(m=>m&&m.n).map(m=>[m.n,m.it||m.n,String(m.cr),m.sz||"",(m.tp||"").replace(/\s+/g," ").trim(),parseInt(m.ac,10)||0,hpAvg(m.hp),Math.floor((((m.ab||[])[1]||10)-10)/2)]);
+if(idx.length!==list.length)throw new Error("Nel bestiario ci sono voci senza nome: l'indice non corrisponderebbe più alle posizioni");
 const maps=path.join(root,"maps/index.html");let html=fs.readFileSync(maps,"utf8");
 const S="/* MONSTER_INDEX_START (generato da tools/build-monster-index.js: non modificare a mano) */",E="/* MONSTER_INDEX_END */";
 const out=S+"\nconst MON_INDEX="+JSON.stringify(idx)+";\n"+E;

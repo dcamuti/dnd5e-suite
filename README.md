@@ -65,6 +65,7 @@ npm run build                       # copia common/ nei 7 tool dopo una modifica
 | `tests/06-schede` | generazione, salvataggio, Annulla, salita di livello dal Diario, regole di stampa |
 | `tests/07-mappe` | disegno, elementi, annulla, export/import, token collegati, nebbia e vista giocatori |
 | `tests/08-finestre-immagini` | finestre della suite da tastiera, Annulla, conferma del ripristino, libreria immagini |
+| `tests/09-mappa-tracker` | creature della mappa portate nel tracker, turno evidenziato e passato dalla mappa, stato per i giocatori |
 
 Ogni test fallisce anche se la pagina genera un errore JavaScript o apre una finestra nativa del browser.
 
