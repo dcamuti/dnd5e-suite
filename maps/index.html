@@ -1106,10 +1106,11 @@ function toast(t){const e=$("toast");e.textContent=t;e.style.display="block";cle
    { id, v:1, name, src?, grid:{type:"square",w,h,cell,unit:"ft"},
      palette:[{k,pattern,color,tex?,scale?}], terrain:[righe: un carattere per casella = indice nella palette (0-9, a-z)],
      objects:[{id,type,x,y,size,icon,label,note,vis?,own?,ref?,img?,trk?}], fog:{on,shown:[righe 0/1]}, bg?,
-     areas:[{id,shape:"circle"|"cone"|"line"|"cube",x,y,n,a?,color,label,vis?}], notes, created, updated }
+     areas:[{id,shape:"circle"|"cone"|"line"|"cube",x,y,n,a?,color,label,vis?,fx?}], notes, created, updated }
    tex/img/bg sono ID di immagini della libreria: se mancano si usano i pattern e le icone interni.
    areas sono le aree d'effetto: x,y in caselle (a passi di mezza casella: origine, o angolo in alto a sinistra per il cubo), n = raggio, lunghezza
-   o lato in caselle, a = direzione in gradi (0 = est, in senso orario) per cono e linea.
+   o lato in caselle, a = direzione in gradi (0 = est, in senso orario) per cono e linea, fx = ID dell'effetto a tempo del tracker
+   a cui l'area è legata (quando l'effetto termina l'area viene tolta).
    trk è l'ID della riga del tracker degli Incontri a cui il token è collegato (i PG si collegano da soli tramite la scheda). */
 const MAP_V=1, C=32, GRID_MIN=5, GRID_MAX=100;
 const AREA_SHAPES={circle:["◯ Cerchio","Raggio"],cone:["◣ Cono","Lunghezza"],line:["━ Linea","Lunghezza"],cube:["■ Cubo","Lato"]},AREA_MAX=60,AREA_DEF={circle:4,cone:3,line:6,cube:2};
@@ -1165,7 +1166,7 @@ function normalizeMap(m){
   const areas=(Array.isArray(m.areas)?m.areas:[]).filter(a=>a&&AREA_SHAPES[a.shape]&&isFinite(+a.x)&&isFinite(+a.y)).slice(0,60).map(a=>{
     const r={id:/^[\w-]+$/.test(a.id||"")?a.id:newId("ar"),shape:a.shape,x:Math.max(0,Math.min(w,Math.round(+a.x*2)/2)),y:Math.max(0,Math.min(h,Math.round(+a.y*2)/2)),n:clampInt(a.n,1,AREA_MAX,4),
       color:/^#[0-9a-f]{6}$/i.test(a.color||"")?a.color:AREA_COLORS[0][0],label:typeof a.label==="string"?a.label.slice(0,60):""};
-    if(a.shape==="cone"||a.shape==="line")r.a=((Math.round(+a.a||0)%360)+360)%360;if(a.vis==="dm")r.vis="dm";return r});
+    if(a.shape==="cone"||a.shape==="line")r.a=((Math.round(+a.a||0)%360)+360)%360;if(a.vis==="dm")r.vis="dm";if(/^[\w-]+$/.test(a.fx||""))r.fx=a.fx;return r});
   const out={id:/^[\w-]+$/.test(m.id||"")?m.id:newId("map"),v:MAP_V,name:typeof m.name==="string"&&m.name.trim()?m.name.slice(0,80):"Mappa senza nome",
     grid:{type:"square",w,h,cell:clampInt(g.cell,1,100,5),unit:"ft"},palette:pal,terrain,objects,areas,fog,
     notes:typeof m.notes==="string"?m.notes:"",created:m.created||new Date().toISOString(),updated:m.updated||new Date().toISOString()};
@@ -1457,7 +1458,7 @@ function applySize(){if(!M)return;const w=clampInt($("mW").value,GRID_MIN,GRID_M
   M.objects=M.objects.filter(o=>o.x+o.size<=w&&o.y+o.size<=h);M.areas=(M.areas||[]).filter(a=>a.x<=w&&a.y<=h);if(SEL&&!selObj()&&!selArea())SEL=null;fogNorm(M);
   buildStage();renderObjs();renderSel();renderMapForm();fitView();saveSoon();
   if(lostObj||lostCells)uiUndo(`↔ Mappa ridotta: tolte ${lostCells} caselle disegnate${lostObj?` e ${lostObj} elementi`:""}`,()=>{snap();restoreSnap(before);fitView()})}
-function openMap(m){if(DIRTY)saveNow();M=normalizeMap(m);SEL=null;UNDO=[];REDO=[];updUndo();renderToolUI();buildStage();renderObjs();renderSel();renderMapForm();renderFogUI();renderBgForm();pvSend();
+function openMap(m){if(DIRTY)saveNow();M=normalizeMap(m);SEL=null;UNDO=[];REDO=[];updUndo();renderToolUI();buildStage();renderObjs();renderSel();areaFxSweep();renderMapForm();renderFogUI();renderBgForm();pvSend();
   document.title="🗺 "+M.name+" · Mappe D&D 5E";requestAnimationFrame(fitView)}
 function openMd(id){$(id).style.display="flex"}
 function closeMd(id){$(id).style.display="none"}
@@ -1500,7 +1501,17 @@ function exportPng(dm){if(!M)return;const W=M.grid.w*C,H=M.grid.h*C,sc=2;const c
   ctx.scale(sc,sc);ctx.fillStyle="#0b0805";ctx.fillRect(0,0,W,H);
   if(M.bg&&imgOk(M.bg.img)){const im=IMG.get(M.bg.img).el,bw=M.bg.wc*C;ctx.save();ctx.globalAlpha=M.bg.op;ctx.drawImage(im,M.bg.x*C,M.bg.y*C,bw,bw*im.naturalHeight/im.naturalWidth);ctx.restore()}
   ctx.drawImage($("cv"),0,0,W,H);if(SHOW_GRID)drawGrid(ctx,M.grid.w,M.grid.h,.18);
+  /* aree d'effetto: sotto la nebbia, come nella vista giocatori; nella copia per i giocatori solo quelle visibili a loro */
+  const areas=(M.areas||[]).filter(a=>dm||a.vis!=="dm");
+  areas.forEach(a=>{ctx.save();ctx.fillStyle=a.color;ctx.strokeStyle=a.color;ctx.globalAlpha=.3;areaCells(a).forEach(([x,y])=>ctx.fillRect(x*C,y*C,C,C));
+    ctx.globalAlpha=1;ctx.lineWidth=2.5;ctx.lineJoin="round";if(a.vis==="dm")ctx.setLineDash([8,6]);ctx.beginPath();const X=a.x*C,Y=a.y*C,N=a.n*C;
+    if(a.shape==="circle")ctx.arc(X,Y,N,0,7);else if(a.shape==="cube")ctx.rect(X,Y,N,N);
+    else{const r=(a.a||0)*Math.PI/180,cx=Math.cos(r),sy=Math.sin(r),hw=(a.shape==="cone"?a.n/2:.5)*C,ex=X+cx*N,ey=Y+sy*N,px=-sy*hw,py=cx*hw;
+      if(a.shape==="cone"){ctx.moveTo(X,Y);ctx.lineTo(ex+px,ey+py);ctx.lineTo(ex-px,ey-py)}else{ctx.moveTo(X+px,Y+py);ctx.lineTo(ex+px,ey+py);ctx.lineTo(ex-px,ey-py);ctx.lineTo(X-px,Y-py)}ctx.closePath()}
+    ctx.stroke();ctx.restore()});
   if(!dm&&M.fog.on){ctx.fillStyle="#000";for(let y=0;y<M.grid.h;y++)for(let x=0;x<M.grid.w;x++)if(!fogShown(x,y))ctx.fillRect(x*C,y*C,C,C)}
+  areas.forEach(a=>{if(!a.label)return;const h=areaHandle(a);ctx.save();ctx.font="bold 11px Georgia";const tw=Math.min(170,ctx.measureText(a.label).width)+8,lx=h.x*C-tw/2,ly=h.y*C+4;
+    ctx.fillStyle="rgba(16,11,6,.85)";ctx.fillRect(lx,ly,tw,15);ctx.strokeStyle=a.color;ctx.lineWidth=1;ctx.strokeRect(lx,ly,tw,15);ctx.fillStyle="#f4ead6";ctx.fillText(a.label,lx+4,ly+11,170);ctx.restore()});
   M.objects.filter(o=>dm||pvVisible(o)).forEach(o=>{const s=o.size*C,t=OBJ_TYPES[o.type],x=o.x*C,y=o.y*C;ctx.save();
     if(o.type==="token"){ctx.beginPath();ctx.arc(x+s/2,y+s/2,s*.41,0,7);const g=ctx.createRadialGradient(x+s*.35,y+s*.3,1,x+s/2,y+s/2,s*.45);g.addColorStop(0,"#4a3a26");g.addColorStop(1,"#1c140b");
       ctx.fillStyle=g;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=objVis(o)==="all"?"#c9a227":"#8b2e2e";ctx.stroke()}
@@ -1638,14 +1649,23 @@ function areaPanel(a){const cell=M.grid.cell,dir=a.shape==="cone"||a.shape==="li
    <label class="f" for="arN">${AREA_SHAPES[a.shape][1]} (ft)</label><input type="number" id="arN" min="${cell}" max="${AREA_MAX*cell}" step="${cell}" value="${a.n*cell}" onchange="setArea('n',Math.round(this.value/${cell}))">
    ${dir?`<label class="f" for="arA">Direzione: <span id="arAv">${a.a||0}</span>°</label><input type="range" id="arA" min="0" max="355" step="5" value="${a.a||0}" oninput="setArea('a',+this.value)">`:""}
    <label class="f">Colore</label><div style="display:flex;gap:5px">${AREA_COLORS.map(([c,n])=>`<button class="acol ${a.color===c?"on":""}" style="background:${c}" onclick="setArea('color','${c}')" title="${n}" aria-label="${n}"></button>`).join("")}</div>
+   ${areaFxSel(a)}
    <div class="trkbox" id="arHits">${areaHits(a)}</div>
    <div class="toolbar"><button class="btn small" onclick="setArea('vis',${a.vis==="dm"?"'all'":"'dm'"})" title="Visibilità nella vista giocatori">${a.vis==="dm"?"🙈 Nascosta ai giocatori":"👁 Visibile ai giocatori"}</button></div>
    <div class="toolbar"><button class="btn small" onclick="delArea()">🗑 Elimina</button></div></div>`}
 function setArea(f,v){const a=selArea();if(!a)return;if(!OBJ_EDIT_SNAP){snap();OBJ_EDIT_SNAP=true}
   if(f==="n")a.n=clampInt(v,1,AREA_MAX,a.n);else if(f==="a")a.a=((Math.round(v)%360)+360)%360;else if(f==="vis"){if(v==="dm")a.vis="dm";else delete a.vis}
+  else if(f==="fx"){if(v)a.fx=v;else delete a.fx}
   else if(f==="label")a.label=String(v).slice(0,60);else if(f==="color"&&/^#[0-9a-f]{6}$/i.test(v))a.color=v;
   renderObjs();if(f==="label"||f==="a"){if($("arAv"))$("arAv").textContent=a.a||0;if($("arHits"))$("arHits").innerHTML=areaHits(a)}else{OBJ_EDIT_SNAP=false;renderSel()}
   pvLive({t:"ar",id:M.id,areas:M.areas});saveSoon()}
+/* legame con un effetto a tempo del tracker: quando l'effetto termina (o viene tolto) l'area sparisce */
+function areaFxSel(a){const fx=trkGet().fx||[];if(!fx.length&&!a.fx)return"";
+  return`<label class="f" for="arFx">Legata all'effetto del tracker</label><select id="arFx" onchange="setArea('fx',this.value)"><option value="">— nessuno: resta finché non la togli —</option>${fx.map(f=>`<option value="${esc(f.id)}" ${a.fx===f.id?"selected":""}>${esc(f.name)} (${f.rds} ${f.rds===1?"round":"round"})</option>`).join("")}</select>`}
+function areaFxSweep(){if(PVMODE||!M||!(M.areas||[]).some(a=>a.fx))return;const live=new Set((trkGet().fx||[]).map(f=>f.id)),gone=M.areas.filter(a=>a.fx&&!live.has(a.fx));if(!gone.length)return;
+  const before=JSON.stringify(M.areas);M.areas=M.areas.filter(a=>!gone.includes(a));if(SEL&&gone.some(a=>a.id===SEL))SEL=null;renderObjs();renderSel();saveSoon();pvLive({t:"ar",id:M.id,areas:M.areas});
+  uiUndo(gone.length===1?`Effetto terminato: tolta l'area «${gone[0].label||AREA_SHAPES[gone[0].shape][0].slice(2)}»`:`Effetti terminati: tolte ${gone.length} aree`,
+    ()=>{M.areas=JSON.parse(before).map(a=>{if(gone.some(g=>g.id===a.id))delete a.fx;return a});renderObjs();renderSel();saveSoon()})}
 function delArea(){const a=selArea();if(!a)return;snap();M.areas=M.areas.filter(x=>x.id!==a.id);SEL=null;renderObjs();renderSel();saveSoon()}
 /* segnalazione di un punto: un cerchio che pulsa per circa tre secondi, qui e nella vista giocatori; non viene salvata */
 let PING_ARM=false;
@@ -1695,8 +1715,8 @@ function trkNext(){TRKC=null;const T=trkRead();if(!T.list.length)return;
   if(T.round!==prev)delete T.ended;
   if(T.round>prev){T.fx.forEach(f=>f.rds--);T.fx=T.fx.filter(f=>f.rds>0)}
   const act=T.list[T.turn];if(act&&!act.pc&&act.la)act.la=0;
-  dbSet("encTrk",T);TRKC=null;renderObjs();renderSel()}
-function trkChanged(){TRKC=null;if(!M)return;renderObjs();if(PVMODE)pvInitRender();else{renderSel();if(STAB==="trk")renderSuiteList()}}
+  dbSet("encTrk",T);TRKC=null;renderObjs();renderSel();areaFxSweep()}
+function trkChanged(){TRKC=null;if(!M)return;renderObjs();if(PVMODE)pvInitRender();else{renderSel();if(STAB==="trk")renderSuiteList();areaFxSweep()}}
 /* vista giocatori: ordine dei turni a lato. Solo durante un combattimento, solo le righe non nascoste nel tracker;
    i PG sempre col nome, i mostri col nome solo se i nomi sui token sono «Tutti»; mai punti ferita. */
 function pvInitRender(){if(!PVMODE||!M)return;let el=$("pvInitBox");if(!el){el=document.createElement("div");el.id="pvInitBox";el.className="pvinit";document.body.appendChild(el)}

@@ -74,3 +74,17 @@ test("segnalazione di un punto: doppio clic o pulsante, compare anche ai giocato
   expect(await page.evaluate(() => [PING_ARM, M.objects.length, M.areas.length])).toEqual([false, 0, 0]);
   await page.waitForTimeout(3200); await expect(page.locator(".ping")).toHaveCount(0); await expect(pv.locator(".ping")).toHaveCount(0);
 });
+
+test("area legata a un effetto del tracker: sparisce quando l'effetto termina, con Annulla; le aree entrano nel PNG", async ({ page }) => {
+  const P = await fresh(page);
+  await page.evaluate(() => { dbSet("encTrk", { list: [{ id: "trk_a", name: "Aria", pc: true, mi: -1, init: 10, hp: 10, hpMax: 10, cond: [] }], turn: 0, round: 1, fx: [{ id: "fx_1", name: "Nube velenosa", rds: 1, tgt: "" }] }); trkChanged(); setMode("area"); });
+  await drag(page, P(8, 8), P(10, 8)); await page.selectOption("#arFx", "fx_1");
+  expect(await page.evaluate(() => M.areas[0].fx)).toBe("fx_1");
+  /* il PNG per i giocatori contiene il colore dell'area */
+  const px = await page.evaluate(() => new Promise(res => { const real = HTMLCanvasElement.prototype.toBlob; HTMLCanvasElement.prototype.toBlob = function () { HTMLCanvasElement.prototype.toBlob = real; const d = this.getContext("2d").getImageData(8.5 * 64, 8.5 * 64, 1, 1).data; res([d[0] > d[2] + 20, d[3]]); }; exportPng(false); }));
+  expect(px).toEqual([true, 255]);
+  await page.evaluate(() => { addObject(["token", "hood", "X"], 2, 2); M.objects[0].trk = "trk_a"; renderObjs(); trkNext(); });   // nuovo round: l'effetto da 1 round termina
+  expect(await page.evaluate(() => [trkRead().fx.length, M.areas.length])).toEqual([0, 0]);
+  await expect(page.locator("#uiUndo")).toContainText("Effetto terminato"); await page.click("#uiUndo button");
+  expect(await page.evaluate(() => [M.areas.length, M.areas[0].fx])).toEqual([1, undefined]);    // ripristinata, senza più il legame
+});
