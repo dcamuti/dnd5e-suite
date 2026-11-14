@@ -1393,7 +1393,7 @@ function addToTrk(idx,v){
   const hpm=hpFromDice(m);
   const count=TRK.list.filter(u=>u.mi===idx).length;
   TRK.list.push({id:newId("trk"),
-   name:m.it+(count?" "+(count+1):""),sub:MONSTERS[idx].n+" · GS "+m.cr,mi:idx,pc:false,
+   name:m.it+(count?" "+(count+1):""),sub:MONSTERS[idx].n+" · GS "+m.cr,mi:idx,mn:MONSTERS[idx].n,pc:false,
    init:null,ac:parseInt(m.ac,10)||10,hpMax:hpm,hp:hpm,
    dex:Math.floor((m.ab[1]-10)/2),cond:[]});
   delete TRK.ended;trkSave();if(TAB==="track")renderTrk();
@@ -2295,9 +2295,14 @@ const pwaReady=()=>!!(navigator.serviceWorker&&navigator.serviceWorker.controlle
 /* ================= TRACKER ================= */
 let TRK=dbGet("encTrk",{list:[],turn:-1,round:0});
 if(!TRK.fx)TRK.fx=[];
-/* i combattenti aggiunti dall'editor di mappe portano il nome del mostro (mn): la posizione nel bestiario si ricava da quello */
+/* Ogni riga di un mostro porta il suo nome nel bestiario (mn): la posizione (mi) si ricava da quello a ogni caricamento, così
+   non dipende dall'ordine del bestiario né dai mostri homebrew aggiunti o tolti nel frattempo (anche da un'altra finestra).
+   Le righe salvate prima di questa regola ricevono il nome dalla posizione che avevano; se il mostro non esiste più la riga
+   resta nel tracker senza scheda. */
 function trkFix(){if(!TRK||!Array.isArray(TRK.list))TRK={list:[],turn:-1,round:0};if(!TRK.fx)TRK.fx=[];
-  TRK.list.forEach(u=>{if(u&&u.mn){const i=MONSTERS.findIndex(m=>m.n===u.mn);if(i>=0)u.mi=i}})}
+  TRK.list.forEach(u=>{if(!u||u.pc)return;
+    if(u.mn){u.mi=MONSTERS.findIndex(m=>m.n===u.mn)}
+    else if(u.mi>=0&&MONSTERS[u.mi])u.mn=MONSTERS[u.mi].n})}
 /* il tracker è stato modificato in un'altra finestra (dall'editor di mappe: turno successivo, combattenti aggiunti) */
 window.addEventListener("storage",e=>{if(e.key!==dbKey("encTrk"))return;const old=TRK;TRK=dbGet("encTrk",{list:[],turn:-1,round:0});trkFix();
   const added=TRK.list.filter(u=>!old.list.some(x=>x.id===u.id)).length,act=TRK.turn>=0?TRK.list[TRK.turn]:null;
@@ -2479,7 +2484,7 @@ function encToTracker(){
     for(let k=1;k<=r.q;k++){
       const hpm=hpFromDice(m);
       TRK.list.push({id:newId("trk"),
-       name:m.it+(r.q>1?" "+k:""),sub:MONSTERS[r.i].n+" · GS "+m.cr,mi:r.i,pc:false,
+       name:m.it+(r.q>1?" "+k:""),sub:MONSTERS[r.i].n+" · GS "+m.cr,mi:r.i,mn:MONSTERS[r.i].n,pc:false,
        init:null,ac:parseInt(m.ac,10)||10,hpMax:hpm,hp:hpm,
        dex:Math.floor((m.ab[1]-10)/2),cond:[]});
     }});

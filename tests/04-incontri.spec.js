@@ -77,3 +77,21 @@ test("nascondere un combattente lo toglie dalla Vista giocatore", async ({ page 
   expect(await page.evaluate(() => [...PV.document.querySelectorAll(".r .nm")].map(x => x.textContent.trim()))).toEqual(["Aria", "Bran"]);
   expect((await ls(page, "dnd5e_enc_trk")).list[0].vis).toBe("dm");
 });
+
+test("tracker: i mostri sono indicati per nome, non per posizione nel bestiario", async ({ page }) => {
+  await open(page, "encounters"); await page.evaluate(() => localStorage.clear());
+  const hb = n => ({ id: "hb_" + n, n, it: n, src: "HB", cr: "1", sz: "Media", tp: "bestia", al: "", ac: "12", hp: "11 (2d8+2)", spd: "9 m", ab: [10, 10, 10, 10, 10, 10], env: [], act: [] });
+  await page.evaluate(l => localStorage.setItem("dnd5e_enc_hb", JSON.stringify(l)), [hb("Alfa"), hb("Beta")]); await page.reload(); await page.waitForTimeout(300);
+  await page.evaluate(() => { addToTrk(MONSTERS.findIndex(m => m.n === "Beta")); addToTrk(MONSTERS.findIndex(m => m.n === "Ogre")); });
+  expect((await page.evaluate(() => TRK.list.map(u => u.mn)))).toEqual(["Beta", "Ogre"]);
+  /* in un'altra finestra viene tolto il primo homebrew: la posizione di «Beta» cambia, la riga no */
+  await page.evaluate(l => localStorage.setItem("dnd5e_enc_hb", JSON.stringify(l)), [hb("Beta")]); await page.reload(); await page.waitForTimeout(300);
+  expect(await page.evaluate(() => TRK.list.map(u => MONSTERS[u.mi].n))).toEqual(["Beta", "Ogre"]);
+  /* riga salvata prima di questa regola (solo posizione): riceve il nome; mostro che non esiste più: resta senza scheda */
+  await page.evaluate(() => { const i = MONSTERS.findIndex(m => m.n === "Goblin"); const T = JSON.parse(localStorage.getItem("dnd5e_enc_trk"));
+    T.list.push({ id: "trk_old", name: "Goblin", sub: "", mi: i, pc: false, init: 1, ac: 15, hpMax: 7, hp: 7, dex: 2, cond: [] }, { id: "trk_gone", name: "Sparito", sub: "", mi: 5, mn: "Non esiste", pc: false, init: 1, ac: 10, hpMax: 5, hp: 5, dex: 0, cond: [] });
+    localStorage.setItem("dnd5e_enc_trk", JSON.stringify(T)); }); await page.reload(); await page.waitForTimeout(300);
+  const rows = await page.evaluate(() => TRK.list.slice(2).map(u => [u.mn, u.mi >= 0 ? MONSTERS[u.mi].n : null]));
+  expect(rows).toEqual([["Goblin", "Goblin"], ["Non esiste", null]]);
+  await page.evaluate(() => { showTab("track"); renderTrk(); }); await expect(page.locator(".trk-row")).toHaveCount(4);
+});
