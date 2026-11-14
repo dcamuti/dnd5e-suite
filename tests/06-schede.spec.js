@@ -7,7 +7,7 @@ test("genera, salva, elimina con Annulla; nomi con apostrofi e virgolette non ro
   expect(id).toMatch(/^pc_[0-9a-z]+_[0-9a-z]{8}$/);
   expect((await ls(page, "dnd5e_chars"))[0].st.lv).toBe(5);
   await page.evaluate(() => openCharModal());
-  await page.locator("#charModal button", { hasText: "🗑" }).first().click();
+  await page.locator("#charModal button[aria-label=\"Elimina\"]").first().click();
   expect((await ls(page, "dnd5e_chars")).length).toBe(0);
   await page.click("#uiUndo button");
   expect((await ls(page, "dnd5e_chars"))[0].name).toBe(`Ser "Lupo" D'Arco & <figlio>`);

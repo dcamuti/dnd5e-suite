@@ -54,7 +54,7 @@ Per cambiare il codice comune:
 | `storage` | `storage.js` | chiavi dei dati, lettura e scrittura, migrazioni |
 | `dati` | `dati-esterni.js`, `id-visibilita.js` | pulizia di ciò che viene importato, ID, visibilità e proprietà |
 | `motore` | `motore.js`, `diario.js` | generatore casuale, profilo di campagna, invio al Diario (assente nelle Schede PG) |
-| `interfaccia` | `immagini.js`, `backup.js`, `campagne.js`, `finestre.js`, `menu.js`, `interfaccia.js`, `ricerca.js`, `pwa.js` | libreria immagini, backup e ripristino, campagne, finestre e Annulla, menu Dati, preferenze e accessibilità, ricerca nella campagna, uso senza connessione |
+| `interfaccia` | `immagini.js`, `backup.js`, `campagne.js`, `finestre.js`, `menu.js`, `interfaccia.js`, `icone.js`, `ricerca.js`, `pwa.js` | libreria immagini, backup e ripristino, campagne, finestre e Annulla, menu Dati, preferenze e accessibilità, icone dei pulsanti, ricerca nella campagna, uso senza connessione |
 
 Dove un tool deve differire, la variante è scritta nel file comune con righe `/*#if tool*/ … /*#else*/ … /*#endif*/`. Oggi sono due: negli Enigmi l'HTML importato è ammesso (e ripulito), negli Incontri c'è una regola in più per i pulsanti dei punti ferita.
 
